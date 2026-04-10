@@ -1,0 +1,51 @@
+{
+  "task_id": "POSITION_SIZING_RULES_001",
+  "decision": "approved",
+  "status": "done",
+  "files_changed": [],
+  "files_read": [
+    "core/paper_exec.py",
+    "core/risk.py",
+    ".env"
+  ],
+  "sizing_formula": "size_usd = clamp(PAPER_POSITION_SIZE_USD * tier_mult, 0, MAX_POSITION_SIZE_USD); qty = size_usd / fill_px. Override: if signal.components['recommended_size_dollars'] present, size_usd = clamp(recommended_size_dollars, 0, MAX_POSITION_SIZE_USD).",
+  "caps_enforced": [
+    "PER_TRADE: MAX_POSITION_SIZE_USD=100 — enforced at paper_exec.py:40 and paper_exec.py:76",
+    "PER_CONCURRENT (count): MAX_CONCURRENT_TRADES=3 — enforced at risk.py:201",
+    "PER_MARKET: MAX_TRADES_PER_MARKET=1 — enforced at risk.py:205",
+    "LIQUIDITY: MIN_TOUCH_DEPTH_USD=200 depth gate — enforced at risk.py:188-190 before entry"
+  ],
+  "gaps_closed": [
+    "None — audit found sizing not bankroll-aware; this phase documents invariants. No broken rules found requiring immediate code change.",
+    "Documented: MIN_TOUCH_DEPTH_USD=200 > MAX_POSITION_SIZE_USD=100, so size never exceeds depth (safety property confirmed).",
+    "Documented: qty * entry_px = size_usd exactly (QTY_CONSISTENT_WITH_COMMITTED_USD confirmed)."
+  ],
+  "gaps_remaining": [
+    {
+      "rule": "SIZE_BOUNDED_PER_SESSION",
+      "severity": "HIGH",
+      "description": "No per-session total USD commitment cap. Only a count cap (MAX_CONCURRENT_TRADES=3). Max theoretical exposure = 3 x $100 = $300. Deferred to BANKROLL_SESSION_RULES_001.",
+      "deferred_to": "BANKROLL_SESSION_RULES_001"
+    },
+    {
+      "rule": "SIZE_EXPLAINABLE (bankroll factor)",
+      "severity": "HIGH",
+      "description": "Sizing is bankroll-agnostic. PAPER_POSITION_SIZE_USD is a fixed dollar amount independent of current bankroll balance or drawdown. Deferred to BANKROLL_SESSION_RULES_001.",
+      "deferred_to": "BANKROLL_SESSION_RULES_001"
+    }
+  ],
+  "verification": {
+    "commands": [
+      "python -m py_compile core/paper_exec.py",
+      "python -m py_compile core/risk.py",
+      "git diff --name-only"
+    ],
+    "results": [
+      "py_compile passed — no changes made to paper_exec.py",
+      "py_compile passed — no changes made to risk.py",
+      "git diff empty — no production files modified"
+    ]
+  },
+  "sizing_spec_written": "BOT_BRIDGE/08_SHARED_CONTEXT/SIZING_RULES_SPEC_001.md",
+  "worked_example": "confidence=0.65, bankroll=$900, 1 open position, depth=$200 -> tier_mult=1.0 (conf < 0.70) -> size_usd=$50.00 -> qty=$50/fill_px. Bankroll not factored (documented gap)."
+}

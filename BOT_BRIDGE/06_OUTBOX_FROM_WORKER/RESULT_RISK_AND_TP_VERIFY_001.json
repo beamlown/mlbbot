@@ -1,0 +1,42 @@
+{
+  "task_id": "RISK_AND_TP_VERIFY_001",
+  "decision": "approved",
+  "status": "done",
+  "files_changed": [],
+  "checks_passed": [
+    "TP_SL_CANONICAL_FUNCTIONS",
+    "TP_SL_THRESHOLDS_MATCH_ENV",
+    "EXIT_REASONS_COMPLETE",
+    "SIZING_FORMULA_MATCHES_SPEC",
+    "SIZING_CAPS_ACTIVE",
+    "HELD_SIDE_PRICE_ONLY",
+    "NONE_OB_HANDLING",
+    "BANKROLL_NUMBERS_MATCH_DB",
+    "AVAILABLE_CASH_FORMULA",
+    "LIVE_EQUITY_SOURCE",
+    "RESOLVED_MARKET_CLOSE",
+    "COOLDOWNS_CORRECT"
+  ],
+  "checks_partial": [],
+  "checks_failed": [],
+  "key_evidence": {
+    "db_realized_pnl": 351.9051,
+    "state_json_realized_pnl": 351.9051,
+    "pnl_match": "EXACT",
+    "open_trades": 1,
+    "capital_committed_usd": 50.0,
+    "lifetime_bankroll_usd": 851.91,
+    "available_cash_usd": 801.91,
+    "cooldown_assignments": ["near_resolution=600s", "stop_loss=1800s", "gap_stop=3600s"],
+    "exit_reasons_count": 7,
+    "held_side_violations": 0
+  },
+  "remaining_gaps": [
+    {"gap": "No per-session total USD commitment cap", "severity": "HIGH", "deferred": true},
+    {"gap": "Bankroll-aware sizing", "severity": "HIGH", "deferred": true},
+    {"gap": "Code defaults in risk.py differ from .env live values", "severity": "LOW", "deferred": true},
+    {"gap": "Session PnL not on dashboard", "severity": "LOW", "deferred": true}
+  ],
+  "phase_6_ready": true,
+  "verify_report_written": "BOT_BRIDGE/08_SHARED_CONTEXT/RISK_VERIFY_REPORT_001.md"
+}

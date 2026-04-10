@@ -24,11 +24,11 @@ CONF_SIZE_HIGH_MULT = float(os.getenv("CONF_SIZE_HIGH_MULT", "1.50"))
 MAX_POSITION_SIZE_USD = float(os.getenv("MAX_POSITION_SIZE_USD", "100"))
 
 
-def _confidence_size(base_usd: float, confidence: float) -> float:
+def _confidence_size(base_usd: float, confidence: float, drawdown_mult: float = 1.0) -> float:
     if base_usd <= 0:
         return 0.0
     if not CONF_SIZING_ENABLED:
-        return base_usd
+        return base_usd * drawdown_mult
 
     mult = 1.0
     if confidence >= CONF_TIER_VHIGH:
@@ -36,7 +36,7 @@ def _confidence_size(base_usd: float, confidence: float) -> float:
     elif confidence >= CONF_TIER_HIGH:
         mult = CONF_SIZE_MID_MULT
 
-    sized = base_usd * mult
+    sized = base_usd * mult * drawdown_mult
     return max(0.0, min(sized, MAX_POSITION_SIZE_USD))
 
 
@@ -68,6 +68,7 @@ def open_position(
     ob: OBSnapshot,
     mode: str = "neutral",
     source: str = "bot",
+    drawdown_mult: float = 1.0,
 ) -> Trade:
     fill_px = _fill_price_entry(signal.side, ob)
     recommended_size_usd = signal.components.get("recommended_size_dollars")
@@ -75,9 +76,9 @@ def open_position(
         try:
             size_usd = max(0.0, min(float(recommended_size_usd), MAX_POSITION_SIZE_USD))
         except Exception:
-            size_usd = _confidence_size(PAPER_POSITION_SIZE_USD, signal.confidence)
+            size_usd = _confidence_size(PAPER_POSITION_SIZE_USD, signal.confidence, drawdown_mult)
     else:
-        size_usd = _confidence_size(PAPER_POSITION_SIZE_USD, signal.confidence)
+        size_usd = _confidence_size(PAPER_POSITION_SIZE_USD, signal.confidence, drawdown_mult)
     qty = size_usd / fill_px if fill_px > 0 else 0.0
     fees_usd = qty * fill_px * PAPER_FEE_PCT
 

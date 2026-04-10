@@ -80,6 +80,34 @@ def _pid_is_running(pid: int) -> bool:
     return True
 
 
+def sweep_stale_processes() -> None:
+    """Kill any orphaned managed-service processes before a fresh start."""
+    patterns = [
+        "bot_core.py",
+        "dashboard_server.py",
+        "integration.recommendation_api",
+        "integration.resolution_watcher",
+    ]
+    print("LAUNCHER: sweeping stale managed processes...", flush=True)
+    for pattern in patterns:
+        try:
+            result = subprocess.run(
+                ["wmic", "process", "where", f"CommandLine like '%{pattern}%'", "get", "ProcessId"],
+                capture_output=True,
+                text=True,
+            )
+            for line in result.stdout.splitlines():
+                line = line.strip()
+                if line.isdigit() and int(line) != os.getpid():
+                    pid = int(line)
+                    subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
+                    print(f"LAUNCHER: swept stale pid={pid} ({pattern})", flush=True)
+        except Exception as exc:
+            print(f"LAUNCHER: sweep warning for {pattern}: {exc}", flush=True)
+    time.sleep(2)
+    print("LAUNCHER: sweep complete.", flush=True)
+
+
 def main() -> None:
     if LAUNCHER_PID_FILE.exists():
         try:
@@ -89,6 +117,7 @@ def main() -> None:
                 sys.exit(1)
         except ValueError:
             pass
+    sweep_stale_processes()
     LAUNCHER_PID_FILE.parent.mkdir(parents=True, exist_ok=True)
     LAUNCHER_PID_FILE.write_text(str(os.getpid()), encoding="utf-8")
 

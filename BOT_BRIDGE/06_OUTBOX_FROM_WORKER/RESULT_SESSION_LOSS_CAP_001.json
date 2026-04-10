@@ -1,0 +1,32 @@
+{
+  "task_id": "SESSION_LOSS_CAP_001",
+  "decision": "approved",
+  "status": "done",
+  "files_changed": [
+    "sports_bot_v2/bot_core.py"
+  ],
+  "env_vars_added": [
+    "SESSION_MAX_LOSS_USD",
+    "DAILY_MAX_LOSS_USD"
+  ],
+  "summary": [
+    "Added SESSION_MAX_LOSS_USD and DAILY_MAX_LOSS_USD env config reads in bot_core.py (0 keeps caps disabled for backward compatibility).",
+    "Added startup session timestamp tracking via _session_start_ts and helper _session_loss_exceeded() that computes realized PnL caps from closed trades.",
+    "Wired cap gate into entry flow so local entry evaluation is skipped when cap is hit, and model-bridge entries are also skipped while exits continue to run."
+  ],
+  "verification": {
+    "commands": [
+      "python -m py_compile bot_core.py",
+      "git diff --name-only",
+      "findstr /n \"SESSION_MAX_LOSS_USD DAILY_MAX_LOSS_USD\" bot_core.py",
+      "findstr /n \"_session_loss_exceeded SESSION LOSS CAP DAILY LOSS CAP\" bot_core.py"
+    ],
+    "results": [
+      "py_compile passed with no errors",
+      "diff output shows only sports_bot_v2/bot_core.py",
+      "env vars present at lines 36-37",
+      "helper + cap log lines + callsite present (helper at line 267, call at line 380)"
+    ],
+    "logic_trace": "With SESSION_MAX_LOSS_USD=0 and DAILY_MAX_LOSS_USD=0, _session_loss_exceeded() returns False immediately via first guard clause."
+  }
+}

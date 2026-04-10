@@ -313,10 +313,13 @@ def _compute_open_trade_accounting() -> dict:
             entry_px = float(r["entry_px"] or 0.0)
             qty = float(r["qty"] or 0.0)
             committed += entry_px * qty
+        raw_cash = STARTING_BANKROLL - committed
+        if raw_cash < 0:
+            log.warning("available_cash would be negative (committed=%.2f > bankroll=%.2f) — clamping to 0", committed, STARTING_BANKROLL)
         return {
             "open_count": len(rows),
             "capital_committed": round(committed, 2),
-            "available_cash": round(STARTING_BANKROLL - committed, 2),
+            "available_cash": round(max(0.0, raw_cash), 2),
         }
     except Exception:
         return {
@@ -517,7 +520,7 @@ def _read_state() -> dict:
             "start": STARTING_BANKROLL, "current": round(current, 2),
             "pct_gain": round(pct, 2), "net_pnl": round(net_pnl, 2),
             "capital_committed": acct["capital_committed"],
-            "available_cash": round(current - acct["capital_committed"], 2),
+            "available_cash": round(max(0.0, current - acct["capital_committed"]), 2),
             "open_trade_count": acct["open_count"],
         }
         state["stale"] = age > BOT_STALE_SEC
@@ -903,7 +906,16 @@ class DashHandler(BaseHTTPRequestHandler):
             self._json(_read_mlb_shadow(limit=limit))
         elif path == "/api/bankroll":
             history = _daily_pnl_history()
-            net = sum(d["pnl"] for d in history)
+            # Use full lifetime PnL query — _daily_pnl_history has LIMIT 30 days
+            # which would undercount history beyond 30 trading days.
+            try:
+                with _db() as _bconn:
+                    _row = _bconn.execute(
+                        "SELECT COALESCE(SUM(pnl_usd),0) FROM trades WHERE status='closed'"
+                    ).fetchone()
+                net = float(_row[0] or 0.0)
+            except Exception:
+                net = sum(d["pnl"] for d in history)
             self._json({"start": STARTING_BANKROLL, "current": round(STARTING_BANKROLL + net, 2),
                         "net_pnl": round(net, 2), "history": history})
         elif path == "/api/debug/market-stream":

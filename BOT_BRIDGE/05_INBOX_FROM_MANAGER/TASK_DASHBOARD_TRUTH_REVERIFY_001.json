@@ -1,0 +1,57 @@
+{
+  "task_id": "DASHBOARD_TRUTH_REVERIFY_001",
+  "title": "Re-verify live dashboard truth end-to-end against served endpoints and DB",
+  "priority": "HIGH",
+  "subsystem": "dashboard",
+  "objective": "Read-only audit. Verify that every value displayed on the live dashboard accurately reflects DB truth and live API payloads. Identify any field that is computed incorrectly, sourced from a stale path, or missing entirely. Do not change any code.",
+  "context": "Prior tasks have modified dashboard_server.py and dashboard.html extensively (r25 fallback, bankroll accounting, PnL sign fix, REST fallback for stale marks, etc.). This task does a fresh end-to-end truth check against the live running system to confirm all displayed fields are correct and internally consistent. Runtime is at http://localhost:8900.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db"
+  ],
+  "do_not_touch": [
+    "All files are READ-ONLY in this task — no edits, no patches",
+    "No service restarts",
+    "No DB writes"
+  ],
+  "inputs": [
+    "Live API responses from http://localhost:8900/api/state",
+    "Live API responses from http://localhost:8900/api/trades?limit=60",
+    "Live API responses from http://localhost:8900/api/games",
+    "Live API responses from http://localhost:8900/api/bankroll",
+    "DB query: SELECT * FROM trades WHERE status='open' from trades_sports.db",
+    "DB query: SELECT id, market_slug, side, pnl_usd, entry_px, exit_px, reason_close FROM trades ORDER BY id DESC LIMIT 25",
+    "Read runtime/state.json directly",
+    "Read dashboard_server.py to understand how each field is computed",
+    "Read dashboard.html to understand how each field is displayed"
+  ],
+  "deliverables": [
+    "For each major display area, a PASS/FAIL verdict with evidence:",
+    "  1. Open positions panel: DB open rows vs /api/trades vs dashboard display",
+    "  2. Bankroll/accounting strip: available_cash, committed, live equity — internally consistent?",
+    "  3. PnL fields: realized, unrealized, net — match DB and /api/state?",
+    "  4. r25 win rate: value shown vs DB-computed r25 from last 25 closed trades",
+    "  5. Position card fields: entry_px, current_px, TP/SL levels, PnL sign correctness for BUY_YES and BUY_NO",
+    "  6. Game feed: games shown, status labels accurate",
+    "  7. Mark source: stale mark fallback (mark_source field) displaying correctly",
+    "Any field that is wrong, stale, zeroed incorrectly, or missing",
+    "Root cause for each failure",
+    "Recommended fix scope for each failure (file + line range)"
+  ],
+  "acceptance_criteria": [
+    "All 4 allowed files read",
+    "All 7 display areas evaluated with PASS/FAIL and evidence",
+    "Each failure has root cause and recommended fix scope",
+    "No code changed",
+    "Result written to 06_OUTBOX_FROM_WORKER as RESULT_DASHBOARD_TRUTH_REVERIFY_001.json"
+  ],
+  "verification": [
+    "Confirm no files modified",
+    "Confirm result file exists at correct outbox path",
+    "DB open row count must match /api/trades open count — note any mismatch explicitly"
+  ],
+  "rollback": "Read-only task. No rollback needed.",
+  "status": "OPEN"
+}

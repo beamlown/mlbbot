@@ -35,6 +35,9 @@ DB_PATH = os.getenv("DB_PATH", "trades_sports.db")
 OB_SNAPSHOTS_DIR = os.getenv("OB_SNAPSHOTS_DIR", "runtime/ob_snapshots")
 SESSION_MAX_LOSS_USD = float(os.getenv("SESSION_MAX_LOSS_USD", "0"))
 DAILY_MAX_LOSS_USD = float(os.getenv("DAILY_MAX_LOSS_USD", "0"))
+SESSION_EXPOSURE_CAP_USD = float(os.getenv("SESSION_EXPOSURE_CAP_USD", "0"))
+SESSION_STARTING_BANKROLL_USD = float(os.getenv("SESSION_STARTING_BANKROLL_USD", "500.0"))
+STALE_OB_WARN_SECONDS = int(os.getenv("STALE_OB_WARN_SECONDS", "300"))
 
 BUILD_TAG = f"sports_bot_v2.{SPORT}.2026-03-29"
 ENGINE_TAG = f"sports_paper_{SPORT}"
@@ -104,6 +107,7 @@ _exit_reason_counts: dict[str, int] = defaultdict(int)  # exit reason → count
 _resolved_markets: dict = {}
 _resolved_markets_mtime: float = 0.0
 _session_start_ts = int(time.time())
+_session_peak_bankroll: float = SESSION_STARTING_BANKROLL_USD
 
 AUDIT_CANDIDATES_LOG = f"logs/audit_candidates_{SPORT}.jsonl"
 ALLOW_LOCAL_MLB_ORIGINATION = os.getenv("ALLOW_LOCAL_MLB_ORIGINATION", "0") == "1"
@@ -306,6 +310,22 @@ def _session_loss_exceeded() -> bool:
     return False
 
 
+def _session_exposure_exceeded(open_trades: list) -> bool:
+    if SESSION_EXPOSURE_CAP_USD <= 0:
+        return False
+    open_exposure = sum(
+        (t.qty or 0.0) * (t.entry_px or 0.0) for t in open_trades
+    )
+    if open_exposure >= SESSION_EXPOSURE_CAP_USD:
+        logger.warning(
+            "Session exposure cap hit: open_exposure=%.2f cap=%.2f — new entry blocked",
+            open_exposure,
+            SESSION_EXPOSURE_CAP_USD,
+        )
+        return True
+    return False
+
+
 def main():
     global LOOP_COUNT, _markets, _guard_block_count, _guard_pass_count, _last_guard_reasons, _guard_market_blocks, _last_invalid_market_details
 
@@ -378,6 +398,17 @@ def main():
                 open_per_market[t.market_id] = open_per_market.get(t.market_id, 0) + 1
 
             loss_cap_hit = _session_loss_exceeded()
+            exposure_cap_hit = _session_exposure_exceeded(open_trades)
+
+            # ── Drawdown-aware sizing multiplier ──────────────────────────────
+            global _session_peak_bankroll
+            _current_equity = SESSION_STARTING_BANKROLL_USD + total_realized_pnl()
+            _session_peak_bankroll = max(_session_peak_bankroll, _current_equity)
+            if _session_peak_bankroll > 0:
+                _drawdown_frac = max(0.0, (_session_peak_bankroll - _current_equity) / _session_peak_bankroll)
+            else:
+                _drawdown_frac = 0.0
+            drawdown_mult = max(0.5, 1.0 - _drawdown_frac)
 
             for market in _markets:
                 if not market.active or market.closed:
@@ -433,7 +464,7 @@ def main():
                     )
                     t2e = _time_to_end(market)
 
-                    if loss_cap_hit:
+                    if loss_cap_hit or exposure_cap_hit:
                         continue
 
                     gates_ok, gate_reasons = check_entry_gates(
@@ -508,7 +539,7 @@ def main():
 
                     _guard_pass_count += 1
 
-                    trade = open_position(market, sig, ob, mode=mode_ctx.mode)
+                    trade = open_position(market, sig, ob, mode=mode_ctx.mode, drawdown_mult=drawdown_mult)
                     trade_id = insert_open_trade(trade, sport=SPORT)
                     if trade_id is None:
                         logger.info("OPEN SKIPPED (duplicate slug) slug=%s", market.slug)
@@ -528,8 +559,8 @@ def main():
             # ── Model bridge (paper only) ─────────────────────────────────────
             try:
                 _bridge_open_check = fetch_open_trades()
-                if loss_cap_hit:
-                    logger.info("BRIDGE SKIP, session/daily loss cap active")
+                if loss_cap_hit or exposure_cap_hit:
+                    logger.info("BRIDGE SKIP, session/daily loss cap or exposure cap active")
                 elif len(_bridge_open_check) >= MAX_CONCURRENT_TRADES:
                     logger.info(
                         "BRIDGE SKIP — at capacity (%d/%d)",
@@ -640,11 +671,37 @@ def main():
                         )
                         continue
 
-                    mkt = _market_by_id(trade.market_id) or _dummy_market(trade)
+                    _mkt_live = _market_by_id(trade.market_id)
+                    if _mkt_live is None:
+                        logger.warning(
+                            "Exit using dummy market for trade=%d market_id=%s — no live discovery match",
+                            trade.id, trade.market_id,
+                        )
+                        mkt = _dummy_market(trade)
+                    else:
+                        mkt = _mkt_live
                     ob = get_orderbook_snapshot(mkt)
                     t2e = _time_to_end(mkt)
 
                     should_close, reason = check_exit(trade, ob, t2e)
+                    if not should_close and reason == "":
+                        _held = ob.bid_yes if trade.side == "BUY_YES" else ob.bid_no
+                        if _held is None:
+                            logger.warning(
+                                "Exit check skipped trade=%d %s reason=empty_ob (held_bid=None)",
+                                trade.id, trade.market_slug[:25],
+                            )
+                            try:
+                                _ts_open_dt = parse_utc_dt(str(trade.ts_open)) if trade.ts_open else None
+                                if _ts_open_dt is not None:
+                                    _stale_secs = time.time() - _ts_open_dt.timestamp()
+                                    if _stale_secs > STALE_OB_WARN_SECONDS:
+                                        logger.warning(
+                                            "STALE OB trade=%d %s stale_secs=%.0f — held_bid=None for >%ds, position may be stuck",
+                                            trade.id, trade.market_slug[:25], _stale_secs, STALE_OB_WARN_SECONDS,
+                                        )
+                            except Exception:
+                                pass
                     # ── Hold-to-resolution gate ────────────────────────────
                     # If near_resolution fired but watcher has not confirmed
                     # settlement yet, suppress the exit and hold for full payout.
@@ -678,7 +735,7 @@ def main():
                             trade.id, trade.market_slug[:25], reason, close_data.get("pnl_usd", 0),
                         )
                 except Exception as e:
-                    logger.warning("Exit check error trade=%s: %s", trade.id, e)
+                    logger.error("Exit check error trade=%d: %s", trade.id, e, exc_info=True)
 
         except Exception as e:
             logger.error("Loop error: %s", e, exc_info=True)

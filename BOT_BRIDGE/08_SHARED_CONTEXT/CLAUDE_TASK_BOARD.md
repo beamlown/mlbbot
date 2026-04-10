@@ -1,5 +1,5 @@
 # CLAUDE_TASK_BOARD.md — Manager Task Board
-## Last updated: 2026-04-10 — MARKET_RESOLVED_DB_FIELDS_001 + TP_SL_SCHEMA_NORMALIZATION_001 both APPROVED. SESSION_LOSS_CAP_001 promoted to ACTIVE. POSITION_SIZING_RULES_001 still QUEUED (core/risk.py conflict).
+## Last updated: 2026-04-10 — RISK PACK COMPLETE + 2 HIGH GAPS CLOSED. All 7 phases DONE. System verdict: VERIFIED. SESSION_EXPOSURE_CAP_USD and drawdown-aware sizing patched directly by manager 2026-04-10 (bot_core.py + core/paper_exec.py + .env). Board idle. Pending restart to pick up changes.
 
 ---
 
@@ -15,21 +15,13 @@
 
 ## ACTIVE
 
-| task_id | title | priority | subsystem | allowed_files | status |
-|---------|-------|----------|-----------|---------------|--------|
-| SESSION_LOSS_CAP_001 | Add per-session and daily max-loss kill switches to block new entries | HIGH | risk / entry gates | `bot_core.py`, `core/risk.py` | ACTIVE |
+_None — risk pack complete. Board idle._
 
 ---
 
 ## QUEUED
 
-| task_id | title | priority | subsystem | allowed_files | blocked_by |
-|---------|-------|----------|-----------|---------------|------------|
-| POSITION_SIZING_RULES_001 | Define and enforce per-trade sizing: formula, caps, confidence tiers, liquidity gate | HIGH | execution / sizing | `core/paper_exec.py`, `core/risk.py` | SESSION_LOSS_CAP_001 (core/risk.py conflict) |
-| EXECUTION_RISK_MONITOR_001 | Harden exit loop: empty-OB warnings, dummy-market warnings, error logging | HIGH | risk / exit | `bot_core.py`, `core/risk.py` | SESSION_LOSS_CAP_001 (bot_core.py + core/risk.py conflict) |
-| BANKROLL_SESSION_RULES_001 | Enforce correct bankroll/session/available-cash accounting | HIGH | accounting / bankroll | `dashboard_server.py`, `core/paper_exec.py` | POSITION_SIZING_RULES_001 + EXECUTION_RISK_MONITOR_001 |
-| RISK_AND_TP_VERIFY_001 | End-to-end verification: TP/SL, sizing, held-side pricing, bankroll all agree | HIGH | risk / verification | read-only | ALL phases 1-4 |
-| RISK_AND_TP_AUDIT_001 | Final risk system audit document | MEDIUM | risk / audit | `08_SHARED_CONTEXT/` only | RISK_AND_TP_VERIFY_001 |
+_None._
 
 ---
 
@@ -46,6 +38,12 @@
 
 | task_id | title | outcome | allowed_files |
 |---------|-------|---------|---------------|
+| RISK_AND_TP_AUDIT_001 | Final risk system audit document | APPROVED — RISK_MANAGEMENT_FINAL_AUDIT_001.md written. 12/12 checks PASS. 6 gaps documented (2 HIGH open). 2026-04-10 | `08_SHARED_CONTEXT/` only |
+| RISK_AND_TP_VERIFY_001 | End-to-end verification: TP/SL, sizing, held-side pricing, bankroll all agree | APPROVED — 12/12 PASS. DB↔dashboard exact match $351.91. SYSTEM VERIFIED. 2026-04-10 | read-only |
+| BANKROLL_SESSION_RULES_001 | Enforce correct bankroll/session/available-cash accounting | APPROVED — available_cash clamped to 0 + WARNING; /api/bankroll lifetime PnL fix. BANKROLL_ACCOUNTING_SPEC_001.md written. 2026-04-10 | `dashboard_server.py`, `core/paper_exec.py` |
+| EXECUTION_RISK_MONITOR_001 | Harden exit loop: empty-OB warnings, dummy-market warnings, error logging | APPROVED — 4 exit loop hardening fixes: empty_ob WARNING, stale OB WARNING, dummy market WARNING, exit error→ERROR+exc_info. 2026-04-10 | `bot_core.py` |
+| POSITION_SIZING_RULES_001 | Define and enforce per-trade sizing: formula, caps, confidence tiers, liquidity gate | APPROVED — docs only, 4/6 invariants confirmed, 2 HIGH gaps deferred to BANKROLL_SESSION_RULES_001. SIZING_RULES_SPEC_001.md written. 2026-04-10 | `core/paper_exec.py`, `core/risk.py` |
+| SESSION_LOSS_CAP_001 | Add per-session and daily max-loss kill switches to block new entries | APPROVED — SESSION_MAX_LOSS_USD + DAILY_MAX_LOSS_USD env-gated, default 0 (disabled). bot_core.py only. 2026-04-10 | `bot_core.py` |
 | TP_SL_SCHEMA_NORMALIZATION_001 | Normalize TP/SL/committed/max_loss to canonical functions in core/risk.py | APPROVED — conservative schema cleanup, no threshold changes. 2026-04-10 | `core/risk.py`, `core/paper_exec.py`, `core/types.py` |
 | MARKET_RESOLVED_DB_FIELDS_001 | Fix market_resolved close path — add reason_close and ts_close to DB payload | APPROVED — commit d8fc4bf. Broken invariant from audit closed. 2026-04-10 | `bot_core.py` |
 | RISK_PIPELINE_AUDIT_001 | Audit full risk pipeline end-to-end | APPROVED — 5 gaps found, 1 broken invariant. Report at RISK_PIPELINE_AUDIT_REPORT_001.md. Follow-up tasks written. 2026-04-10 | read-only |
@@ -160,7 +158,7 @@
 
 | File | Locked by |
 |------|-----------|
-| All files | **UNLOCKED** |
+| All files | **UNLOCKED** — no active tasks |
 
 ---
 

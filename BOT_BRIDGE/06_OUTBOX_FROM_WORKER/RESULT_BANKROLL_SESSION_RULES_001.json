@@ -1,0 +1,49 @@
+{
+  "task_id": "BANKROLL_SESSION_RULES_001",
+  "decision": "approved",
+  "status": "done",
+  "files_changed": ["dashboard_server.py"],
+  "files_unchanged": ["core/paper_exec.py"],
+  "accounting_definitions_verified": [
+    "lifetime_bankroll: STARTING_BANKROLL + total_realized_pnl() — full lifetime DB query, no date cap",
+    "capital_committed: SUM(entry_px * qty WHERE status='open') — live DB query",
+    "live_equity: SUM(qty * current_price) where current_price = held token best_bid — verified held-side",
+    "unrealized_pnl: (current_price - entry_px) * qty per open trade — clearly separated from realized",
+    "session_baseline: _session_start_ts = int(time.time()) — in-memory global, no DB write",
+    "INITIAL_BANKROLL_IS_CONFIGURABLE: STARTING_BANKROLL = float(os.getenv('STARTING_BANKROLL', '500'))"
+  ],
+  "accounting_definitions_fixed": [
+    {
+      "definition": "available_cash",
+      "before": "STARTING_BANKROLL - committed (could be negative)",
+      "after": "max(0.0, STARTING_BANKROLL - committed) with WARNING log when overcommitted",
+      "locations": ["dashboard_server.py:_compute_open_trade_accounting()", "dashboard_server.py:_read_state()"]
+    },
+    {
+      "definition": "/api/bankroll net_pnl",
+      "before": "sum(d['pnl'] for d in _daily_pnl_history()) — LIMIT 30 days, would miss history beyond 30 trading days",
+      "after": "SELECT COALESCE(SUM(pnl_usd),0) FROM trades WHERE status='closed' — full lifetime query",
+      "location": "dashboard_server.py:/api/bankroll handler"
+    }
+  ],
+  "invariants_enforced": [
+    "NO_DOUBLE_COUNTING: confirmed — open/closed queries never mixed",
+    "AVAILABLE_CASH_NEVER_NEGATIVE: fixed — clamped to max(0, ...) + WARNING",
+    "LIVE_EQUITY_USES_HELD_SIDE_PRICE: confirmed — asset_id = held token, current_price = best_bid",
+    "SESSION_BASELINE_IS_SNAPSHOT: confirmed — in-memory only, no DB write",
+    "INITIAL_BANKROLL_IS_CONFIGURABLE: confirmed — env var STARTING_BANKROLL"
+  ],
+  "verification": {
+    "commands": [
+      "python -m py_compile dashboard_server.py",
+      "python -m py_compile core/paper_exec.py",
+      "git diff --name-only"
+    ],
+    "results": [
+      "PASS",
+      "PASS",
+      "sports_bot_v2/bot_core.py (EXECUTION_RISK_MONITOR_001), sports_bot_v2/dashboard_server.py (this task)"
+    ]
+  },
+  "spec_written": "BOT_BRIDGE/08_SHARED_CONTEXT/BANKROLL_ACCOUNTING_SPEC_001.md"
+}

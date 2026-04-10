@@ -1,0 +1,47 @@
+{
+  "task_id": "PROCESS_CLEANUP_VERIFY_001",
+  "title": "Verify process topology: exactly one resolution_watcher and one recommendation_api",
+  "objective": "Audit live process list for the four managed services. Identify any duplicate instances of resolution_watcher or recommendation_api. Kill only the older duplicates if any exist. Confirm protected PIDs are untouched. Report clean final state.",
+  "context": "A prior cleanup pass killed 6 stale duplicate processes (resolution_watcher and recommendation_api). The supervisor launch_all.py (PID 33384) was observed respawning instances immediately after kills. The system may now have settled. This task verifies current state and, if duplicates still exist, removes the older ones. If already clean, report that and stop.",
+  "allowed_files": [],
+  "do_not_touch": [
+    "bot_core.py PID 24800 — do not kill, do not restart",
+    "dashboard_server.py PID 29620 — do not kill, do not restart",
+    "launch_all.py — do not kill, do not edit",
+    "All repo files — no file edits permitted",
+    "No service restarts"
+  ],
+  "inputs": [
+    "Live process list via: wmic process where \"name like '%python%'\" get Name,ProcessId,CommandLine,CreationDate",
+    "Scope: resolution_watcher, recommendation_api, bot_core.py, dashboard_server.py only"
+  ],
+  "deliverables": [
+    "Process snapshot for the 4 managed services at task start",
+    "List of any PIDs killed (with reason: older duplicate)",
+    "Process snapshot at task end",
+    "Surviving PID for resolution_watcher",
+    "Surviving PID for recommendation_api",
+    "Confirmation that bot_core.py PID 24800 is present and untouched",
+    "Confirmation that dashboard_server.py PID 29620 is present and untouched",
+    "Confirmation that no restart was triggered",
+    "Note any anomalies"
+  ],
+  "acceptance_criteria": [
+    "Exactly 1 resolution_watcher process running at task end",
+    "Exactly 1 recommendation_api process running at task end",
+    "bot_core.py PID 24800 confirmed present",
+    "dashboard_server.py PID 29620 confirmed present",
+    "No files edited",
+    "No services restarted"
+  ],
+  "verification": [
+    "wmic process where \"name like '%python%'\" get Name,ProcessId,CommandLine,CreationDate",
+    "Count resolution_watcher instances = 1",
+    "Count recommendation_api instances = 1",
+    "Confirm PID 24800 present",
+    "Confirm PID 29620 present"
+  ],
+  "rollback": "No files changed. No rollback required. If kill was issued to wrong PID, launch_all.py will respawn the service automatically.",
+  "kill_decision_rule": "If multiple instances exist: keep LATEST CreationDate, kill all others with taskkill /PID <pid> /F. If only one instance: do not kill anything.",
+  "stop_condition": "If supervisor respawns above 1 within 10 seconds of a kill, stop and report respawn loop as anomaly. Do not enter a kill loop."
+}

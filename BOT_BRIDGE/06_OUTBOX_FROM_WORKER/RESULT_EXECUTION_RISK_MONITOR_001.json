@@ -1,0 +1,56 @@
+{
+  "task_id": "EXECUTION_RISK_MONITOR_001",
+  "decision": "approved",
+  "status": "done",
+  "files_changed": ["bot_core.py"],
+  "files_unchanged": ["core/risk.py"],
+  "rules_enforced": [
+    {
+      "rule": "EXIT_NEVER_SILENTLY_SKIPS",
+      "status": "FIXED",
+      "change": "After check_exit() returns (False, ''), check ob.bid_yes/bid_no for None. If None, emit logger.warning('Exit check skipped trade=%d %s reason=empty_ob (held_bid=None)').",
+      "location": "bot_core.py — after check_exit() call in exit loop"
+    },
+    {
+      "rule": "EXIT_ALWAYS_LOGS_CLOSE",
+      "status": "CONFIRMED",
+      "evidence": "CLOSE logger.info already present on normal close path (reason/pnl logged) and market_resolved path. No silent closes found."
+    },
+    {
+      "rule": "STALE_OB_DOES_NOT_BLOCK_STOP_LOSS",
+      "status": "FIXED (warning path)",
+      "change": "When held_bid=None, parses ts_open via parse_utc_dt(). If time since open > STALE_OB_WARN_SECONDS (env, default 300s), emits logger.warning('STALE OB trade=%d ... position may be stuck'). Forced exit deferred — warning is mandatory per task spec.",
+      "env_var_added": "STALE_OB_WARN_SECONDS (default 300)"
+    },
+    {
+      "rule": "DUMMY_MARKET_IS_FLAGGED",
+      "status": "FIXED",
+      "change": "Replaced `mkt = _market_by_id(...) or _dummy_market(trade)` with explicit check: if _market_by_id returns None, emit logger.warning('Exit using dummy market for trade=%d market_id=%s — no live discovery match') then assign _dummy_market(trade).",
+      "location": "bot_core.py — exit loop before ob = get_orderbook_snapshot(mkt)"
+    },
+    {
+      "rule": "COOLDOWNS_LOGGED_CONSISTENTLY",
+      "status": "CONFIRMED",
+      "evidence": "Cooldowns set for: near_resolution (600s), stop_loss (1800s), gap_stop (3600s). Confirmed NO cooldown for: take_profit, trailing_stop, market_resolved, time_exit. Pattern is consistent."
+    },
+    {
+      "rule": "EXIT_LOOP_ERROR_SURFACED",
+      "status": "FIXED",
+      "change": "Changed `logger.warning('Exit check error trade=%s: %s', trade.id, e)` to `logger.error('Exit check error trade=%d: %s', trade.id, e, exc_info=True)`. Full traceback now captured.",
+      "location": "bot_core.py:681"
+    }
+  ],
+  "rules_partial": [],
+  "verification": {
+    "commands": [
+      "python -m py_compile bot_core.py",
+      "python -m py_compile core/risk.py",
+      "git diff --name-only"
+    ],
+    "results": [
+      "PASS",
+      "PASS",
+      "sports_bot_v2/bot_core.py only"
+    ]
+  }
+}
