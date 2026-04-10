@@ -1,0 +1,116 @@
+{
+  "task_id": "EXECUTION_RISK_MONITOR_001",
+  "phase": 3,
+  "priority": "HIGH",
+  "type": "implementation",
+  "subsystem": "risk / exit / monitoring",
+  "allowed_files": [
+    "bot_core.py",
+    "core/risk.py"
+  ],
+  "depends_on": [
+    "TP_SL_SCHEMA_NORMALIZATION_001 must be APPROVED",
+    "RESOLUTION_WATCHER_INTEGRATE_001 must be APPROVED — both touch bot_core.py"
+  ],
+  "gate_status": "HOLD_PENDING_TP_SL_SCHEMA_NORMALIZATION_001_AND_RESOLUTION_WATCHER_INTEGRATE_001",
+
+  "purpose": "Harden the runtime execution-side risk monitoring loop. The exit loop must reliably close positions when TP/SL/gap conditions fire, surface the correct held-side price on every iteration, handle stale/None OB gracefully without silently blocking exit, and log every close event with full context. This phase does NOT redesign thresholds — it ensures the monitoring loop is airtight.",
+
+  "scope": {
+    "in_scope": [
+      "bot_core.py — exit loop (lines ~540-567 at time of audit), _load_resolved_markets(), _dummy_market(), _market_by_id()",
+      "core/risk.py — check_exit() robustness, _held_bid() None handling, SL cluster detection"
+    ],
+    "out_of_scope": [
+      "dashboard_server.py — do not touch",
+      "core/paper_exec.py — do not touch in this phase",
+      "Do not change TP/SL threshold values",
+      "Do not redesign the exit reason taxonomy (near_resolution, stop_loss, gap_stop, etc.)",
+      "Do not touch mlb_model/ or recommendation_api.py",
+      "Do not touch integration/resolution_watcher.py"
+    ]
+  },
+
+  "monitoring_invariants_to_enforce": {
+    "description": "The following behaviors must hold after this phase.",
+    "rules": [
+      {
+        "rule": "EXIT_NEVER_SILENTLY_SKIPS",
+        "description": "If check_exit() returns (False, '') because current_held_price is None (empty OB), the exit loop must log a WARNING — not silently skip. The operator must be able to see that a position is stuck due to missing OB data.",
+        "fix": "After check_exit returns (False, ''), check if ob.micro_reason == 'empty_book' or _held_bid() would return None — if so, emit logger.warning('Exit check skipped trade=%d reason=empty_ob', trade.id)"
+      },
+      {
+        "rule": "EXIT_ALWAYS_LOGS_CLOSE",
+        "description": "Every CLOSE event must log: trade.id, market_slug, reason, exit_px, pnl_usd. No silent closes.",
+        "verify": "Confirm the logger.info('CLOSE trade=...') line runs for every exit path including market_resolved"
+      },
+      {
+        "rule": "STALE_OB_DOES_NOT_BLOCK_STOP_LOSS",
+        "description": "If the orderbook is stale/empty AND the last known price was below the SL threshold, the bot must not indefinitely defer the exit. Define a max stale duration after which a time-based SL forces the close.",
+        "fix": "If _held_bid() is None and time since trade open > STALE_OB_MAX_SECONDS (configurable, default 300), emit a warning. Implementation of forced exit is optional in this phase — warning emission is mandatory."
+      },
+      {
+        "rule": "DUMMY_MARKET_IS_FLAGGED",
+        "description": "_dummy_market() creates a market object with empty token IDs. Any trade using a dummy market in the exit loop must be logged at WARNING level so the operator knows market discovery failed for this position.",
+        "fix": "Add logger.warning('Exit using dummy market for trade=%d market_id=%s — no live discovery match', trade.id, trade.market_id) when _dummy_market() is used"
+      },
+      {
+        "rule": "COOLDOWNS_LOGGED_CONSISTENTLY",
+        "description": "All cooldown assignments (_market_cooldown[market_id] = ...) must use identical log format. Current format confirmed for near_resolution, stop_loss, gap_stop — verify trailing_stop and market_resolved do not set cooldowns (they should not).",
+        "verify": "Confirm no cooldown is set for take_profit, trailing_stop, market_resolved, time_exit"
+      },
+      {
+        "rule": "EXIT_LOOP_ERROR_SURFACED",
+        "description": "The except block at the exit loop must log the full exception with trade.id and exc_info=True, not just a warning. Operator must be able to diagnose exit loop failures from logs alone.",
+        "fix": "Change logger.warning('Exit check error trade=%s: %s') to logger.error('Exit check error trade=%s: %s', trade.id, e, exc_info=True)"
+      }
+    ]
+  },
+
+  "required_deliverables": {
+    "file": "BOT_BRIDGE/06_OUTBOX_FROM_WORKER/RESULT_EXECUTION_RISK_MONITOR_001.json",
+    "result_must_include": [
+      "decision: APPROVED | CHANGES_REQUESTED | BLOCKED",
+      "files_changed: list",
+      "rules_enforced: list of rule IDs confirmed or fixed",
+      "rules_partial: list of rule IDs only partially addressed with explanation",
+      "verification: py_compile passes, git diff --name-only matches allowed_files"
+    ]
+  },
+
+  "preflight_questions": [
+    "Is RESOLUTION_WATCHER_INTEGRATE_001 APPROVED? (bot_core.py must not have two concurrent writers)",
+    "Is TP_SL_SCHEMA_NORMALIZATION_001 APPROVED?",
+    "Read the phase 0 audit report's 'immediate_risks' section before writing any code",
+    "What does the current exit loop exception handler look like? (Confirm it is logger.warning before changing to logger.error)",
+    "Does _held_bid() currently return None on empty OB or raise? (Check core/risk.py)"
+  ],
+
+  "acceptance_criteria": [
+    "All 6 monitoring invariants above are enforced or documented as PARTIAL with justification",
+    "Empty OB / None held_price logs a WARNING and does not silently skip",
+    "_dummy_market usage logs a WARNING",
+    "Exit loop exception is logged at ERROR with exc_info=True",
+    "python -m py_compile bot_core.py passes",
+    "python -m py_compile core/risk.py passes",
+    "Only files in allowed_files were changed",
+    "No TP/SL threshold values were changed"
+  ],
+
+  "proof_of_work": [
+    "Show git diff for each changed file",
+    "For each invariant rule, show: (a) the old code, (b) the new code, (c) the log line it produces",
+    "Confirm via grep that logger.warning('Exit check error') is replaced by logger.error"
+  ],
+
+  "guardrails": [
+    "Do not redesign strategy or model logic",
+    "Do not change TP/SL threshold values",
+    "Do not reintroduce ambiguous YES/NO economics",
+    "Held-side contract truth must remain the basis for pricing and exit logic",
+    "Do not touch dashboard_server.py or core/paper_exec.py in this phase",
+    "Do not fake bankroll resets",
+    "Preserve audit trail",
+    "Use localhost:8900 as dashboard target if any manual smoke verification is needed"
+  ]
+}

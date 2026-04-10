@@ -5,6 +5,7 @@ Sport selected via SPORT env var: "baseball" (default) or "basketball".
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import sys
@@ -98,9 +99,26 @@ _guard_market_blocks: dict[str, int] = defaultdict(int)
 _last_invalid_market_details: dict = {}
 _market_cooldown: dict[str, float] = {}   # market_id → expiry timestamp
 _exit_reason_counts: dict[str, int] = defaultdict(int)  # exit reason → count
+_resolved_markets: dict = {}
+_resolved_markets_mtime: float = 0.0
 
 AUDIT_CANDIDATES_LOG = f"logs/audit_candidates_{SPORT}.jsonl"
 ALLOW_LOCAL_MLB_ORIGINATION = os.getenv("ALLOW_LOCAL_MLB_ORIGINATION", "0") == "1"
+
+
+def _load_resolved_markets() -> dict:
+    global _resolved_markets, _resolved_markets_mtime
+    p = Path("runtime/resolved_markets.json")
+    try:
+        mtime = p.stat().st_mtime
+        if mtime != _resolved_markets_mtime:
+            _resolved_markets = json.loads(p.read_text(encoding="utf-8"))
+            _resolved_markets_mtime = mtime
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        logger.debug("resolved_markets load error: %s", e)
+    return _resolved_markets
 
 
 def _write_pid():
@@ -537,9 +555,37 @@ def main():
                 logger.warning("Model bridge error: %s", e)
 
             # ── Exit checks ───────────────────────────────────────────────────
+            resolved_markets = _load_resolved_markets()
             open_trades = fetch_open_trades()
             for trade in open_trades:
                 try:
+                    # ── Resolution force-close (market settled on Polymarket) ──
+                    res = resolved_markets.get(trade.market_id)
+                    if res and res.get("resolved"):
+                        if trade.side == "BUY_YES":
+                            exit_px = float(res.get("yes_resolution_price", 0.0))
+                        else:
+                            exit_px = float(res.get("no_resolution_price", 0.0))
+                        pnl = (exit_px - trade.entry_px) * trade.qty
+                        close_trade(
+                            trade.id,
+                            {
+                                "exit_px": exit_px,
+                                "pnl_usd": round(pnl, 4),
+                                "fees_usd": 0.0,
+                            },
+                        )
+                        record_closed_trade()
+                        _exit_reason_counts["market_resolved"] += 1
+                        logger.info(
+                            "CLOSE trade=%d %s reason=market_resolved exit_px=%.4f pnl=%.4f",
+                            trade.id,
+                            trade.market_slug[:25],
+                            exit_px,
+                            pnl,
+                        )
+                        continue
+
                     mkt = _market_by_id(trade.market_id) or _dummy_market(trade)
                     ob = get_orderbook_snapshot(mkt)
                     t2e = _time_to_end(mkt)
@@ -552,9 +598,13 @@ def main():
                         _exit_reason_counts[reason] += 1
                         if reason == "near_resolution":
                             _market_cooldown[trade.market_id] = time.time() + 600
-                            logger.info(
-                                "Cooldown set for market %s (near_resolution exit)", trade.market_slug[:30]
-                            )
+                            logger.info("Cooldown set for market %s (near_resolution exit)", trade.market_slug[:30])
+                        elif reason == "stop_loss":
+                            _market_cooldown[trade.market_id] = time.time() + 1800
+                            logger.info("Cooldown set for market %s (stop_loss exit, 30m)", trade.market_slug[:30])
+                        elif reason == "gap_stop":
+                            _market_cooldown[trade.market_id] = time.time() + 3600
+                            logger.info("Cooldown set for market %s (gap_stop exit, 60m)", trade.market_slug[:30])
                         logger.info(
                             "CLOSE trade=%d %s reason=%s pnl=%.4f",
                             trade.id, trade.market_slug[:25], reason, close_data.get("pnl_usd", 0),

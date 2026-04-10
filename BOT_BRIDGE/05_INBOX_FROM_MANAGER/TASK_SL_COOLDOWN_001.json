@@ -1,0 +1,70 @@
+{
+  "task_id": "SL_COOLDOWN_001",
+  "priority": "HIGH",
+  "type": "implementation",
+  "subsystem": "risk / exit",
+  "allowed_files": ["bot_core.py"],
+  "note": "bot_core.py only. Add market cooldown after stop_loss and gap_stop exits, matching the existing near_resolution cooldown pattern.",
+
+  "context": {
+    "problem": "When a stop_loss or gap_stop fires, the market cooldown is NOT set. The model_bridge immediately re-recommends the same market on the next loop and the bot re-enters. This caused 4 stop_losses on mlb-col-sd-2026-04-09 in ~3 hours (02:36, 03:27, 03:53, 04:50 UTC), bleeding ~$54 in avoidable losses before the game ultimately resolved in COL's favor.",
+    "current_behavior": "Only 'near_resolution' exits set a cooldown (600s). stop_loss, gap_stop, and trailing_stop exits set no cooldown.",
+    "desired_behavior": [
+      "stop_loss exit → set 1800s cooldown on that market_id",
+      "gap_stop exit → set 3600s cooldown on that market_id (gap moves are severe, longer recovery needed)",
+      "trailing_stop exit → set 900s cooldown (optional, lower priority — trailing_stop is a healthy exit)"
+    ],
+    "evidence": "Trade sequence on mlb-col-sd-2026-04-09: id=206 stop_loss 02:46 → id=207 re-entry 02:47 (1 minute gap). id=208 stop_loss 03:42 → id=209 re-entry 03:42 (same minute). id=210 stop_loss 04:13 → id=211 re-entry 04:15 (2 minutes)."
+  },
+
+  "implementation": {
+    "file": "sports_bot_v2/bot_core.py",
+    "where": "In the exit loop, lines 552-557. The existing near_resolution cooldown block is the pattern to follow.",
+
+    "current_code": [
+      "if reason == \"near_resolution\":",
+      "    _market_cooldown[trade.market_id] = time.time() + 600",
+      "    logger.info(",
+      "        \"Cooldown set for market %s (near_resolution exit)\", trade.market_slug[:30]",
+      "    )"
+    ],
+
+    "replace_with": [
+      "if reason == \"near_resolution\":",
+      "    _market_cooldown[trade.market_id] = time.time() + 600",
+      "    logger.info(\"Cooldown set for market %s (near_resolution exit)\", trade.market_slug[:30])",
+      "elif reason == \"stop_loss\":",
+      "    _market_cooldown[trade.market_id] = time.time() + 1800",
+      "    logger.info(\"Cooldown set for market %s (stop_loss exit, 30m)\", trade.market_slug[:30])",
+      "elif reason == \"gap_stop\":",
+      "    _market_cooldown[trade.market_id] = time.time() + 3600",
+      "    logger.info(\"Cooldown set for market %s (gap_stop exit, 60m)\", trade.market_slug[:30])"
+    ],
+
+    "notes": [
+      "_market_cooldown is already checked in check_entry_gates() — no other changes needed.",
+      "trailing_stop is intentionally omitted for now: trailing_stop is a healthy exit (profit protection), cooldown would prevent re-entry on genuinely good markets.",
+      "Cooldown durations are conservative: 30m for stop_loss (market may recover), 60m for gap_stop (severe price dislocation)."
+    ]
+  },
+
+  "verification": {
+    "steps": [
+      "Confirm only bot_core.py changed (git diff --name-only)",
+      "Confirm the elif stop_loss and elif gap_stop blocks are present after the near_resolution block",
+      "python -m py_compile sports_bot_v2/bot_core.py",
+      "Restart bot and confirm next stop_loss exit logs 'Cooldown set for market ... (stop_loss exit, 30m)'"
+    ]
+  },
+
+  "do_not": [
+    "Edit risk.py, core/risk.py, or any file other than bot_core.py",
+    "Change cooldown duration for near_resolution",
+    "Add cooldown for take_profit — that is a clean profitable exit"
+  ],
+
+  "result_format": {
+    "file": "06_OUTBOX_FROM_WORKER/RESULT_SL_COOLDOWN_001.json",
+    "required_fields": ["decision", "files_changed", "commit", "verification"]
+  }
+}

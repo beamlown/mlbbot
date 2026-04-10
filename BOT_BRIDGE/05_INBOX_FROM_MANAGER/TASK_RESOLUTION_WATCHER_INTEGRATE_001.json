@@ -1,0 +1,122 @@
+{
+  "task_id": "RESOLUTION_WATCHER_INTEGRATE_001",
+  "priority": "HIGH",
+  "type": "implementation",
+  "subsystem": "risk / exit",
+  "allowed_files": ["bot_core.py"],
+  "depends_on": "RESOLUTION_WATCHER_BUILD_001",
+  "note": "bot_core.py only. Wire runtime/resolved_markets.json into the exit loop so the bot force-closes positions when Polymarket settles a market. This is the integration half of the resolution watcher — do not start until RESOLUTION_WATCHER_BUILD_001 is APPROVED.",
+
+  "context": {
+    "problem": "When a Polymarket market resolves, the YES or NO token price collapses to 0. The _held_bid() call in check_exit() (core/risk.py:177) returns None on an empty book, causing check_exit() to return (False, '') at line 178-179. The position never closes. This is why trades 200, 205, 213, and 216 all required manual intervention. RESOLUTION_WATCHER_BUILD_001 creates the watcher that writes runtime/resolved_markets.json. This task wires that file into the exit loop.",
+    "fix_location": "bot_core.py exit loop, lines 540-567. Immediately before the check_exit() call, check if the market is in the resolved_markets dict. If yes, force-close at the resolution price without needing a valid orderbook.",
+    "current_exit_loop": [
+      "open_trades = fetch_open_trades()",
+      "for trade in open_trades:",
+      "    try:",
+      "        mkt = _market_by_id(trade.market_id) or _dummy_market(trade)",
+      "        ob = get_orderbook_snapshot(mkt)",
+      "        t2e = _time_to_end(mkt)",
+      "        should_close, reason = check_exit(trade, ob, t2e)",
+      "        if should_close:",
+      "            close_data = close_position(trade, ob, reason)",
+      "            ..."
+    ]
+  },
+
+  "implementation": {
+    "file": "bot_core.py",
+
+    "step1_add_loader": {
+      "where": "Near the top of the file, after the existing imports and module-level globals. Add a helper function and a module-level cache variable.",
+      "add": [
+        "_resolved_markets: dict = {}",
+        "_resolved_markets_mtime: float = 0.0",
+        "",
+        "def _load_resolved_markets() -> dict:",
+        "    global _resolved_markets, _resolved_markets_mtime",
+        "    p = Path('runtime/resolved_markets.json')",
+        "    try:",
+        "        mtime = p.stat().st_mtime",
+        "        if mtime != _resolved_markets_mtime:",
+        "            _resolved_markets = json.loads(p.read_text())",
+        "            _resolved_markets_mtime = mtime",
+        "    except FileNotFoundError:",
+        "        pass",
+        "    except Exception as e:",
+        "        logger.debug('resolved_markets load error: %s', e)",
+        "    return _resolved_markets"
+      ],
+      "note": "Only re-reads the file when mtime changes — safe to call every loop iteration with no I/O cost when nothing has changed. Path and json are already imported in bot_core.py."
+    },
+
+    "step2_wire_exit_loop": {
+      "where": "In the exit loop, lines 540-567. Insert a resolved-market check BEFORE the existing check_exit() call.",
+      "current_code": [
+        "            open_trades = fetch_open_trades()",
+        "            for trade in open_trades:",
+        "                try:",
+        "                    mkt = _market_by_id(trade.market_id) or _dummy_market(trade)",
+        "                    ob = get_orderbook_snapshot(mkt)",
+        "                    t2e = _time_to_end(mkt)",
+        "                    should_close, reason = check_exit(trade, ob, t2e)"
+      ],
+      "replace_with": [
+        "            resolved_markets = _load_resolved_markets()",
+        "            open_trades = fetch_open_trades()",
+        "            for trade in open_trades:",
+        "                try:",
+        "                    # ── Resolution force-close (market settled on Polymarket) ──",
+        "                    res = resolved_markets.get(trade.market_id)",
+        "                    if res and res.get('resolved'):",
+        "                        if trade.side == 'BUY_YES':",
+        "                            exit_px = float(res.get('yes_resolution_price', 0.0))",
+        "                        else:",
+        "                            exit_px = float(res.get('no_resolution_price', 0.0))",
+        "                        pnl = (exit_px - trade.entry_px) * trade.qty",
+        "                        close_trade(trade.id, {'exit_px': exit_px, 'pnl_usd': round(pnl, 4), 'fees_usd': 0.0})",
+        "                        record_closed_trade()",
+        "                        _exit_reason_counts['market_resolved'] += 1",
+        "                        logger.info(",
+        "                            'CLOSE trade=%d %s reason=market_resolved exit_px=%.4f pnl=%.4f',",
+        "                            trade.id, trade.market_slug[:25], exit_px, pnl,",
+        "                        )",
+        "                        continue",
+        "                    mkt = _market_by_id(trade.market_id) or _dummy_market(trade)",
+        "                    ob = get_orderbook_snapshot(mkt)",
+        "                    t2e = _time_to_end(mkt)",
+        "                    should_close, reason = check_exit(trade, ob, t2e)"
+      ]
+    },
+
+    "notes": [
+      "close_trade() already accepts a dict with exit_px, pnl_usd, fees_usd — confirm signature in core/db.py before using.",
+      "_exit_reason_counts uses defaultdict(int) so 'market_resolved' key is safe without pre-registration.",
+      "The 'continue' skips the rest of the loop body for this trade (no cooldown needed — resolved markets can't be re-entered because discovery filters resolved=true markets).",
+      "Do NOT set _market_cooldown for market_resolved — the market is dead, cooldown is irrelevant.",
+      "json is already imported in bot_core.py. Path is from pathlib, already imported."
+    ]
+  },
+
+  "verification": {
+    "steps": [
+      "python -m py_compile bot_core.py",
+      "Confirm _load_resolved_markets() is defined and referenced in the exit loop",
+      "Confirm the resolved-market check block appears BEFORE the check_exit() call",
+      "Confirm only bot_core.py was changed (git diff --name-only)",
+      "Manual smoke test: write a fake runtime/resolved_markets.json with a non-existent market_id, confirm bot log shows no errors on next loop"
+    ]
+  },
+
+  "do_not": [
+    "Touch core/risk.py, core/db.py, integration/resolution_watcher.py, or any file other than bot_core.py",
+    "Change the check_exit() function itself",
+    "Set a cooldown for market_resolved exits",
+    "Start this task before RESOLUTION_WATCHER_BUILD_001 is APPROVED"
+  ],
+
+  "result_format": {
+    "file": "BOT_BRIDGE/06_OUTBOX_FROM_WORKER/RESULT_RESOLUTION_WATCHER_INTEGRATE_001.json",
+    "required_fields": ["decision", "files_changed", "verification"]
+  }
+}

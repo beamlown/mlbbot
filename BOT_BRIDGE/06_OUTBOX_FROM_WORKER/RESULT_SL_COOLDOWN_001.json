@@ -1,0 +1,30 @@
+{
+  "task_id": "SL_COOLDOWN_001",
+  "decision": "IMPLEMENTED",
+  "files_changed": [
+    "sports_bot_v2/bot_core.py"
+  ],
+  "commit": null,
+  "verification": {
+    "git_diff_name_only": [
+      "sports_bot_v2/bot_core.py"
+    ],
+    "cooldown_blocks_present": {
+      "near_resolution": true,
+      "stop_loss": true,
+      "gap_stop": true
+    },
+    "cooldown_durations_seconds": {
+      "near_resolution": 600,
+      "stop_loss": 1800,
+      "gap_stop": 3600
+    },
+    "py_compile": "PASS",
+    "commands": [
+      "git diff --name-only -- sports_bot_v2/bot_core.py",
+      "python -m py_compile sports_bot_v2/bot_core.py"
+    ],
+    "runtime_note": "Bot restart is required for runtime log confirmation of stop_loss/gap_stop cooldown messages."
+  },
+  "summary": "Added market cooldown assignments for stop_loss (30m) and gap_stop (60m) in the exit loop directly after near_resolution cooldown handling. No other behavior was changed; trailing_stop remains without cooldown per task scope."
+}

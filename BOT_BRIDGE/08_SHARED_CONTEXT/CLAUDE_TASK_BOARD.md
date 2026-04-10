@@ -1,5 +1,5 @@
 # CLAUDE_TASK_BOARD.md — Manager Task Board
-## Last updated: 2026-04-10 — EXIT_PARAMS_TIGHTEN_001 APPROVED. All .env thresholds live as of bot restart PID 22180. ACTIVE queue now empty.
+## Last updated: 2026-04-10 — Risk management pack issued (7 phases). RISK_PIPELINE_AUDIT_001 ACTIVE (read-only, no conflicts). RESOLUTION_WATCHER_BUILD_001 ACTIVE (integration/ only).
 
 ---
 
@@ -15,13 +15,24 @@
 
 ## ACTIVE
 
-_(none)_
+| task_id | title | priority | subsystem | allowed_files | status |
+|---------|-------|----------|-----------|---------------|--------|
+| RESOLUTION_WATCHER_BUILD_001 | Build integration/resolution_watcher.py — poll Polymarket for market resolution | HIGH | integration / market resolution | `integration/__init__.py`, `integration/resolution_watcher.py` | ACTIVE |
+| RISK_PIPELINE_AUDIT_001 | Audit full risk pipeline end-to-end — entry, sizing, TP/SL, accounting, held-side pricing | HIGH | risk / audit | read-only | ACTIVE |
 
 ---
 
 ## QUEUED
 
-_(none)_
+| task_id | title | priority | subsystem | allowed_files | blocked_by |
+|---------|-------|----------|-----------|---------------|------------|
+| RESOLUTION_WATCHER_INTEGRATE_001 | Wire resolved_markets.json into bot_core exit loop — force-close on resolution | HIGH | risk / exit | `bot_core.py` | RESOLUTION_WATCHER_BUILD_001 |
+| TP_SL_SCHEMA_NORMALIZATION_001 | Normalize TP/SL/committed/max_loss to canonical functions in core/risk.py | HIGH | risk / schema | `core/risk.py`, `core/paper_exec.py`, `core/types.py` | RISK_PIPELINE_AUDIT_001 |
+| POSITION_SIZING_RULES_001 | Define and enforce per-trade sizing: formula, caps, confidence tiers, liquidity gate | HIGH | execution / sizing | `core/paper_exec.py`, `core/risk.py` | TP_SL_SCHEMA_NORMALIZATION_001 |
+| EXECUTION_RISK_MONITOR_001 | Harden exit loop: empty-OB warnings, dummy-market warnings, error logging | HIGH | risk / exit | `bot_core.py`, `core/risk.py` | TP_SL_SCHEMA_NORMALIZATION_001 + RESOLUTION_WATCHER_INTEGRATE_001 |
+| BANKROLL_SESSION_RULES_001 | Enforce correct bankroll/session/available-cash accounting | HIGH | accounting / bankroll | `dashboard_server.py`, `core/paper_exec.py` | POSITION_SIZING_RULES_001 + EXECUTION_RISK_MONITOR_001 |
+| RISK_AND_TP_VERIFY_001 | End-to-end verification: TP/SL, sizing, held-side pricing, bankroll all agree | HIGH | risk / verification | read-only | ALL phases 1-4 |
+| RISK_AND_TP_AUDIT_001 | Final risk system audit document | MEDIUM | risk / audit | `08_SHARED_CONTEXT/` only | RISK_AND_TP_VERIFY_001 |
 
 ---
 
@@ -29,7 +40,7 @@ _(none)_
 
 | task_id | title | reason | unblocked_by |
 |---------|-------|--------|--------------|
-| EXIT_GAME_AWARE_001 | Game-aware exit gate (HOLD_TO_RESOLUTION) | resolution_watcher does not exist; caused 3 stuck trades in production 2026-04-10; gate reverted. Re-scope as EXIT_GAME_AWARE_002 only after resolution_watcher is built and verified. | Build integration/resolution_watcher.py |
+| EXIT_GAME_AWARE_001 | Game-aware exit gate (HOLD_TO_RESOLUTION) | resolution_watcher does not exist; caused 3 stuck trades in production 2026-04-10; gate reverted. Re-scope as EXIT_GAME_AWARE_002 only after RESOLUTION_WATCHER_BUILD_001 + INTEGRATE_001 both APPROVED. | RESOLUTION_WATCHER_BUILD_001 + RESOLUTION_WATCHER_INTEGRATE_001 |
 | RUNTIME_USER_STREAM_AUTH_UNBLOCK_001 | Unblock Polymarket user/fill stream auth | Missing apiKey, secret, passphrase in .env — user must supply credentials | User action required |
 
 ---
@@ -38,6 +49,7 @@ _(none)_
 
 | task_id | title | outcome | allowed_files |
 |---------|-------|---------|---------------|
+| SL_COOLDOWN_001 | Market cooldown after stop_loss and gap_stop exits | APPROVED — stop_loss 1800s + gap_stop 3600s live as of PID 46404 restart 2026-04-10 | `bot_core.py` |
 | EXIT_PARAMS_TIGHTEN_001 | Tighten exit thresholds — TP 0.40, SL 0.12, NRP 0.97, trailing 0.10/0.12 | APPROVED — .env verified, live as of PID 22180 restart 2026-04-10 | `.env` |
 | BOT_DATE_GATE_DEFENSE_001 | Date gate: reject non-today slugs in local MLB origination path | APPROVED — REVIEW on file, date gate confirmed in bot_core.py | `bot_core.py` |
 | DASHBOARD_LIVE_STRIP_FIXES_001 | Dashboard live strip fixes — committed tile id, bankroll MTM, feed status wording | APPROVED — commit 7b33f18 | `dashboard.html` |

@@ -1,0 +1,88 @@
+{
+  "task_id": "RESOLUTION_WATCHER_BUILD_001",
+  "priority": "HIGH",
+  "type": "implementation",
+  "subsystem": "integration / market resolution",
+  "allowed_files": [
+    "integration/__init__.py",
+    "integration/resolution_watcher.py"
+  ],
+  "note": "New files only. Do not touch bot_core.py, core/risk.py, or any existing file. The watcher runs as a subprocess and writes a shared state file. Bot integration is a separate task (RESOLUTION_WATCHER_INTEGRATE_001).",
+
+  "context": {
+    "problem": "The launch_all.py launcher already tries to start 'python -m integration.resolution_watcher' but the integration/ package does not exist. When a Polymarket market resolves (e.g. COL loses → YES token → price drops to 0), the orderbook has no valid bids, _held_bid() returns None, check_exit() returns False early (core/risk.py:178), and the position gets stuck open forever. This caused trades 200, 205, 213, and 216 to require manual intervention. The resolution_watcher is the missing piece that tells the bot a market has settled so it can force-close at the final resolution price.",
+    "existing_infrastructure": {
+      "launcher": "launch_all.py already has the entry: {name: 'resolution_watcher', command: ['python', '-m', 'integration.resolution_watcher'], log_file: 'logs/resolution_watcher.log'}. No changes needed to launch_all.py.",
+      "gamma_api": "https://gamma-api.polymarket.com/markets?id={market_id} — returns JSON with fields: resolved (bool), outcomePrices (list of strings e.g. ['1', '0'] or ['0', '1']), slug, closed, active. Already used by core/discovery.py.",
+      "db": "core/db.fetch_open_trades() returns all open Trade objects with market_id field. Import path: from core.db import fetch_open_trades",
+      "shared_state_file": "runtime/resolved_markets.json — does not exist yet, watcher creates it"
+    }
+  },
+
+  "implementation": {
+    "files_to_create": [
+      "integration/__init__.py",
+      "integration/resolution_watcher.py"
+    ],
+
+    "integration/__init__.py": "Empty file. Just makes integration/ a Python package.",
+
+    "integration/resolution_watcher.py": {
+      "description": "Standalone subprocess. Polls Gamma API every 60s for all market_ids that have open trades. Writes runtime/resolved_markets.json with resolution status. Runs forever until killed by launcher watchdog.",
+      "poll_interval_seconds": 60,
+      "gamma_api_url": "https://gamma-api.polymarket.com/markets?id={market_id}",
+      "output_file": "runtime/resolved_markets.json",
+      "output_schema": {
+        "description": "Dict keyed by market_id. Only includes markets where resolved=true.",
+        "example": {
+          "1860430": {
+            "resolved": true,
+            "yes_resolution_price": 0.0,
+            "no_resolution_price": 1.0,
+            "slug": "mlb-col-sd-2026-04-10",
+            "resolved_at": "2026-04-10T09:00:00Z"
+          }
+        }
+      },
+      "logic": [
+        "1. On each poll cycle: call fetch_open_trades() to get currently open market_ids.",
+        "2. Load existing runtime/resolved_markets.json (if exists) — skip re-fetching market_ids already in it with resolved=true.",
+        "3. For each new market_id not yet confirmed resolved: GET https://gamma-api.polymarket.com/markets?id={market_id}",
+        "4. Parse response: j[0].get('resolved', False), outcomePrices = j[0].get('outcomePrices', ['0','0'])",
+        "   yes_resolution_price = float(outcomePrices[0]) if resolved else None",
+        "   no_resolution_price = float(outcomePrices[1]) if resolved else None",
+        "5. If resolved=true: add entry to dict and write updated resolved_markets.json (atomic write via temp file + rename).",
+        "6. Log each new resolution at INFO level.",
+        "7. Sleep poll_interval_seconds, repeat."
+      ],
+      "error_handling": [
+        "Wrap each market fetch in try/except — log warning and continue to next market_id on HTTP error.",
+        "If fetch_open_trades() fails, log error and skip the cycle.",
+        "Never crash the process — always sleep and retry."
+      ],
+      "atomic_write": "Write to runtime/resolved_markets.json.tmp then os.replace() to avoid partial reads by bot_core.",
+      "logging": "Use standard logging to stdout (launcher redirects to logs/resolution_watcher.log). Logger name: 'resolution_watcher'."
+    }
+  },
+
+  "verification": {
+    "steps": [
+      "python -m py_compile integration/resolution_watcher.py",
+      "python -m integration.resolution_watcher  # runs for 10s, confirm no crash, confirm runtime/resolved_markets.json created (may be empty if no open trades)",
+      "Confirm integration/__init__.py exists",
+      "Confirm only integration/__init__.py and integration/resolution_watcher.py were created — no other files touched"
+    ]
+  },
+
+  "do_not": [
+    "Touch bot_core.py — that is RESOLUTION_WATCHER_INTEGRATE_001",
+    "Touch core/risk.py, core/db.py, launch_all.py, or any existing file",
+    "Fetch markets that don't have open trades (no need to poll the whole universe)",
+    "Block the process on any single HTTP failure"
+  ],
+
+  "result_format": {
+    "file": "BOT_BRIDGE/06_OUTBOX_FROM_WORKER/RESULT_RESOLUTION_WATCHER_BUILD_001.json",
+    "required_fields": ["decision", "files_changed", "verification"]
+  }
+}

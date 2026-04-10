@@ -1,0 +1,160 @@
+{
+  "task_id": "BANKROLL_SESSION_RULES_001",
+  "phase": 4,
+  "priority": "HIGH",
+  "type": "implementation",
+  "subsystem": "accounting / bankroll",
+  "allowed_files": [
+    "dashboard_server.py",
+    "core/paper_exec.py"
+  ],
+  "depends_on": [
+    "RISK_PIPELINE_AUDIT_001 must be APPROVED",
+    "POSITION_SIZING_RULES_001 must be APPROVED"
+  ],
+  "gate_status": "HOLD_PENDING_POSITION_SIZING_RULES_001",
+
+  "purpose": "Define and enforce correct handling of lifetime bankroll, session baseline, session PnL, available cash, and capital committed. Every number displayed on the dashboard must be derived from a single authoritative source with no double-counting, no fake resets, and no history erasure. If the current accounting is already correct, this phase produces documentation proving it.",
+
+  "scope": {
+    "in_scope": [
+      "dashboard_server.py — bankroll/session accounting variables, /api/state endpoint, how each number is computed",
+      "core/paper_exec.py — how realized PnL is recorded at close time, how committed_usd is tracked"
+    ],
+    "out_of_scope": [
+      "bot_core.py — do not touch in this phase",
+      "core/risk.py — do not touch in this phase",
+      "core/db.py — read-only if needed to understand DB queries, but do not modify",
+      "dashboard.html — do not touch",
+      "Do not redesign strategy or model logic",
+      "Do not change TP/SL thresholds"
+    ]
+  },
+
+  "canonical_accounting_definitions": {
+    "description": "These are the authoritative definitions. The implementation must match them exactly.",
+    "definitions": {
+      "lifetime_bankroll": {
+        "definition": "The real balance of the paper account — initial deposit plus all realized PnL since inception.",
+        "formula": "lifetime_bankroll = INITIAL_BANKROLL + sum(pnl_usd for all closed trades since inception)",
+        "source": "DB query: SELECT SUM(pnl_usd) FROM trades WHERE status='closed' — plus INITIAL_BANKROLL from env or config",
+        "must_not": "Never reset. Never subtract losses to make the number look better. Never exclude old sessions."
+      },
+      "capital_committed": {
+        "definition": "USD currently locked in open positions.",
+        "formula": "capital_committed = sum(entry_px * qty for all open trades)",
+        "source": "DB query: SELECT SUM(entry_px * qty) FROM trades WHERE status='open'",
+        "must_not": "Do not use committed_usd from runtime state if DB is authoritative. Verify both agree."
+      },
+      "available_cash": {
+        "definition": "Cash available for new positions.",
+        "formula": "available_cash = lifetime_bankroll - capital_committed",
+        "must_not": "Do not include live_equity in available_cash — unrealized PnL is not spendable."
+      },
+      "live_equity": {
+        "definition": "Current mark-to-market value of all open positions.",
+        "formula": "live_equity = sum(current_held_price * qty for all open trades)",
+        "price_source": "current_held_price = _held_bid(trade.side, ob) for each open trade — held-side only",
+        "must_not": "Do not use YES bid for a BUY_NO position. Do not use mid-price. Held-side bid only."
+      },
+      "unrealized_pnl": {
+        "definition": "Total mark-to-market PnL on open positions.",
+        "formula": "unrealized_pnl = sum((current_held_price - entry_px) * qty for all open trades)",
+        "must_not": "Do not mix realized and unrealized into a single PnL number without labeling."
+      },
+      "session_baseline": {
+        "definition": "The lifetime_bankroll at the moment the current bot session started (PID launched).",
+        "purpose": "Lets operator see session-specific performance without corrupting lifetime history.",
+        "must_not": "Do not fake a session reset by zeroing the DB. Session baseline is a snapshot, not a write."
+      },
+      "session_pnl": {
+        "definition": "Realized PnL since session_baseline was recorded.",
+        "formula": "session_pnl = sum(pnl_usd for closed trades WHERE ts_close >= session_start_ts)",
+        "must_not": "Do not include trades from prior sessions."
+      }
+    }
+  },
+
+  "accounting_invariants_to_enforce": [
+    {
+      "rule": "NO_DOUBLE_COUNTING",
+      "description": "A closed trade's PnL must appear in exactly one place: the cumulative realized PnL total. It must not also appear in live_equity or capital_committed.",
+      "verify": "Confirm that fetch_open_trades() excludes status='closed' trades"
+    },
+    {
+      "rule": "AVAILABLE_CASH_NEVER_NEGATIVE",
+      "description": "If capital_committed exceeds lifetime_bankroll (paper account overcommitted), available_cash must be shown as 0, not negative — and a WARNING must be logged.",
+      "verify": "Check for this guard in dashboard_server.py /api/state"
+    },
+    {
+      "rule": "LIVE_EQUITY_USES_HELD_SIDE_PRICE",
+      "description": "live_equity uses _held_bid() or the equivalent held-side price — never raw yes_price/no_price from market data.",
+      "verify": "Grep dashboard_server.py for any usage of yes_price, no_price, bid_yes, bid_no in equity calculations"
+    },
+    {
+      "rule": "SESSION_BASELINE_IS_SNAPSHOT",
+      "description": "session_baseline is recorded at process start and stored in runtime state or memory — never written to the DB in a way that erases prior trade history.",
+      "verify": "Show where session_baseline is set and confirm it is not a DB write"
+    },
+    {
+      "rule": "INITIAL_BANKROLL_IS_CONFIGURABLE",
+      "description": "The starting paper balance must come from an env var or config constant, not be hardcoded in dashboard logic.",
+      "verify": "Show where INITIAL_BANKROLL (or equivalent) is defined and confirm dashboard_server reads it from there"
+    }
+  ],
+
+  "required_deliverables": {
+    "file": "BOT_BRIDGE/06_OUTBOX_FROM_WORKER/RESULT_BANKROLL_SESSION_RULES_001.json",
+    "also_write": "BOT_BRIDGE/08_SHARED_CONTEXT/BANKROLL_ACCOUNTING_SPEC_001.md",
+    "result_must_include": [
+      "decision: APPROVED | CHANGES_REQUESTED | BLOCKED",
+      "files_changed: list",
+      "accounting_definitions_verified: list of definitions confirmed correct",
+      "accounting_definitions_fixed: list of definitions that required fixes",
+      "invariants_enforced: list",
+      "verification: py_compile passes, git diff --name-only matches allowed_files"
+    ],
+    "accounting_spec_must_include": [
+      "Each canonical definition from above with: formula, source, current implementation status (VERIFIED/PARTIAL/FIXED)",
+      "A table of every number shown on the dashboard at localhost:8900 with its derivation",
+      "Any remaining gaps or inconsistencies after this phase"
+    ]
+  },
+
+  "preflight_questions": [
+    "Has RISK_PIPELINE_AUDIT_001 been approved and is RISK_PIPELINE_AUDIT_REPORT_001.md available?",
+    "What does the audit report say about bankroll/session accounting gaps?",
+    "What is INITIAL_BANKROLL currently set to in .env or config?",
+    "Does dashboard_server.py currently compute available_cash as lifetime_bankroll - capital_committed?",
+    "Is session_baseline stored in runtime/state.json or in memory? (Check the audit report.)"
+  ],
+
+  "acceptance_criteria": [
+    "All 5 accounting invariants above are confirmed or fixed",
+    "BANKROLL_ACCOUNTING_SPEC_001.md is written and complete",
+    "available_cash formula matches canonical definition",
+    "live_equity uses held-side bid price only",
+    "No fake session resets that corrupt lifetime history",
+    "python -m py_compile dashboard_server.py passes",
+    "python -m py_compile core/paper_exec.py passes",
+    "Only files in allowed_files were changed"
+  ],
+
+  "proof_of_work": [
+    "Show git diff for each changed file",
+    "For each accounting definition, show the exact code line that computes it",
+    "For live_equity, grep output confirming no raw yes_price/no_price used in equity math",
+    "Show session_baseline assignment location"
+  ],
+
+  "guardrails": [
+    "Do not redesign strategy or model logic",
+    "Do not fake bankroll resets",
+    "Do not erase history to make accounting cleaner",
+    "Preserve audit trail",
+    "Do not reintroduce ambiguous YES/NO economics",
+    "Held-side contract truth must remain the basis for pricing and exit logic",
+    "Do not widen scope to bot_core.py or core/risk.py",
+    "Use localhost:8900 as dashboard target for any manual verification"
+  ]
+}
