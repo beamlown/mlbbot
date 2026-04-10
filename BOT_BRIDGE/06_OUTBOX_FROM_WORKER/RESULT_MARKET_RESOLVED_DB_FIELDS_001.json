@@ -1,0 +1,26 @@
+{
+  "task_id": "MARKET_RESOLVED_DB_FIELDS_001",
+  "decision": "approved",
+  "status": "done",
+  "files_changed": [
+    "sports_bot_v2/bot_core.py"
+  ],
+  "summary": [
+    "Updated only the market_resolved force-close close_trade payload to include reason_close='market_resolved' and ts_close=int(time.time()).",
+    "Preserved existing logger/info behavior and all other close paths unchanged."
+  ],
+  "verification": {
+    "commands": [
+      "python -m py_compile bot_core.py",
+      "git diff --name-only -- bot_core.py",
+      "python line-scan for reason_close=market_resolved and ts_close=int(time.time())",
+      "manual runtime smoke: injected fake runtime/resolved_markets.json and ran bot_core.py for 8s"
+    ],
+    "results": [
+      "py_compile passed with no errors",
+      "diff output shows only sports_bot_v2/bot_core.py",
+      "bot_core.py contains reason_close at line 576 and ts_close at line 577 in the market_resolved block",
+      "bot loop started and ran without crash; timed run ended by timeout as expected"
+    ]
+  }
+}

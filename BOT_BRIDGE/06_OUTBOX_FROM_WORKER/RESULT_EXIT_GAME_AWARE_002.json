@@ -1,0 +1,21 @@
+{
+  "task_id": "EXIT_GAME_AWARE_002",
+  "decision": "implemented",
+  "files_changed": [
+    "sports_bot_v2/bot_core.py"
+  ],
+  "verification": {
+    "py_compile": "pass (python -m py_compile sports_bot_v2\\bot_core.py)",
+    "git_diff_name_only": [
+      "sports_bot_v2/bot_core.py"
+    ],
+    "grep_hold_trade": "line 604 present",
+    "grep_near_resolution": "suppression gate and cooldown block both present"
+  },
+  "logic_trace_results": {
+    "case_1_watcher_running_market_not_resolved": "pass - gate condition true for near_resolution + resolved_markets non-empty + market_id absent; logs HOLD and continue keeps trade open",
+    "case_2_watcher_running_market_resolved": "pass - market_resolved block executes before check_exit and force-closes at resolution price",
+    "case_3_watcher_not_running": "pass - resolved_markets empty dict is falsy so gate skipped and near_resolution close proceeds",
+    "case_4_stop_loss_not_suppressed": "pass - reason != near_resolution so gate skipped and stop_loss closes normally"
+  }
+}

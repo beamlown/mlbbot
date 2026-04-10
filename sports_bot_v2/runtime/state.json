@@ -2,8 +2,8 @@
   "engine": "sports_paper_baseball",
   "build": "sports_bot_v2.baseball.2026-03-29",
   "sport": "baseball",
-  "now": "2026-04-10T15:03:16.070721+00:00",
-  "loop_count": 37,
+  "now": "2026-04-10T17:32:45.011850+00:00",
+  "loop_count": 211,
   "config_hash": "2f0dd9e0ef8a",
   "pnl": {
     "realized": 367.7321,
@@ -64,8 +64,8 @@
   },
   "guard_block_rate": 1.0,
   "guard_reasons": [
-    "micro_spread_too_wide",
-    "micro_depth_too_low"
+    "micro_depth_too_low",
+    "micro_spread_too_wide"
   ],
   "market_validity_blocks": {},
   "invalid_market_blocks": 0,
@@ -165,5 +165,5 @@
       "exit_px": 0.3383
     }
   ],
-  "status_line": "loop=37 sport=baseball mode=neutral open=0 guard_block=54"
+  "status_line": "loop=211 sport=baseball mode=neutral open=0 guard_block=73"
 }

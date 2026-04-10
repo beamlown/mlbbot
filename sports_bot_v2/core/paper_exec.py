@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 import os
 
+from core.risk import get_risk_packet
 from core.types import Market, OBSnapshot, Signal, Trade
 from core.utils import now_iso
 
@@ -81,8 +82,6 @@ def open_position(
     fees_usd = qty * fill_px * PAPER_FEE_PCT
 
     held_outcome_label = signal.components.get("held_outcome_label")
-    tp_price = signal.components.get("tp_price")
-    sl_price = signal.components.get("sl_price")
     home_team = signal.components.get("home_team")
     away_team = signal.components.get("away_team")
     tracked_team = signal.components.get("tracked_team")
@@ -98,16 +97,7 @@ def open_position(
         "outs": signal.components.get("outs"),
     }
 
-    reason_open = (
-        f"sig={signal.side} conf={signal.confidence:.3f} "
-        f"fv={signal.fair_value_estimate:.3f} mode={mode} "
-        f"held={held_outcome_label or ''} tp={tp_price} sl={sl_price} "
-        f"matchup={(away_team + '@' + home_team) if away_team and home_team else ''} "
-        f"tracked={tracked_team or ''} size_usd={round(size_usd, 2)} "
-        f"freshness={freshness} reasons={reasons}"
-    )
-
-    return Trade(
+    trade = Trade(
         id=None,
         ts_open=now_iso(),
         ts_close=None,
@@ -119,13 +109,25 @@ def open_position(
         exit_px=None,
         pnl_usd=None,
         fees_usd=round(fees_usd, 6),
-        reason_open=reason_open,
+        reason_open="",
         reason_close=None,
         confidence=signal.confidence,
         mode=mode,
         status="open",
         source=source,
     )
+
+    risk_packet = get_risk_packet(trade, ob=ob, market=market)
+    trade.reason_open = (
+        f"sig={signal.side} conf={signal.confidence:.3f} "
+        f"fv={signal.fair_value_estimate:.3f} mode={mode} "
+        f"held={held_outcome_label or ''} "
+        f"matchup={(away_team + '@' + home_team) if away_team and home_team else ''} "
+        f"tracked={tracked_team or ''} size_usd={round(size_usd, 2)} "
+        f"risk={risk_packet} freshness={freshness} reasons={reasons}"
+    )
+
+    return trade
 
 
 def close_position(

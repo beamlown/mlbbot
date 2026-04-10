@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -45,6 +46,63 @@ _trade_peak_pct: dict[int, float] = {}
 
 def _held_bid(side: str, ob: OBSnapshot) -> float | None:
     return ob.bid_yes if side == "BUY_YES" else ob.bid_no
+
+
+def get_committed_usd(trade: Trade) -> float:
+    entry_px = trade.entry_px or 0.0
+    qty = trade.qty or 0.0
+    return entry_px * qty
+
+
+def get_tp_price(trade: Trade) -> float:
+    entry_px = trade.entry_px or 0.0
+    return entry_px * (1.0 + AUTO_TAKE_PROFIT_PCT)
+
+
+def get_sl_price(trade: Trade) -> float:
+    entry_px = trade.entry_px or 0.0
+    return entry_px * (1.0 - AUTO_STOP_LOSS_PCT)
+
+
+def get_max_loss_usd(trade: Trade) -> float:
+    return (get_sl_price(trade) - (trade.entry_px or 0.0)) * (trade.qty or 0.0)
+
+
+def parse_backed_faded_teams(market_slug: str, side: str) -> tuple[str | None, str | None]:
+    m = re.match(r"^[A-Za-z0-9_]+-([A-Za-z0-9_]+)-([A-Za-z0-9_]+)-\d{4}-\d{2}-\d{2}$", market_slug)
+    if not m:
+        return None, None
+    team_yes = m.group(1).upper()
+    team_no = m.group(2).upper()
+    if side == "BUY_YES":
+        return team_yes, team_no
+    return team_no, team_yes
+
+
+def get_current_held_price(trade: Trade, ob: OBSnapshot) -> float | None:
+    return _held_bid(trade.side, ob)
+
+
+def get_held_token_id(trade: Trade, market: Market | None = None) -> str | None:
+    if market is None:
+        return None
+    return market.yes_token_id if trade.side == "BUY_YES" else market.no_token_id
+
+
+def get_risk_packet(trade: Trade, ob: OBSnapshot | None = None, market: Market | None = None) -> dict[str, Any]:
+    backed_team, faded_team = parse_backed_faded_teams(trade.market_slug, trade.side)
+    return {
+        "entry_px": trade.entry_px,
+        "qty": trade.qty,
+        "committed_usd": get_committed_usd(trade),
+        "tp_price": get_tp_price(trade),
+        "sl_price": get_sl_price(trade),
+        "max_loss_usd": get_max_loss_usd(trade),
+        "held_token_id": get_held_token_id(trade, market),
+        "backed_team": backed_team,
+        "faded_team": faded_team,
+        "current_held_price": get_current_held_price(trade, ob) if ob is not None else None,
+    }
 
 
 def set_current_loop(n: int) -> None:
@@ -179,6 +237,8 @@ def check_exit(
         return False, ""
 
     held_unrealized_pct = (current_held_price - trade.entry_px) / trade.entry_px
+    tp_price = get_tp_price(trade)
+    sl_price = get_sl_price(trade)
 
     gap_threshold = AUTO_STOP_LOSS_PCT * 2.0
     if held_unrealized_pct < -gap_threshold:
@@ -189,7 +249,7 @@ def check_exit(
         _trade_peak_pct.pop(trade.id, None)
         return True, "near_resolution"
 
-    if held_unrealized_pct >= AUTO_TAKE_PROFIT_PCT:
+    if current_held_price >= tp_price:
         _trade_peak_pct.pop(trade.id, None)
         return True, "take_profit"
 
@@ -204,7 +264,7 @@ def check_exit(
                 _trade_peak_pct.pop(trade.id, None)
                 return True, f"trailing_stop(peak={new_peak:.0%},now={held_unrealized_pct:.0%})"
 
-    if held_unrealized_pct <= -AUTO_STOP_LOSS_PCT:
+    if current_held_price <= sl_price:
         record_stop_loss()
         _trade_peak_pct.pop(trade.id, None)
         return True, "stop_loss"

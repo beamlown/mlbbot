@@ -33,6 +33,8 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 STATE_PATH = os.getenv("STATE_PATH", "runtime/state.json")
 DB_PATH = os.getenv("DB_PATH", "trades_sports.db")
 OB_SNAPSHOTS_DIR = os.getenv("OB_SNAPSHOTS_DIR", "runtime/ob_snapshots")
+SESSION_MAX_LOSS_USD = float(os.getenv("SESSION_MAX_LOSS_USD", "0"))
+DAILY_MAX_LOSS_USD = float(os.getenv("DAILY_MAX_LOSS_USD", "0"))
 
 BUILD_TAG = f"sports_bot_v2.{SPORT}.2026-03-29"
 ENGINE_TAG = f"sports_paper_{SPORT}"
@@ -101,6 +103,7 @@ _market_cooldown: dict[str, float] = {}   # market_id → expiry timestamp
 _exit_reason_counts: dict[str, int] = defaultdict(int)  # exit reason → count
 _resolved_markets: dict = {}
 _resolved_markets_mtime: float = 0.0
+_session_start_ts = int(time.time())
 
 AUDIT_CANDIDATES_LOG = f"logs/audit_candidates_{SPORT}.jsonl"
 ALLOW_LOCAL_MLB_ORIGINATION = os.getenv("ALLOW_LOCAL_MLB_ORIGINATION", "0") == "1"
@@ -261,6 +264,48 @@ def _time_to_end(market: Market) -> float | None:
     return (end_dt - datetime.now(timezone.utc)).total_seconds()
 
 
+def _session_loss_exceeded() -> bool:
+    if SESSION_MAX_LOSS_USD <= 0 and DAILY_MAX_LOSS_USD <= 0:
+        return False
+
+    closed = fetch_recent_closed(500)
+
+    if SESSION_MAX_LOSS_USD > 0:
+        session_pnl = sum(
+            float(t.pnl_usd)
+            for t in closed
+            if t.pnl_usd is not None and t.ts_close and int(t.ts_close) >= _session_start_ts
+        )
+        if session_pnl <= -SESSION_MAX_LOSS_USD:
+            logger.error(
+                "SESSION LOSS CAP HIT: session_pnl=%.2f limit=%.2f, blocking all new entries",
+                session_pnl,
+                SESSION_MAX_LOSS_USD,
+            )
+            return True
+
+    if DAILY_MAX_LOSS_USD > 0:
+        today_start = int(
+            datetime.now(timezone.utc)
+            .replace(hour=0, minute=0, second=0, microsecond=0)
+            .timestamp()
+        )
+        daily_pnl = sum(
+            float(t.pnl_usd)
+            for t in closed
+            if t.pnl_usd is not None and t.ts_close and int(t.ts_close) >= today_start
+        )
+        if daily_pnl <= -DAILY_MAX_LOSS_USD:
+            logger.error(
+                "DAILY LOSS CAP HIT: daily_pnl=%.2f limit=%.2f, blocking all new entries",
+                daily_pnl,
+                DAILY_MAX_LOSS_USD,
+            )
+            return True
+
+    return False
+
+
 def main():
     global LOOP_COUNT, _markets, _guard_block_count, _guard_pass_count, _last_guard_reasons, _guard_market_blocks, _last_invalid_market_details
 
@@ -332,6 +377,8 @@ def main():
             for t in open_trades:
                 open_per_market[t.market_id] = open_per_market.get(t.market_id, 0) + 1
 
+            loss_cap_hit = _session_loss_exceeded()
+
             for market in _markets:
                 if not market.active or market.closed:
                     continue
@@ -385,6 +432,9 @@ def main():
                         game_signal_fn=game_signal,
                     )
                     t2e = _time_to_end(market)
+
+                    if loss_cap_hit:
+                        continue
 
                     gates_ok, gate_reasons = check_entry_gates(
                         ob=ob, sig=sig, mode_ctx=mode_ctx,
@@ -478,7 +528,9 @@ def main():
             # ── Model bridge (paper only) ─────────────────────────────────────
             try:
                 _bridge_open_check = fetch_open_trades()
-                if len(_bridge_open_check) >= MAX_CONCURRENT_TRADES:
+                if loss_cap_hit:
+                    logger.info("BRIDGE SKIP, session/daily loss cap active")
+                elif len(_bridge_open_check) >= MAX_CONCURRENT_TRADES:
                     logger.info(
                         "BRIDGE SKIP — at capacity (%d/%d)",
                         len(_bridge_open_check), MAX_CONCURRENT_TRADES,
@@ -573,6 +625,8 @@ def main():
                                 "exit_px": exit_px,
                                 "pnl_usd": round(pnl, 4),
                                 "fees_usd": 0.0,
+                                "reason_close": "market_resolved",
+                                "ts_close": int(time.time()),
                             },
                         )
                         record_closed_trade()
@@ -591,6 +645,20 @@ def main():
                     t2e = _time_to_end(mkt)
 
                     should_close, reason = check_exit(trade, ob, t2e)
+                    # ── Hold-to-resolution gate ────────────────────────────
+                    # If near_resolution fired but watcher has not confirmed
+                    # settlement yet, suppress the exit and hold for full payout.
+                    # Safe degradation: if resolved_markets is empty (watcher
+                    # not running), fall through to normal near_resolution close.
+                    if (should_close
+                            and reason == "near_resolution"
+                            and resolved_markets  # watcher is running
+                            and trade.market_id not in resolved_markets):
+                        logger.info(
+                            "HOLD trade=%d %s - near resolution, awaiting Polymarket confirmation",
+                            trade.id, trade.market_slug[:30],
+                        )
+                        continue
                     if should_close:
                         close_data = close_position(trade, ob, reason)
                         close_trade(trade.id, close_data)

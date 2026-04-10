@@ -1,0 +1,52 @@
+{
+  "task_id": "MARKET_RESOLVED_DB_FIELDS_001",
+  "priority": "HIGH",
+  "type": "bug fix",
+  "subsystem": "risk / exit / data integrity",
+  "allowed_files": ["bot_core.py"],
+  "depends_on": null,
+  "gate_status": "READY",
+
+  "purpose": "Fix the market_resolved force-close path so it persists reason_close and ts_close to the DB. Currently those fields write NULL, breaking the close audit trail. Every closed trade must have a non-NULL reason_close and ts_close so it can be audited, reported, and accounted for correctly.",
+
+  "context": {
+    "finding": "RISK_PIPELINE_AUDIT_REPORT_001.md — broken invariant at bot_core.py:570-577 + core/db.py:131-139",
+    "current_behavior": "close_trade(trade.id, {'exit_px': exit_px, 'pnl_usd': round(pnl, 4), 'fees_usd': 0.0}) — reason_close and ts_close are absent from the dict, so core/db.py writes NULL via .get()",
+    "required_behavior": "close_trade dict must include reason_close='market_resolved' and ts_close=int(time.time())"
+  },
+
+  "implementation": {
+    "file": "bot_core.py",
+    "where": "The market_resolved force-close block in the exit loop — the close_trade() call inside the 'if res and res.get(resolved)' block. Audit report places this at bot_core.py:570-577.",
+    "current_code": "close_trade(trade.id, {'exit_px': exit_px, 'pnl_usd': round(pnl, 4), 'fees_usd': 0.0})",
+    "replace_with": "close_trade(trade.id, {'exit_px': exit_px, 'pnl_usd': round(pnl, 4), 'fees_usd': 0.0, 'reason_close': 'market_resolved', 'ts_close': int(time.time())})",
+    "notes": [
+      "time is already imported in bot_core.py — use time.time(), not datetime.",
+      "Confirm the close_trade() signature in core/db.py accepts reason_close and ts_close in the dict before submitting — read core/db.py:130-139 first.",
+      "Do not change the CLOSE logger.info line — it already logs the correct information.",
+      "Do not change any other close path — only the market_resolved dict."
+    ]
+  },
+
+  "verification": {
+    "steps": [
+      "python -m py_compile bot_core.py",
+      "git diff --name-only  # must show only bot_core.py",
+      "grep -n 'reason_close.*market_resolved' bot_core.py  # confirm field is present",
+      "grep -n 'ts_close.*time' bot_core.py  # confirm ts_close is present",
+      "Manual DB check: write a fake resolved_markets.json for a non-existent market_id, confirm bot loop runs without error"
+    ]
+  },
+
+  "do_not": [
+    "Touch core/db.py, core/risk.py, or any file other than bot_core.py",
+    "Change the standard close path (should_close block) — only the market_resolved block",
+    "Change any TP/SL threshold or cooldown value",
+    "Add any new fields to the DB schema"
+  ],
+
+  "result_format": {
+    "file": "BOT_BRIDGE/06_OUTBOX_FROM_WORKER/RESULT_MARKET_RESOLVED_DB_FIELDS_001.json",
+    "required_fields": ["decision", "files_changed", "verification"]
+  }
+}

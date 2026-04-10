@@ -1,0 +1,105 @@
+{
+  "task_id": "EXIT_GAME_AWARE_002",
+  "priority": "HIGH",
+  "type": "implementation",
+  "subsystem": "risk / exit",
+  "allowed_files": ["bot_core.py"],
+  "depends_on": [
+    "RESOLUTION_WATCHER_BUILD_001 — APPROVED",
+    "RESOLUTION_WATCHER_INTEGRATE_001 — APPROVED"
+  ],
+  "gate_status": "READY — all dependencies approved",
+
+  "context": {
+    "problem": "When a held position reaches NEAR_RESOLUTION_PRICE (0.97), check_exit() currently closes it immediately for 97¢. With the resolution watcher now live, the bot can hold for full 1.00 payout — Polymarket settles the market and market_resolved fires in the next loop iteration. EXIT_GAME_AWARE_001 attempted this but was BLOCKED because integration/resolution_watcher.py did not exist and caused 3 stuck trades. Both resolution watcher tasks are now APPROVED and the infrastructure is live.",
+    "what_is_already_wired": [
+      "integration/resolution_watcher.py polls Gamma API every 60s and writes runtime/resolved_markets.json",
+      "_load_resolved_markets() in bot_core.py: mtime-cached, called at top of exit loop each iteration",
+      "market_resolved force-close block runs BEFORE check_exit() — closes at yes_resolution_price or no_resolution_price without needing OB liquidity",
+      "resolved_markets dict keyed by market_id: {resolved: bool, yes_resolution_price: float, no_resolution_price: float, ...}"
+    ],
+    "what_002_adds": "A suppression gate: after check_exit() returns (True, 'near_resolution'), check whether the market is already in resolved_markets. If NOT resolved yet, suppress the exit and hold. The market_resolved block will fire on the next loop once the watcher confirms resolution.",
+    "safe_degradation": "If resolved_markets is empty (watcher not running, file missing, or no open trades polled yet), the suppression must NOT block — fall through to the existing near_resolution close. This preserves the pre-watcher behavior as a backstop.",
+    "time_exit_backstop": "_time_to_end() and TIME_EXIT_BUFFER_SECONDS already exist. If the game ends and Polymarket never resolves the market, the time_exit reason will eventually fire as a backstop close. Do not add a separate timeout — time_exit already covers this."
+  },
+
+  "implementation": {
+    "file": "bot_core.py",
+    "where": "In the exit loop, immediately after 'should_close, reason = check_exit(trade, ob, t2e)' returns and before 'if should_close:' executes. The resolved_markets variable is already loaded at the top of the exit loop by _load_resolved_markets().",
+
+    "current_code": [
+      "                    should_close, reason = check_exit(trade, ob, t2e)",
+      "                    if should_close:"
+    ],
+
+    "replace_with": [
+      "                    should_close, reason = check_exit(trade, ob, t2e)",
+      "                    # ── Hold-to-resolution gate ────────────────────────────",
+      "                    # If near_resolution fired but watcher has not confirmed",
+      "                    # settlement yet, suppress the exit and hold for full payout.",
+      "                    # Safe degradation: if resolved_markets is empty (watcher",
+      "                    # not running), fall through to normal near_resolution close.",
+      "                    if (should_close",
+      "                            and reason == 'near_resolution'",
+      "                            and resolved_markets  # watcher is running",
+      "                            and trade.market_id not in resolved_markets):",
+      "                        logger.info(",
+      "                            'HOLD trade=%d %s — near resolution, awaiting Polymarket confirmation',",
+      "                            trade.id, trade.market_slug[:30],",
+      "                        )",
+      "                        continue",
+      "                    if should_close:"
+    ],
+
+    "notes": [
+      "resolved_markets is already a local variable in the exit loop from the RESOLUTION_WATCHER_INTEGRATE_001 work — do not re-call _load_resolved_markets(), just use the existing variable.",
+      "The 'and resolved_markets' guard (truthy dict check) is the safe degradation: empty dict → gate is skipped → near_resolution closes as before.",
+      "The 'continue' skips the rest of the loop body for this trade only — moves to the next open trade.",
+      "Do NOT suppress stop_loss, gap_stop, take_profit, trailing_stop, time_exit, or market_resolved — only 'near_resolution' is suppressed.",
+      "The near_resolution cooldown block (600s) runs inside 'if should_close:' — because we 'continue' before reaching it, no cooldown is set when holding. This is correct: we want the bot free to re-evaluate next loop.",
+      "Confirm that resolved_markets is set before the for-trade loop (not inside it) — the INTEGRATE_001 result summary says it is called once per loop iteration at the top."
+    ]
+  },
+
+  "verification": {
+    "steps": [
+      "python -m py_compile bot_core.py",
+      "git diff --name-only  # must show only bot_core.py",
+      "Grep check: grep -n 'HOLD trade=' bot_core.py  # confirm log line is present",
+      "Grep check: grep -n 'near_resolution' bot_core.py  # confirm suppression gate and cooldown block both present",
+      "Logic trace: walk through the three cases manually and confirm correct behavior for each (see below)"
+    ],
+    "logic_trace": {
+      "case_1_watcher_running_market_not_resolved": {
+        "state": "resolved_markets = {'other_market': ...}, trade.market_id not in resolved_markets, check_exit returns (True, 'near_resolution')",
+        "expected": "Gate fires, logger.info HOLD, continue — trade stays open"
+      },
+      "case_2_watcher_running_market_resolved": {
+        "state": "resolved_markets = {'1860430': {resolved: true, ...}}, trade.market_id in resolved_markets",
+        "expected": "market_resolved force-close fires BEFORE check_exit is even called — gate never reached for this trade"
+      },
+      "case_3_watcher_not_running": {
+        "state": "resolved_markets = {} (empty dict), check_exit returns (True, 'near_resolution')",
+        "expected": "'and resolved_markets' is falsy — gate skipped — near_resolution close proceeds as before"
+      },
+      "case_4_stop_loss_not_suppressed": {
+        "state": "check_exit returns (True, 'stop_loss')",
+        "expected": "Gate condition 'reason == near_resolution' is False — gate skipped — stop_loss closes normally"
+      }
+    }
+  },
+
+  "do_not": [
+    "Touch core/risk.py, integration/resolution_watcher.py, or any file other than bot_core.py",
+    "Suppress any exit reason other than near_resolution",
+    "Add a separate timeout mechanism — time_exit already covers stuck positions",
+    "Set or modify any cooldown for the hold path",
+    "Re-call _load_resolved_markets() inside the per-trade loop — use the variable already loaded at loop top",
+    "Change NEAR_RESOLUTION_PRICE threshold or any other env var value"
+  ],
+
+  "result_format": {
+    "file": "BOT_BRIDGE/06_OUTBOX_FROM_WORKER/RESULT_EXIT_GAME_AWARE_002.json",
+    "required_fields": ["decision", "files_changed", "verification", "logic_trace_results"]
+  }
+}

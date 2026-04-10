@@ -1,0 +1,47 @@
+{
+  "task_id": "TP_SL_SCHEMA_NORMALIZATION_001",
+  "decision": "APPROVED",
+  "files_changed": [
+    "sports_bot_v2/core/risk.py",
+    "sports_bot_v2/core/paper_exec.py"
+  ],
+  "fields_normalized": [
+    "entry_px",
+    "qty",
+    "committed_usd",
+    "tp_price",
+    "sl_price",
+    "max_loss_usd",
+    "held_token_id",
+    "backed_team",
+    "faded_team",
+    "current_held_price"
+  ],
+  "new_helpers_added": [
+    "get_committed_usd(trade)",
+    "get_tp_price(trade)",
+    "get_sl_price(trade)",
+    "get_max_loss_usd(trade)",
+    "parse_backed_faded_teams(market_slug, side)",
+    "get_current_held_price(trade, ob)",
+    "get_held_token_id(trade, market=None)",
+    "get_risk_packet(trade, ob=None, market=None)"
+  ],
+  "verification": {
+    "py_compile": {
+      "core/risk.py": "passed",
+      "core/paper_exec.py": "passed",
+      "core/types.py": "passed"
+    },
+    "git_diff_name_only": [
+      "sports_bot_v2/core/paper_exec.py",
+      "sports_bot_v2/core/risk.py"
+    ],
+    "allowed_files_only": true
+  },
+  "notes": [
+    "No TP/SL threshold constants were changed.",
+    "check_exit now consumes canonical price helpers (tp/sl) rather than inline pct comparisons.",
+    "open_position now logs canonical risk packet from risk.py for auditability."
+  ]
+}
