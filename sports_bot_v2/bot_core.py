@@ -501,6 +501,28 @@ def main():
                             },
                             reasons=["model_bridge"],
                         )
+                        _bridge_open_per_market: dict[str, int] = {}
+                        for _t in current_open:
+                            _bridge_open_per_market[_t.market_id] = _bridge_open_per_market.get(_t.market_id, 0) + 1
+                        _gate_ok, _gate_reasons = check_entry_gates(
+                            ob,
+                            signal,
+                            mode_ctx,
+                            len(current_open),
+                            _bridge_open_per_market,
+                            market.market_id,
+                            _time_to_end(market),
+                            market=market,
+                            market_cooldown=_market_cooldown,
+                        )
+                        if not _gate_ok:
+                            logger.info(
+                                "BRIDGE GATE REJECT [check_entry_gates] slug=%s reasons=%s",
+                                market.slug, _gate_reasons,
+                            )
+                            _guard_block_count += 1
+                            loop_guard_reasons.append(f"bridge:{_gate_reasons[0] if _gate_reasons else 'unknown'}")
+                            continue
                         trade = open_position(
                             market,
                             signal,

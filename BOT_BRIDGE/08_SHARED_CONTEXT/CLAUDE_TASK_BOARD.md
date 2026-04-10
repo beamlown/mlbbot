@@ -1,5 +1,5 @@
 # CLAUDE_TASK_BOARD.md — Manager Task Board
-## Last updated: 2026-04-10 — CONFIDENCE_HISTORY_AUDIT_001 opened. 2 ACTIVE tasks. No file conflicts (audit is read-only).
+## Last updated: 2026-04-10 — CONFIDENCE_GATE_RUNTIME_VERIFY_001 opened. 3 ACTIVE tasks. No file conflicts (runtime verify is read-only).
 
 ---
 
@@ -19,6 +19,7 @@
 |---------|-------|----------|-----------|---------------|--------|
 | DASHBOARD_LIVE_ATBAT_POLISH_001 | Upgrade live game cards with at-bat state, next-three-up, baseball-first hierarchy | MEDIUM | dashboard | `dashboard.html`, `dashboard_server.py` (only if strictly needed) | ACTIVE — dependency DASHBOARD_TRUTH_REVERIFY_001 is resolved; brief already in 05_INBOX |
 | CONFIDENCE_HISTORY_AUDIT_001 | Historical confidence audit — recent recommendations/trades vs new 0.60 hard floor | HIGH | read-only audit | logs, trades_sports.db (SELECT only), 1–2 code files max to locate field | ACTIVE — read-only, no file locks required |
+| CONFIDENCE_GATE_RUNTIME_VERIFY_001 | Verify runtime enforcement of MIN_ENTRY_CONFIDENCE=0.60 against post-restart live trades | HIGH | read-only runtime verification | trades_sports.db (SELECT only), bot logs, bot_core.py, core/risk.py, .env | ACTIVE — read-only, no file locks required. Trades 223/224 opened 3h+ post-restart with confidence 0.33/0.40. |
 
 ---
 
@@ -174,6 +175,7 @@ _None._
 | `dashboard.html` | DASHBOARD_LIVE_ATBAT_POLISH_001 |
 | `dashboard_server.py` | DASHBOARD_LIVE_ATBAT_POLISH_001 (conditional — only if needed) |
 | logs, DB (SELECT only) | CONFIDENCE_HISTORY_AUDIT_001 (read-only, no exclusive lock) |
+| logs, DB (SELECT only), `bot_core.py`, `core/risk.py`, `.env` | CONFIDENCE_GATE_RUNTIME_VERIFY_001 (read-only, no exclusive lock) |
 | All other files | UNLOCKED |
 
 ---

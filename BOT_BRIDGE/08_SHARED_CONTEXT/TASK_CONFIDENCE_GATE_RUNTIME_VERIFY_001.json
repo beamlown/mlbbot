@@ -1,0 +1,67 @@
+{
+  "task_id": "CONFIDENCE_GATE_RUNTIME_VERIFY_001",
+  "title": "Verify runtime enforcement of MIN_ENTRY_CONFIDENCE=0.60 against post-restart live trades",
+  "priority": "HIGH",
+  "type": "read-only runtime verification",
+  "issued": "2026-04-10",
+  "subsystem": "risk / entry-gating",
+  "status": "ACTIVE",
+
+  "context": {
+    "trigger": "Trades 223 and 224 opened with confidence 0.3353 and 0.3996, both below the new 0.60 floor, both 3h+ after the confirmed restart that was supposed to pick up MIN_ENTRY_CONFIDENCE_001.",
+    "restart_ts_utc": "2026-04-10T19:40:43Z",
+    "restart_evidence": "RESULT_PROCESS_CLEANUP_VERIFY_001.json — bot_core.py PID 24800 creation_date 20260410144043.254391-300",
+    "trade_223_ts_utc": "2026-04-10T22:44:07Z",
+    "trade_224_ts_utc": "2026-04-10T22:47:37Z",
+    "min_entry_confidence_task": "MIN_ENTRY_CONFIDENCE_001 APPROVED — gate is FIRST in check_entry_gates() waterfall in core/risk.py"
+  },
+
+  "allowed_files": [
+    "trades_sports.db (SELECT only: trades WHERE id IN (223, 224))",
+    "recent bot logs",
+    "sports_bot_v2/bot_core.py",
+    "sports_bot_v2/core/risk.py",
+    "sports_bot_v2/.env",
+    "sports_bot_v2/core/model_bridge.py (ONLY if explicitly needed — justify)"
+  ],
+
+  "forbidden_files": [
+    "dashboard.html",
+    "dashboard_server.py",
+    "core/paper_exec.py",
+    "launch_all.py",
+    "Any file not in allowed_files list"
+  ],
+
+  "forbidden_actions": [
+    "Edit any code",
+    "Edit .env",
+    "Write to trades_sports.db",
+    "Restart any process",
+    "Broad repo sweep"
+  ],
+
+  "questions": [
+    "1. Exact restart time — confirm or correct 2026-04-10T19:40:43Z",
+    "2. Trade 223 and 224 timestamps from DB — BEFORE or AFTER restart",
+    "3. Does bridge entry path call check_entry_gates()? (bot_core.py)",
+    "4. Is MIN_ENTRY_CONFIDENCE=0.60 loaded in live runtime? (.env + risk.py)",
+    "5. Any log lines showing confidence_too_low rejections after restart?",
+    "6. Most likely root cause if low-confidence trades opened post-restart"
+  ],
+
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_CONFIDENCE_GATE_RUNTIME_VERIFY_001.json",
+
+  "acceptance_criteria": [
+    "read_only_confirmed: true",
+    "No code modified, no DB writes, no restarts",
+    "Restart time confirmed or corrected with log evidence",
+    "Explicit BEFORE/AFTER verdict for trades 223 and 224",
+    "Explicit YES/NO on whether bridge entries use check_entry_gates()",
+    "Explicit YES/NO on whether 0.60 floor is loaded in live env/code",
+    "Explicit conclusion on whether a real bug exists",
+    "next_action field populated"
+  ],
+
+  "brief_file": "05_INBOX_FROM_MANAGER/HANDOFF_CONFIDENCE_GATE_RUNTIME_VERIFY_001.md"
+}
