@@ -1,5 +1,5 @@
 # CLAUDE_TASK_BOARD.md — Manager Task Board
-## Last updated: 2026-04-10 — CONFIDENCE_GATE_RUNTIME_VERIFY_001 opened. 3 ACTIVE tasks. No file conflicts (runtime verify is read-only).
+## Last updated: 2026-04-10 — Reconciled after BRIDGE_ENTRY_GATE_WIRING_FIX_001. 1 ACTIVE task. 4 tasks moved to DONE.
 
 ---
 
@@ -17,9 +17,7 @@
 
 | task_id | title | priority | subsystem | allowed_files | status |
 |---------|-------|----------|-----------|---------------|--------|
-| DASHBOARD_LIVE_ATBAT_POLISH_001 | Upgrade live game cards with at-bat state, next-three-up, baseball-first hierarchy | MEDIUM | dashboard | `dashboard.html`, `dashboard_server.py` (only if strictly needed) | ACTIVE — dependency DASHBOARD_TRUTH_REVERIFY_001 is resolved; brief already in 05_INBOX |
-| CONFIDENCE_HISTORY_AUDIT_001 | Historical confidence audit — recent recommendations/trades vs new 0.60 hard floor | HIGH | read-only audit | logs, trades_sports.db (SELECT only), 1–2 code files max to locate field | ACTIVE — read-only, no file locks required |
-| CONFIDENCE_GATE_RUNTIME_VERIFY_001 | Verify runtime enforcement of MIN_ENTRY_CONFIDENCE=0.60 against post-restart live trades | HIGH | read-only runtime verification | trades_sports.db (SELECT only), bot logs, bot_core.py, core/risk.py, .env | ACTIVE — read-only, no file locks required. Trades 223/224 opened 3h+ post-restart with confidence 0.33/0.40. |
+| CONFIDENCE_GATE_POSTFIX_VERIFY_001 | Verify check_entry_gates() is live post-restart: confirm gate rejections and no sub-0.60 bridge entries | HIGH | read-only runtime verification | bot logs, trades_sports.db (SELECT only), bot_core.py (read-only if needed) | ACTIVE — awaiting bot restart post BRIDGE_ENTRY_GATE_WIRING_FIX_001. Brief in 05_INBOX. |
 
 ---
 
@@ -42,9 +40,13 @@ _None._
 
 | task_id | title | outcome | allowed_files |
 |---------|-------|---------|---------------|
+| BRIDGE_ENTRY_GATE_WIRING_FIX_001 | Wire check_entry_gates() into live bridge entry path | APPROVED 2026-04-10 — bot_core.py lines 507-517 patched; py_compile PASS. **Restart required to activate.** Postfix verify: CONFIDENCE_GATE_POSTFIX_VERIFY_001 ACTIVE. | `bot_core.py` |
+| CONFIDENCE_GATE_RUNTIME_VERIFY_001 | Verify runtime enforcement of MIN_ENTRY_CONFIDENCE=0.60 against post-restart live trades | APPROVED 2026-04-10 — real bug confirmed (bypass path). Trades 223/224 confirmed post-restart. Gate never called. Root cause: bridge path skipped check_entry_gates(). | read-only |
+| CONFIDENCE_HISTORY_AUDIT_001 | Historical confidence audit — recent recommendations/trades vs new 0.60 hard floor | APPROVED 2026-04-10 — 178 trades + 41,248 shadow recs audited. 69% of historical trades below floor. Bimodal distribution documented. 0.60 floor confirmed realistic. | read-only |
+| DASHBOARD_LIVE_ATBAT_POLISH_001 | Upgrade live game cards with at-bat state, next-three-up, baseball-first hierarchy | PROVISIONAL PASS 2026-04-10 — score/count/batter/last-play implemented. next_three_up not available in ESPN scoreboard path — follow-on task TASK_NEXT_BATTERS_ENRICH_001 documented. | `dashboard.html`, `dashboard_server.py` |
 | LIVE_CARD_BASEBALL_SEMANTICS_001 | LIVE card phrasing → baseball semantics (backed/faded vs WIN/LOSE) | APPROVED (ratified) 2026-04-10 — dashboard.html only. Self-directed change by worker without brief; content correct, process violation noted in review. | `dashboard.html` |
 | PROCESS_CLEANUP_VERIFY_001 | Verify process topology is clean after restart | APPROVED 2026-04-10 — 6/6 criteria PASS. System clean at task start. No kills required. PIDs confirmed: bot_core 24800, dashboard_server 29620, resolution_watcher 47560, recommendation_api 44152. | read-only / process inspect only |
-| MIN_ENTRY_CONFIDENCE_001 | Hard confidence floor gate (0.60) — first gate in check_entry_gates() waterfall | APPROVED 2026-04-10 — blocks low-edge signals before OB/DB work | `core/risk.py`, `.env` |
+| MIN_ENTRY_CONFIDENCE_001 | Hard confidence floor gate (0.60) — first gate in check_entry_gates() waterfall | APPROVED 2026-04-10 — gate added to risk.py, .env updated. NOTE: gate was not wired into bridge path until BRIDGE_ENTRY_GATE_WIRING_FIX_001. | `core/risk.py`, `.env` |
 | SESSION_EXPOSURE_CAP_001 | MAX_TOTAL_COMMITTED_USD=150 dollar ceiling on total open exposure | APPROVED 2026-04-10 — gate added after per-market gate in risk.py | `core/risk.py`, `.env` |
 | SESSION_PNL_DASHBOARD_001 | Session P&L in /api/state bankroll block | APPROVED 2026-04-10 — session_start_ts written to state.json, session_pnl computed from DB | `bot_core.py`, `dashboard_server.py` |
 | BANKROLL_AWARE_SIZING_001 | Bankroll-aware sizing (3% of bankroll, $50 max, $10 floor) | APPROVED 2026-04-10 — replaces fixed $50 base with bankroll * 0.03; MAX_POSITION_SIZE_USD lowered to $50 | `core/paper_exec.py`, `.env` |
@@ -145,7 +147,7 @@ _None._
 | DASH_012 | Fix game status chip — LIVE shown for unstarted games | APPROVED | `dashboard.html` |
 | DASH_011 | Remove resolved paper trades from Positions panel | APPROVED | `dashboard.html` |
 | DASH_010 | Fix section title and badge count | APPROVED | `dashboard.html` |
-| DASH_009 | Fix resolved paper trade cards — PnL, Current price, team name | APPROVED | `dashboard.html` |
+| DASH_009 | Fix resolved paper trade cards — PnL, Current price, team name | APPROVED | `dashboard_server.py` |
 | VERIFY_STABILIZE_001 | Fix stale shadow ghost positions | APPROVED | `launch_all.py`, `dashboard_server.py` |
 | LAUNCH_002 | Add dashboard_server.py to launch_all.py | APPROVED | `launch_all.py` |
 | DASH_008 | Remove hardcoded TP/SL JS constants | APPROVED | `dashboard.html` |
@@ -172,25 +174,21 @@ _None._
 
 | File | Locked by |
 |------|-----------|
-| `dashboard.html` | DASHBOARD_LIVE_ATBAT_POLISH_001 |
-| `dashboard_server.py` | DASHBOARD_LIVE_ATBAT_POLISH_001 (conditional — only if needed) |
-| logs, DB (SELECT only) | CONFIDENCE_HISTORY_AUDIT_001 (read-only, no exclusive lock) |
-| logs, DB (SELECT only), `bot_core.py`, `core/risk.py`, `.env` | CONFIDENCE_GATE_RUNTIME_VERIFY_001 (read-only, no exclusive lock) |
+| bot logs, DB (SELECT only) | CONFIDENCE_GATE_POSTFIX_VERIFY_001 (read-only, no exclusive lock) |
 | All other files | UNLOCKED |
 
 ---
 
-## System state (2026-04-10 — reconciled)
+## System state (2026-04-10 — reconciled post gate-wiring fix)
 
-- **Realized PnL: $405.89** (updated from DASHBOARD_TRUTH_FIXES_001 verified API value)
-- **Dashboard truth: FIXED** — Realized P&L authoritative, mark_source chip live, R25 sublabel corrected (DASHBOARD_TRUTH_FIXES_001 APPROVED)
-- **Authority separation: CODE COMPLETE** — local origination removed from bot_core.py, execution_guard.py deleted (AUTHORITY_SEPARATION_CLEANUP_001 PROVISIONAL PASS). Restart complete.
-- **Risk pack: VERIFIED** — 12/12 checks pass. SESSION_EXPOSURE_CAP_USD + drawdown-aware sizing patched in bot_core.py + core/paper_exec.py + .env
-- **Restart: COMPLETE** — all risk pack patches + authority separation live. PIDs confirmed by PROCESS_CLEANUP_VERIFY_001.
-- **BUY_YES/BUY_NO position card sign semantics: UNVERIFIED** — no open positions at time of last audit (DASHBOARD_TRUTH_REVERIFY_001). Needs manual spot-check after next open position.
-- **Dual-process incident**: RESOLVED
-- **Realtime polymarket market stream**: VERIFIED — Stage 1
-- **Realtime game-state push**: PARTIAL (architecture present, end-to-end not re-traced)
-- **User/fill stream**: BLOCKED — requires apiKey, secret, passphrase in .env (user action)
-- **Stale mark REST fallback**: LIVE — commit b31b548
-- **Dashboard redesign**: COMPLETE
+- **Realized PnL: $405.89** (last verified at DASHBOARD_TRUTH_FIXES_001)
+- **Dashboard truth: FIXED** — Realized P&L authoritative, mark_source chip live, R25 sublabel corrected
+- **At-bat dashboard: UPGRADED** — DASHBOARD_LIVE_ATBAT_POLISH_001 PROVISIONAL PASS. count chips, dominant score, batter/pitcher identity live.
+- **Authority separation: CODE COMPLETE** — local origination removed (AUTHORITY_SEPARATION_CLEANUP_001 PROVISIONAL PASS)
+- **Risk pack: VERIFIED** — 12/12 checks pass. All 4 risk/sizing tasks APPROVED.
+- **Confidence gate bug: FIXED** — BRIDGE_ENTRY_GATE_WIRING_FIX_001 APPROVED. bot_core.py bridge path now calls check_entry_gates() between Signal() and open_position(). **Restart required to activate.**
+- **Post-fix verification: PENDING** — CONFIDENCE_GATE_POSTFIX_VERIFY_001 ACTIVE. Must confirm BRIDGE GATE REJECT [check_entry_gates] log lines and zero sub-0.60 trades post-restart.
+- **Currently open trades: 223 (conf=0.3353), 224 (conf=0.3996)** — both entered pre-fix under old ungated path. Will run to existing exit conditions. Not affected by gate (entry-only gate).
+- **User/fill stream: BLOCKED** — requires apiKey, secret, passphrase in .env
+- **Stale mark REST fallback: LIVE** — commit b31b548
+- **Dashboard redesign: COMPLETE**

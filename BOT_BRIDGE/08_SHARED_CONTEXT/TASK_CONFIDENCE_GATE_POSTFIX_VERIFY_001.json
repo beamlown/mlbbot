@@ -1,0 +1,36 @@
+{
+  "task_id": "CONFIDENCE_GATE_POSTFIX_VERIFY_001",
+  "title": "Verify check_entry_gates() is live post-restart: confirm gate rejections and no sub-0.60 bridge entries",
+  "priority": "HIGH",
+  "type": "read-only post-fix runtime verification",
+  "issued": "2026-04-10",
+  "subsystem": "risk / entry-gating",
+  "status": "ACTIVE",
+
+  "depends_on": "BRIDGE_ENTRY_GATE_WIRING_FIX_001 (APPROVED) + confirmed bot restart",
+
+  "context": {
+    "fix_applied": "bot_core.py bridge path now calls check_entry_gates() between Signal() and open_position() (lines 507-517)",
+    "fix_approved": "REVIEW_BRIDGE_ENTRY_GATE_WIRING_FIX_001.md — APPROVED 2026-04-10",
+    "restart_required": "YES — fix is source-only change, process must restart to activate",
+    "pre_patch_evidence": "Zero confidence_too_low log entries before fix; trades 223/224 opened with conf 0.3353/0.3996 post-14:40 restart"
+  },
+
+  "questions": [
+    "1. Post-patch startup line found in logs? What timestamp?",
+    "2. Any BRIDGE GATE REJECT [check_entry_gates] log lines post-restart?",
+    "3. Any new trades with confidence < 0.60 opened since restart?",
+    "4. Any valid trades (confidence >= 0.60) opened since restart?",
+    "5. Overall verdict: gate is live and functioning?"
+  ],
+
+  "allowed_files": [
+    "recent bot logs",
+    "trades_sports.db (SELECT only)",
+    "sports_bot_v2/bot_core.py (read-only, ONLY if startup log is ambiguous)"
+  ],
+
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_CONFIDENCE_GATE_POSTFIX_VERIFY_001.json",
+
+  "brief_file": "05_INBOX_FROM_MANAGER/HANDOFF_CONFIDENCE_GATE_POSTFIX_VERIFY_001.md"
+}
