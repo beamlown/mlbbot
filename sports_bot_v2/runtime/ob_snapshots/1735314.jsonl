@@ -1,0 +1,2 @@
+{"bid_yes": 0.02, "ask_yes": 0.6, "bid_no": 0.4, "ask_no": 0.98, "spread_yes": 0.58, "spread_no": 0.58, "depth_top5_usd_yes": 0.0, "depth_top5_usd_no": 0.0, "imbalance": 0.0, "micro_ok": false, "micro_reason": "spread_too_wide", "fetched_at": "2026-03-31T02:05:43.909933+00:00"}
+{"bid_yes": 0.02, "ask_yes": 0.6, "bid_no": 0.4, "ask_no": 0.98, "spread_yes": 0.58, "spread_no": 0.58, "depth_top5_usd_yes": 0.0, "depth_top5_usd_no": 0.0, "imbalance": 0.0, "micro_ok": false, "micro_reason": "spread_too_wide", "fetched_at": "2026-03-31T02:07:08.726211+00:00"}

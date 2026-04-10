@@ -48,25 +48,3 @@ desktop.ini
 .vscode/
 .idea/
 *.swp
-
-# Large data / model artifacts
-*.parquet
-*.pkl
-*.pickle
-*.h5
-*.hdf5
-*.pt
-*.pth
-*.onnx
-*.npy
-*.npz
-*.arrow
-*.csv
-
-# JSONL logs (can be huge)
-*.jsonl
-
-# Raw data directories
-mlb_model/data/raw/
-mlb_model/data/features/
-mlb_model/artifacts/

@@ -2,8 +2,8 @@
   "engine": "sports_paper_baseball",
   "build": "sports_bot_v2.baseball.2026-03-29",
   "sport": "baseball",
-  "now": "2026-04-10T14:06:12.476707+00:00",
-  "loop_count": 57,
+  "now": "2026-04-10T14:12:52.909430+00:00",
+  "loop_count": 65,
   "config_hash": "2f0dd9e0ef8a",
   "pnl": {
     "realized": 367.7321,
@@ -178,5 +178,5 @@
       "exit_px": 0.30845
     }
   ],
-  "status_line": "loop=57 sport=baseball mode=neutral open=1 guard_block=62"
+  "status_line": "loop=65 sport=baseball mode=neutral open=1 guard_block=64"
 }

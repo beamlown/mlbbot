@@ -1,0 +1,14 @@
+{
+  "model_type": "lightgbm",
+  "best_n_estimators": 109,
+  "train_seasons": [
+    2018,
+    2019,
+    2020,
+    2021,
+    2022
+  ],
+  "val_seasons": [
+    2023
+  ]
+}

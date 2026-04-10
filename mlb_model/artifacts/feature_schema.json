@@ -1,0 +1,39 @@
+{
+  "feature_columns": [
+    "pregame_logit",
+    "score_diff",
+    "abs_score_diff",
+    "tied",
+    "inning",
+    "half",
+    "outs",
+    "game_progress",
+    "late_game",
+    "base_state",
+    "base_state_value",
+    "score_diff_x_late",
+    "base_value_x_late",
+    "tied_x_late",
+    "home_pitch_count_norm",
+    "home_tto",
+    "home_is_bullpen",
+    "away_pitch_count_norm",
+    "away_tto",
+    "away_is_bullpen",
+    "elo_diff_norm",
+    "late_tie_bottom"
+  ],
+  "target_column": "home_won_final",
+  "n_features": 22,
+  "seasons": [
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "n_rows": 1378955
+}
