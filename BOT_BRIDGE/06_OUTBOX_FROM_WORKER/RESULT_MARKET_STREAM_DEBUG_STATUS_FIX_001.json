@@ -1,0 +1,40 @@
+{
+  "task_id": "MARKET_STREAM_DEBUG_STATUS_FIX_001",
+  "status": "done",
+  "final_result": "VERIFIED",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\market_stream.py"
+  ],
+  "exact_failure_cause": {
+    "field_or_path": "debug_status() method placement",
+    "details": "debug_status() had been indented under _to_float() instead of under MarketStreamClient, so GLOBAL_MARKET_STREAM.debug_status() did not exist and the handler path crashed."
+  },
+  "sample_json_response": {
+    "stream_enabled": true,
+    "thread_alive": true,
+    "connected": true,
+    "tracked_asset_count": 3,
+    "tracked_assets_sample": "present",
+    "last_subscribe_payload": "present",
+    "last_open_ts": "present",
+    "last_message_ts": "present",
+    "last_message_type": null,
+    "last_error": "'list' object has no attribute 'get'",
+    "last_state_hub_update_ts": null,
+    "last_state_hub_update_slug": null,
+    "mark_count_received": 0,
+    "parser_hit_count": 0,
+    "parser_miss_count": 0,
+    "reconnect_count": 1
+  },
+  "what_the_sample_proves": {
+    "websocket_start_path_ran": true,
+    "on_open_fired": true,
+    "subscribe_payload_sent": true,
+    "messages_arrived": true,
+    "parser_or_message_shape_break": true,
+    "state_hub_update_reached": false
+  },
+  "important_runtime_diagnosis": "The stream runtime is alive and connected, and messages are arriving, but the current parser expects dict-shaped messages while the live stream delivered a list-shaped payload, causing 'list' object has no attribute 'get' before any state_hub update.",
+  "next_tiny_fix_if_requested": "Handle list-shaped market stream messages in core/market_stream.py before extracting event fields."
+}

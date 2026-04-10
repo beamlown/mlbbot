@@ -1,0 +1,47 @@
+{
+  "task_id": "SHADOW_001",
+  "title": "Add shadow dollar PnL, entry/current price, and TP/SL status to dashboard",
+  "objective": "Make the dashboard show shadow trades in dollars instead of only units, including entry price, current price, live unrealized PnL, TP/SL target prices, and clear open/resolved status, while keeping shadow mode advisory-only.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py"
+  ],
+  "do_not_touch": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model",
+    "execution logic",
+    "order placement",
+    "model training",
+    "export/pipeline"
+  ],
+  "inputs": [
+    "Current /api/mlb-shadow payload",
+    "Current dashboard shadow panel",
+    "Existing shadow log format",
+    "Current paper/default sizing rules if available"
+  ],
+  "deliverables": [
+    "minimal patch",
+    "root cause/limitations summary",
+    "restart steps",
+    "expected dashboard behavior"
+  ],
+  "acceptance_criteria": [
+    "Dashboard shows dollar-based shadow PnL values",
+    "Each shadow position shows entry price",
+    "Each shadow position shows current live price if available",
+    "Each shadow position shows live unrealized PnL in dollars",
+    "Each shadow position shows TP target price",
+    "Each shadow position shows SL target price",
+    "Each shadow position shows status: OPEN, TP_ZONE, SL_ZONE, RESOLVED_WIN, RESOLVED_LOSS, or PENDING",
+    "UI clearly labels shadow as advisory-only / not executed",
+    "No execution behavior changes",
+    "No model logic changes"
+  ],
+  "verification": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2",
+    "python dashboard_server.py",
+    "open http://localhost:8900",
+    "confirm MLB Shadow panel shows entry, current price, live PnL, and TP/SL statuses"
+  ],
+  "rollback": "Revert dashboard.html and dashboard_server.py only."
+}

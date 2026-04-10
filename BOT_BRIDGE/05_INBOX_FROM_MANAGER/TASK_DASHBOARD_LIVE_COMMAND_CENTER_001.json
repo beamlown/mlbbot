@@ -1,0 +1,147 @@
+{
+  "task_id": "DASHBOARD_LIVE_COMMAND_CENTER_001",
+  "title": "Dashboard redesign — LIVE tab: game monitor, position cards, account strip",
+  "status": "ACTIVE",
+  "gate": "DASHBOARD_REDESIGN_SHELL_001 is APPROVED. EXECUTION_HELD_SIDE_SEMANTICS_001 is APPROVED. Gate cleared — may begin.",
+  "phase": 2,
+  "depends_on": ["EXECUTION_HELD_SIDE_SEMANTICS_001", "DASHBOARD_REDESIGN_ARCH_001", "DASHBOARD_REDESIGN_SHELL_001"],
+  "priority": 3,
+  "subsystem": "dashboard_live_tab",
+  "type": "implementation",
+  "allowed_files": [
+    "dashboard.html",
+    "dashboard_server.py"
+  ],
+  "dashboard_server_change_policy": "dashboard_server.py may only be modified if a specific field is absent from existing API responses and is truly required for the LIVE tab. Any such change must be listed explicitly in deliverables with justification. Default assumption: no server changes needed.",
+  "do_not_touch": [
+    "bot_core.py",
+    "core/risk.py",
+    "core/paper_exec.py",
+    "core/db.py",
+    "core/model_bridge.py",
+    "core/types.py",
+    "mlb_model/"
+  ],
+
+  "objective": "Implement the full LIVE tab content: live game monitor, active position cards using held-contract truth, and account strip. This is the primary focal area — the user should land here and see all active information without scrolling on a standard display. All pricing must use the verified truth model: current_held_price sourced from stream-backed held-side bid, not raw YES price.",
+
+  "truth_model_requirements": {
+    "current_price_authority": "BACKEND/SSE OWNS HELD-SIDE NORMALIZATION. The SSE positions_mark event already delivers a normalized current_price field that reflects the correct held-side bid (bid_yes for BUY_YES, bid_no for BUY_NO). The frontend MUST use positions_mark.current_price directly. It must NOT recompute held-side price from mark.bid_yes or mark.bid_no.",
+    "frontend_price_rule": "If positions_mark.current_price is present, use it and only it. Do not derive a second current_price from bid_yes/bid_no in frontend JS. Any frontend code that branches on trade.side to pick bid_yes vs bid_no is a HARD REJECT — that logic belongs in the backend only.",
+    "reject_condition": "Any JS pattern like: (trade.side === 'BUY_YES' ? mark.bid_yes : mark.bid_no) is REJECTED unless positions_mark.current_price is genuinely absent from the SSE payload AND that absence is explicitly documented in the result.",
+    "unrealized_pnl": "Use SSE-provided unrealized_pnl_usd or unrealized_pnl directly if present. If not present, derive from positions_mark.current_price (not from bid_yes/bid_no): (current_price - entry_px) * qty.",
+    "live_equity": "Use SSE-provided live_equity_usd directly if present. If not present, derive from positions_mark.current_price: current_price * qty.",
+    "backed_team_display": "Each position card must show backed_team prominently. 'Backing LAD' or 'LAD WIN' — not 'BUY_YES on mlb-lad-sd'. The YES/NO side may appear as a small secondary label only.",
+    "tp_sl_display": "TP and SL thresholds must be shown on each position card. Source from /api/trades tp_price and sl_price fields.",
+    "fallback_label": "If stream data is stale (>30s), show a 'STALE' or 'FALLBACK' badge on that position's price. Never silently show stale data as live.",
+    "shadow_exclusion": "Shadow/advisory model recommendations must NOT appear in the LIVE tab. They belong in GAMES tab only.",
+    "no_competing_price_writers": "There is exactly one current_price source: SSE positions_mark.current_price. No JS may write, override, or recompute current_price from any other source."
+  },
+
+  "live_tab_layout": {
+    "section_1_game_monitor": {
+      "description": "Cards showing live MLB games. One card per active game. Sorted: games with open positions first, then other live games, then upcoming.",
+      "fields_per_card": [
+        "away_team abbreviation + score",
+        "home_team abbreviation + score",
+        "inning + half (TOP/BOT) or game status (FINAL, SCHEDULED)",
+        "Active position indicator badge if a position is open on this game",
+        "Model signal indicator (small, secondary) if shadow rec exists — labeled 'Advisory' not 'Signal'"
+      ],
+      "data_source": "/api/games (polled) + /api/stream/state SSE for position marks"
+    },
+    "section_2_position_cards": {
+      "description": "Active open paper positions only. Each card shows full held-contract truth.",
+      "fields_per_card": [
+        "backed_team (large, prominent)",
+        "faded_team (small, secondary)",
+        "side direction label: 'WIN' or 'LOSE' (not BUY_YES/BUY_NO)",
+        "entry_px (held-side entry cost)",
+        "current_held_price (stream-backed, with STALE badge if >30s old)",
+        "unrealized_pct (signed, colored green/red)",
+        "live_equity (current_held_price * qty in USD)",
+        "size_usd (qty * entry_px)",
+        "tp_price and sl_price (held-side thresholds)",
+        "time_open (duration since entry)",
+        "confidence (from signal)"
+      ],
+      "data_source": "/api/trades (for static fields) + SSE stream (for current_held_price mark)"
+    },
+    "section_3_account_strip": {
+      "description": "Compact strip below position cards. Always visible within LIVE tab.",
+      "fields": [
+        "Bankroll (current capital)",
+        "Capital committed (open positions total)",
+        "Open position count",
+        "R25 win rate (percentage)",
+        "R25 expectancy (avg PnL per trade)",
+        "R25 sample size"
+      ],
+      "data_source": "/api/state"
+    }
+  },
+
+  "deliverables": [
+    {
+      "file": "dashboard.html",
+      "changes": [
+        "Populate #tab-live with three sections: game monitor, position cards, account strip",
+        "buildLiveGameMonitor() function: renders game cards from /api/games data, sorted by position presence then live status",
+        "buildLivePositionCards() function: renders position cards using positions_mark.current_price directly — no bid_yes/bid_no branching in frontend",
+        "buildAccountStrip() function: renders bankroll, committed, win rate from /api/state r25 fields",
+        "SSE update path: on positions_mark event, read position.current_price and write it in-place to the DOM element (no full re-render, no held-side derivation)",
+        "Stale detection: if SSE last_update > 30s ago, add STALE class to affected price fields",
+        "LIVE tab is the default visible tab (already set in shell phase, confirm preserved)",
+        "No shadow/advisory data in this tab",
+        "No JS code that branches on trade.side to pick bid_yes vs bid_no — backend has already done this"
+      ]
+    },
+    {
+      "file": "dashboard_server.py",
+      "required_only_if": "A specific field is missing from /api/state or /api/trades that is listed in the layout above. Document the field, why it is missing, and the minimal addition. If no fields are missing, do not touch this file."
+    }
+  ],
+
+  "preflight_questions": [
+    "Read DASHBOARD_REDESIGN_SPEC_001.md — what fields are listed for each LIVE tab section?",
+    "Inspect the actual SSE positions_mark event payload: does it include a current_price field? List all fields present.",
+    "Read dashboard.html — does the current SSE handler update position prices in-place or re-render?",
+    "Read dashboard_server.py /api/state — does it currently return r25.win_rate, r25.expectancy, r25.sample_size?",
+    "Read dashboard_server.py /api/trades — does it return backed_team, faded_team, tp_price, sl_price, qty?",
+    "Does /api/games return inning, score, status for live games? If not, this is a known limitation — document it, do not add new scraping."
+  ],
+
+  "acceptance_criteria": [
+    "LIVE tab shows game monitor, position cards, account strip in correct vertical order",
+    "Position cards show backed_team prominently, not raw market slug",
+    "CRITICAL: position card current price is sourced from positions_mark.current_price — no frontend bid_yes/bid_no branching on trade.side",
+    "CRITICAL: no JS code of the form (trade.side === 'BUY_YES' ? mark.bid_yes : mark.bid_no) exists in the LIVE tab implementation",
+    "unrealized_pct derived from positions_mark.current_price (or SSE unrealized field directly): (current_price - entry_px) / entry_px",
+    "STALE badge appears on price if SSE stream is silent for >30s",
+    "No shadow/advisory data appears in LIVE tab",
+    "Account strip shows win rate from r25 (not hardcoded or from old win_rate field)",
+    "SSE price updates are in-place DOM updates — no full re-render on every tick",
+    "No JS console errors on load",
+    "Mobile view: cards stack vertically, no horizontal scroll at 390px"
+  ],
+
+  "proof_of_work": [
+    "State exactly what fields the SSE positions_mark event provides — list them",
+    "Show the exact JS line that reads current price from the SSE event (must be positions_mark.current_price or equivalent normalized field, NOT a bid_yes/bid_no branch)",
+    "Show the unrealized_pct formula as it appears in JS — must use current_price, not bid_yes/bid_no",
+    "Confirm backed_team is displayed, not market slug",
+    "Confirm shadow data is absent from LIVE tab DOM",
+    "State whether dashboard_server.py was modified (and if so, exactly what field was added and why)",
+    "Confirm: grep for 'bid_yes' and 'bid_no' in the new LIVE tab JS — both must be absent from frontend price logic"
+  ],
+
+  "out_of_scope": [
+    "POSITIONS, GAMES, HISTORY, SYSTEM tabs (phase 3)",
+    "Performance/flicker optimizations (phase 4)",
+    "Any strategy or model logic changes",
+    "Any new scraping or data fetching beyond what existing APIs provide",
+    "Any changes to the truth model pricing chain"
+  ],
+
+  "rollback": "Revert dashboard.html. If dashboard_server.py was modified, revert it too. No DB or model changes to revert."
+}

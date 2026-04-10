@@ -1,0 +1,1623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>MLB Shadow · Sports Bot</title>
+<style>
+/* ── Design tokens ─────────────────────────────────────────────────────────── */
+:root {
+  --color-bg:#0d0f14; --color-surface:#121722; --color-surface-2:#171d2b; --color-surface-3:#1d2536;
+  --color-accent:#00d4ff; --color-accent-dim:rgba(0,212,255,.12); --color-accent-glow:rgba(0,212,255,.20);
+  --color-text:#e8eef7; --color-muted:#99a6bc; --color-faint:#64748b; --color-border:#243044; --color-border-2:#1a2433;
+  --color-positive:#00d09e; --color-positive-dim:rgba(0,208,158,0.1); --color-positive-glow:rgba(0,208,158,0.18);
+  --color-negative:#ff4d6d; --color-negative-dim:rgba(255,77,109,0.1); --color-negative-glow:rgba(255,77,109,0.18);
+  --color-warning:#fbbf24; --color-warning-dim:rgba(251,191,36,0.1);
+  --color-info:#38bdf8; --color-info-dim:rgba(56,189,248,0.1);
+  --color-purple:#a78bfa;
+  --bg:var(--color-bg); --bg2:var(--color-surface); --bg3:var(--color-surface-2); --bg4:var(--color-surface-3);
+  --border:var(--color-border); --border2:var(--color-border-2);
+  --green:var(--color-positive); --green-dim:var(--color-positive-dim); --green-glow:var(--color-positive-glow);
+  --red:var(--color-negative); --red-dim:var(--color-negative-dim); --red-glow:var(--color-negative-glow);
+  --gold:var(--color-warning); --gold-dim:var(--color-warning-dim);
+  --blue:var(--color-info); --blue-dim:var(--color-info-dim);
+  --purple:var(--color-purple);
+  --text:var(--color-text); --text2:var(--color-muted); --text3:var(--color-faint); --text4:#2a3547;
+  --font:  -apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',system-ui,sans-serif;
+  --mono:  'SF Mono','Fira Code','Cascadia Code',monospace;
+  --r: 12px; --r-sm: 8px;
+}
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+html, body { min-height:100%; }
+body { background:var(--bg); color:var(--text); font-family:var(--font); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+
+/* ── Utilities ── */
+.green{color:var(--green)} .red{color:var(--red)} .gold{color:var(--gold)}
+.blue{color:var(--blue)}   .dim{color:var(--text3)}
+
+/* ── Shell ── */
+.shell-app { min-height:100vh; display:flex; flex-direction:column; background:var(--bg); }
+.shell-main { flex:1; min-height:0; display:flex; flex-direction:column; }
+.shell-body { flex:1; min-height:0; display:flex; flex-direction:column; }
+.shell-tab-content { flex:1; min-height:0; }
+.shell-panel { display:none; min-height:100%; }
+.shell-panel.active { display:block; }
+.shell-placeholder { padding:20px 16px; color:var(--text2); font-family:var(--mono); font-size:12px; }
+.shell-placeholder-card { background:var(--bg3); border:1px solid var(--border); border-radius:16px; padding:18px; }
+@keyframes tabFade { from{opacity:.82} to{opacity:1} }
+
+/* ── Command bar ── */
+.cmdbar {
+  background:linear-gradient(180deg,rgba(18,23,34,.98),rgba(13,15,20,.98)); border-bottom:1px solid var(--border);
+  padding:12px 16px; display:flex; align-items:center; gap:10px;
+  position:sticky; top:0; z-index:300; flex-wrap:wrap;
+  box-shadow:0 10px 30px rgba(0,0,0,.22);
+}
+.cmdbar-logo  { font-size:16px; font-weight:800; letter-spacing:-0.5px; }
+.cmdbar-sport { background:var(--green-dim); color:var(--green); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; font-family:var(--mono); }
+.cmdbar-status{ display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text3); font-family:var(--mono); }
+.cmdbar-bridge { font-size:10px; font-weight:700; padding:3px 8px; border-radius:5px; font-family:var(--mono); text-transform:uppercase; }
+.cmdbar-bridge.on  { background:var(--green-dim); color:var(--green); }
+.cmdbar-bridge.off { background:var(--red-dim); color:var(--red); }
+.cmdbar-stats { margin-left:auto; display:flex; align-items:center; gap:10px; font-size:11px; color:var(--text2); font-family:var(--mono); flex-wrap:wrap; }
+.cmdbar-stat b { color:var(--text); }
+.hud-value { font-size:15px; font-weight:800; font-variant-numeric:tabular-nums; }
+.dot { width:7px; height:7px; border-radius:50%; background:var(--text4); flex-shrink:0; }
+.dot.live  { background:var(--green); box-shadow:0 0 6px var(--green); animation:pulse 2s infinite; }
+.dot.stale { background:var(--gold); }
+.dot.dead  { background:var(--red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+@keyframes flashGreen { 0%{background:rgba(0,208,158,.25)} 100%{background:transparent} }
+@keyframes flashRed   { 0%{background:rgba(255,77,109,.25)} 100%{background:transparent} }
+@keyframes shimmer    { 0%,100%{box-shadow:0 0 4px rgba(0,208,158,.3)} 50%{box-shadow:0 0 12px rgba(0,208,158,.7)} }
+@keyframes fillBar    { from{width:0} }
+@keyframes slideInBottom { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+@keyframes tickerIn   { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:translateX(0)} }
+.flash-green { animation:flashGreen .8s ease forwards; border-radius:4px; }
+.flash-red   { animation:flashRed   .8s ease forwards; border-radius:4px; }
+.refresh-ts { font-size:9px; color:var(--text4); font-family:var(--mono); }
+.mode-badge { padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; font-family:var(--mono); }
+.mode-badge.aggressive  { background:var(--red-dim);  color:var(--red); }
+.mode-badge.neutral     { background:var(--blue-dim); color:var(--blue); }
+.mode-badge.conservative{ background:var(--gold-dim); color:var(--gold); }
+.mob-menu-btn { background:none; border:1px solid var(--border); color:var(--text2); border-radius:6px; padding:5px 10px; font-size:18px; cursor:pointer; min-height:36px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.mob-menu-btn:active { background:var(--bg3); }
+
+/* ── Page layout ── */
+.app-body { display:flex; flex-direction:column; }
+.col-left  { }
+.col-right { border-top:1px solid var(--border); }
+.live-monitor-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.live-monitor-sub { font-size:11px; color:var(--text3); font-family:var(--mono); }
+.cash-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px; }
+.cash-box { background:rgba(17,28,46,.78); border:1px solid var(--border); border-radius:12px; padding:10px 12px; }
+.cash-label { font-size:9px; color:var(--text3); text-transform:uppercase; letter-spacing:.7px; font-family:var(--mono); margin-bottom:4px; }
+.cash-val { font-size:17px; font-weight:800; font-family:var(--mono); }
+.monitor-grid { display:grid; gap:12px; min-height:60px; }
+.game-monitor-card { background:linear-gradient(180deg,rgba(18,28,44,.98),rgba(12,20,32,.98)); border:1px solid var(--border); border-radius:18px; padding:16px; box-shadow:0 14px 30px rgba(0,0,0,.24); }
+.game-monitor-top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:12px; }
+.game-monitor-score { font-size:36px; font-weight:900; line-height:1; letter-spacing:-1.2px; }
+.game-monitor-meta { display:flex; gap:8px; flex-wrap:wrap; font-size:11px; color:var(--text2); font-family:var(--mono); margin-top:8px; }
+.game-monitor-row { display:grid; grid-template-columns:1.1fr .9fr; gap:14px; align-items:start; }
+.baseball-state { background:rgba(23,32,53,.82); border:1px solid var(--border); border-radius:14px; padding:12px 14px; }
+.baseball-line { display:flex; flex-wrap:wrap; gap:10px; font-size:11px; color:var(--text2); font-family:var(--mono); margin-top:10px; }
+.monitor-pitcher { font-size:12px; color:var(--gold); font-family:var(--mono); margin-top:10px; font-weight:700; }
+.monitor-trade-box { background:rgba(23,32,53,.9); border:1px solid var(--border); border-radius:14px; padding:12px; }
+.monitor-trade-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-top:10px; }
+.baseball-state .diamond-svg { width:72px; height:72px; }
+.live-game-state { display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:center; }
+.live-state-stack { display:flex; flex-direction:column; gap:8px; }
+.live-state-pill { display:inline-flex; align-items:center; gap:6px; padding:4px 9px; border-radius:999px; background:var(--bg4); border:1px solid var(--border); font-size:11px; font-family:var(--mono); color:var(--text2); font-weight:700; }
+.section   { padding:18px 18px; }
+.section + .section { border-top:1px solid var(--border); }
+.section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.section-title  { font-size:12px; font-weight:800; color:var(--text2); text-transform:uppercase; letter-spacing:1px; font-family:var(--mono); }
+.section-count  { background:var(--bg4); color:var(--text2); font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; font-family:var(--mono); }
+
+/* ── Active Position Cards ── */
+@keyframes slideIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.pos-card {
+  background:linear-gradient(180deg,rgba(23,32,53,.98),rgba(17,28,46,.98)); border:1px solid var(--border); border-radius:16px;
+  padding:16px; margin-bottom:12px; position:relative; overflow:hidden;
+  transition:border-color .4s, box-shadow .4s, transform .2s ease;
+  box-shadow:0 10px 28px rgba(0,0,0,.20);
+}
+.pos-card:hover { transform:translateY(-1px); }
+.pos-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:3px;
+  background:var(--border); transition:background .3s;
+}
+.pos-card.action-yes::before { background:linear-gradient(90deg,var(--green),#00f2b8); }
+.pos-card.action-no::before  { background:linear-gradient(90deg,var(--red),#ff6b8a); }
+.pos-card.won  { border-color:rgba(0,208,158,.4);   box-shadow:0 0 24px var(--green-glow); }
+.pos-card.lost { border-color:rgba(255,77,109,.4);  box-shadow:0 0 24px var(--red-glow); }
+.pos-card.new  { animation:slideIn .35s ease forwards; }
+
+.pos-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.pos-team-col   { flex:1; min-width:0; }
+.pos-matchup    { font-size:11px; color:var(--text3); font-family:var(--mono); margin-bottom:3px; }
+.pos-team       { font-size:22px; font-weight:900; line-height:1.05; letter-spacing:-.6px; }
+.pos-subrow     { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:5px; }
+.pos-source-chip{ font-size:10px; color:var(--text2); background:var(--bg4); border:1px solid var(--border); border-radius:999px; padding:3px 8px; font-family:var(--mono); }
+.pos-stale-note { font-size:10px; color:var(--gold); font-family:var(--mono); }
+.pos-badge-col  { display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex-shrink:0; }
+
+.status-badge { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1px; padding:4px 9px; border-radius:999px; font-family:var(--mono); }
+.status-badge.live    { background:var(--green-dim); color:var(--green); animation:shimmer 2.5s infinite; }
+.status-badge.won     { background:var(--green-dim); color:var(--green); }
+.status-badge.lost    { background:var(--red-dim);   color:var(--red); }
+.status-badge.pending { background:var(--bg4);       color:var(--text3); }
+.action-pill { font-size:11px; font-weight:800; padding:5px 11px; border-radius:999px; font-family:var(--mono); letter-spacing:.5px; }
+.action-pill.yes { background:rgba(0,208,158,.12);   color:var(--green); border:1px solid rgba(0,208,158,.25); }
+.action-pill.no  { background:rgba(255,77,109,.12);  color:var(--red);   border:1px solid rgba(255,77,109,.25); }
+
+/* Probability track v2 — Polymarket-style marker track */
+.prob-wrap { margin:4px 0 10px; }
+.prob-track-v2 { position:relative; height:10px; overflow:visible; margin-bottom:26px; border-radius:6px; background:var(--bg4); }
+.prob-base-fill { position:absolute; top:0; left:0; height:100%; background:rgba(255,255,255,.05); border-radius:6px; }
+.prob-zone-fill { position:absolute; top:0; height:100%; }
+.prob-zone-fill.positive { background:linear-gradient(90deg,rgba(0,208,158,.15),rgba(0,208,158,.35)); }
+.prob-zone-fill.negative { background:linear-gradient(90deg,rgba(255,77,109,.35),rgba(255,77,109,.15)); }
+.prob-marker { position:absolute; top:-4px; width:2px; height:18px; border-radius:1px; }
+.prob-marker.sl    { background:var(--red); }
+.prob-marker.entry { background:var(--gold); }
+.prob-marker.tp    { background:var(--green); }
+.prob-marker-now { position:absolute; top:50%; width:14px; height:14px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green),0 0 16px rgba(0,208,158,.4); transform:translate(-50%,-50%); animation:pulse 2s infinite; z-index:2; }
+.prob-marker-labels { position:absolute; top:14px; left:0; right:0; height:18px; }
+.prob-mlabel { position:absolute; transform:translateX(-50%); font-size:8px; font-family:var(--mono); letter-spacing:.3px; font-weight:700; white-space:nowrap; }
+.prob-mlabel.sl    { color:var(--red); }
+.prob-mlabel.entry { color:var(--gold); }
+.prob-mlabel.now   { color:var(--green); }
+.prob-mlabel.now.losing { color:var(--red); }
+.prob-mlabel.tp    { color:var(--green); }
+/* Keep legacy .prob-track for shadow feed simple bars */
+.prob-track { height:8px; background:var(--bg4); border-radius:6px; overflow:hidden; display:flex; margin-top:4px; }
+.prob-fill-yes { height:100%; background:linear-gradient(90deg,#007c5e,var(--green)); transition:width .9s cubic-bezier(.4,0,.2,1); }
+.prob-fill-no  { height:100%; background:linear-gradient(90deg,var(--red),#ff2d55);   transition:width .9s cubic-bezier(.4,0,.2,1); }
+
+/* Stats grid */
+.pos-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:12px 0 10px; }
+.stat-box  { background:rgba(23,32,53,.92); border:1px solid var(--border); border-radius:10px; padding:9px 10px; }
+.stat-label{ font-size:8px; color:var(--text3); text-transform:uppercase; letter-spacing:.6px; margin-bottom:2px; font-family:var(--mono); }
+.stat-val  { font-size:15px; font-weight:800; font-family:var(--mono); line-height:1; }
+
+/* P&L large display */
+.pnl-large { font-size:26px; font-weight:900; font-family:var(--mono); line-height:1; font-variant-numeric:tabular-nums; letter-spacing:-.6px; }
+.pnl-large.positive { color:var(--green); }
+.pnl-large.negative { color:var(--red); }
+.pnl-large.neutral  { color:var(--text2); }
+.pnl-est-label { font-size:8px; color:var(--text3); text-transform:uppercase; letter-spacing:.6px; font-family:var(--mono); margin-top:2px; text-align:right; }
+
+/* Game context pill */
+.game-ctx-pill { display:inline-flex; align-items:center; gap:5px; background:rgba(23,32,53,.92); border:1px solid var(--border); border-radius:999px; padding:4px 10px; font-size:10px; font-family:var(--mono); color:var(--text2); font-weight:700; margin-bottom:10px; }
+.game-ctx-pill .live-dot { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 5px var(--green); animation:pulse 2s infinite; flex-shrink:0; }
+
+/* Sparkline */
+.sparkline-wrap { margin-top:8px; }
+.sparkline-label { font-size:8px; color:var(--text4); font-family:var(--mono); text-transform:uppercase; letter-spacing:.5px; margin-bottom:3px; }
+.sparkline-wrap svg { display:block; }
+
+/* Confidence meter */
+.conf-wrap   { margin-bottom:8px; }
+.conf-row    { display:flex; justify-content:space-between; margin-bottom:4px; }
+.conf-label  { font-size:9px; color:var(--text3); text-transform:uppercase; letter-spacing:.6px; font-family:var(--mono); }
+.conf-val    { font-size:11px; font-weight:700; font-family:var(--mono); }
+.conf-track  { height:5px; background:var(--bg4); border-radius:4px; overflow:hidden; }
+.conf-fill   { height:100%; background:linear-gradient(90deg,var(--blue),var(--purple)); border-radius:4px; transition:width .9s cubic-bezier(.4,0,.2,1); animation:fillBar .8s cubic-bezier(.4,0,.2,1) both; }
+
+/* TP/SL */
+.tpsl-row { display:flex; gap:7px; margin-top:8px; }
+.tpsl-box  { flex:1; border-radius:6px; padding:7px 10px; font-family:var(--mono); }
+.tpsl-box.tp { background:rgba(0,208,158,.07);  border:1px solid rgba(0,208,158,.2); }
+.tpsl-box.sl { background:rgba(255,77,109,.07); border:1px solid rgba(255,77,109,.2); }
+.tpsl-label  { font-size:9px; color:var(--text3); text-transform:uppercase; letter-spacing:.6px; }
+.tpsl-val    { font-size:16px; font-weight:800; line-height:1.1; }
+.tpsl-box.tp .tpsl-val { color:var(--green); }
+.tpsl-box.sl .tpsl-val { color:var(--red); }
+
+/* Reasons */
+.reasons-row { display:flex; gap:5px; flex-wrap:wrap; margin-top:8px; }
+.reason-tag  { font-size:10px; color:var(--text3); background:var(--bg4); border-radius:4px; padding:2px 7px; font-family:var(--mono); border:1px solid var(--border); }
+
+/* ── Shadow Feed stats / cards ── */
+.sh-stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin-bottom:12px; opacity:.88; }
+.sh-stat       { background:rgba(17,28,46,.78); border:1px solid var(--border); border-radius:var(--r-sm); padding:10px; text-align:center; }
+.sh-stat-val   { font-size:20px; font-weight:800; font-family:var(--mono); line-height:1; }
+.sh-stat-label { font-size:9px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-top:3px; }
+
+.shadow-card { background:var(--bg3); border:1px solid var(--border); border-radius:var(--r-sm); padding:11px 12px; margin-bottom:7px; transition:border-color .3s; }
+.shadow-card.won  { border-color:rgba(0,208,158,.35); }
+.shadow-card.lost { border-color:rgba(255,77,109,.35); }
+.shadow-top  { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:5px; }
+.shadow-team { font-size:14px; font-weight:700; }
+.shadow-match{ font-size:10px; color:var(--text3); font-family:var(--mono); }
+.shadow-right{ display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+.shadow-badges { display:flex; gap:4px; align-items:center; }
+.ts-ago { font-size:9px; color:var(--text4); font-family:var(--mono); }
+.shadow-details { display:flex; gap:8px; flex-wrap:wrap; font-size:10px; color:var(--text3); font-family:var(--mono); }
+.shadow-details b { color:var(--text2); font-weight:600; }
+
+/* Compact shadow ticker */
+.shadow-ticker-row { display:flex; align-items:center; gap:8px; padding:7px 10px; border-left:3px solid var(--border2); border-radius:0 6px 6px 0; background:var(--bg3); margin-bottom:5px; animation:tickerIn .25s ease forwards; }
+.shadow-ticker-row.won  { border-left-color:var(--green); }
+.shadow-ticker-row.lost { border-left-color:var(--red); }
+.shadow-ticker-row.live { border-left-color:var(--blue); }
+.tk-team  { font-size:12px; font-weight:700; min-width:48px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tk-game  { font-size:10px; color:var(--text3); font-family:var(--mono); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tk-edge  { font-size:11px; font-weight:700; font-family:var(--mono); flex-shrink:0; }
+.tk-badge { font-size:9px; font-weight:700; padding:2px 6px; border-radius:4px; font-family:var(--mono); flex-shrink:0; }
+.tk-badge.yes { background:rgba(0,208,158,.12); color:var(--green); border:1px solid rgba(0,208,158,.25); }
+.tk-badge.no  { background:rgba(255,77,109,.12); color:var(--red);   border:1px solid rgba(255,77,109,.25); }
+.tk-ago   { font-size:9px; color:var(--text4); font-family:var(--mono); flex-shrink:0; }
+
+/* ── Games ticker ── */
+.games-strip { padding:8px 16px 4px; border-bottom:1px solid var(--border); }
+.games-ticker { display:flex; flex-wrap:wrap; gap:6px; }
+.game-chip {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 10px; border-radius:999px;
+  background:var(--bg3); border:1px solid var(--border);
+  font-size:11px; font-family:var(--mono); color:var(--text2);
+}
+.game-chip.live { background:var(--green-dim); border-color:rgba(0,208,158,.25); color:var(--green); }
+.game-chip.final, .game-chip.scheduled { color:var(--text3); }
+.game-chip .chip-status { opacity:.9; }
+
+/* ── KPI strip ── */
+.kpi-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; padding:12px 16px; border-bottom:1px solid var(--border); }
+.kpi  { background:var(--bg3); border:1px solid var(--border); border-radius:var(--r-sm); padding:9px 11px; }
+.kpi-label { font-size:8px; color:var(--text3); text-transform:uppercase; letter-spacing:.8px; margin-bottom:3px; font-family:var(--mono); }
+.kpi-val   { font-size:16px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
+.kpi-sub   { font-size:9px; color:var(--text3); margin-top:2px; font-family:var(--mono); }
+
+/* ── Details drawer (collapsible on mobile) ── */
+.drawer { display:none; }
+.drawer.open { display:block; border-top:1px solid var(--border); }
+
+/* ── Tabs ── */
+.tab-nav { display:flex; overflow-x:auto; scrollbar-width:none; padding:0 16px; border-bottom:1px solid var(--border); background:rgba(13,15,20,.96); position:sticky; top:68px; z-index:250; }
+.tab-nav::-webkit-scrollbar { display:none; }
+.tab-btn { flex-shrink:0; height:46px; padding:0 16px; font-size:13px; font-weight:700; color:var(--text3); cursor:pointer; border:none; background:none; border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .15s, border-color .15s; font-family:var(--font); letter-spacing:.4px; }
+.tab-btn:hover { color:var(--text); }
+.tab-btn.active { color:var(--color-accent); border-bottom-color:var(--color-accent); }
+.tab-panel { padding:14px 16px; display:none; max-height:none; overflow-y:auto; }
+.tab-panel.active { display:block; }
+
+/* ── Trade cards ── */
+.trade-card { background:rgba(17,28,46,.78); border:1px solid var(--border); border-radius:var(--r-sm); padding:10px 12px; margin-bottom:6px; display:flex; align-items:center; gap:10px; }
+.trade-main { flex:1; min-width:0; }
+.trade-slug { font-size:12px; color:var(--text); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.trade-meta { display:flex; gap:8px; flex-wrap:wrap; font-size:10px; color:var(--text3); font-family:var(--mono); margin-top:2px; }
+.trade-pnl  { font-size:17px; font-weight:800; font-family:var(--mono); flex-shrink:0; }
+.side-pill  { font-size:10px; font-weight:700; padding:3px 7px; border-radius:4px; font-family:var(--mono); text-transform:uppercase; flex-shrink:0; }
+.side-pill.yes { background:var(--green-dim); color:var(--green); }
+.side-pill.no  { background:var(--red-dim);   color:var(--red); }
+.status-pill { font-size:10px; font-weight:600; padding:2px 7px; border-radius:4px; font-family:var(--mono); }
+.status-pill.open   { background:var(--blue-dim);  color:var(--blue); }
+.status-pill.closed { background:var(--bg4);       color:var(--text3); }
+
+/* ── Candidate cards ── */
+.cand-card { background:var(--bg3); border:1px solid var(--border); border-radius:var(--r-sm); padding:11px 12px; margin-bottom:7px; }
+.cand-top  { display:flex; align-items:center; justify-content:space-between; margin-bottom:5px; gap:8px; }
+.cand-slug { font-size:12px; font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+.cand-conf { font-size:14px; font-weight:800; font-family:var(--mono); }
+.cand-bar-track { height:4px; background:var(--bg4); border-radius:3px; overflow:hidden; margin-bottom:6px; }
+.cand-bar-fill  { height:100%; border-radius:3px; transition:width .4s; }
+.cand-details   { display:flex; gap:8px; flex-wrap:wrap; font-size:10px; color:var(--text3); font-family:var(--mono); }
+.gate-badge     { font-size:9px; padding:1px 5px; border-radius:3px; background:var(--red-dim); color:var(--red); }
+.gate-badge.pass{ background:var(--green-dim); color:var(--green); }
+
+/* ── Market / Signal / Guard cards ── */
+.market-card { background:var(--bg3); border:1px solid var(--border); border-radius:var(--r-sm); padding:10px 12px; margin-bottom:6px; display:flex; align-items:center; gap:10px; }
+.market-q    { flex:1; font-size:12px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.market-prices { display:flex; gap:8px; font-size:12px; font-weight:700; font-family:var(--mono); flex-shrink:0; }
+.signal-card { background:var(--bg3); border:1px solid var(--border); border-radius:var(--r-sm); padding:11px 12px; margin-bottom:7px; }
+.signal-top  { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; gap:8px; }
+.signal-slug { font-size:12px; font-weight:600; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.strength-pill { font-size:10px; font-weight:700; padding:2px 8px; border-radius:4px; font-family:var(--mono); }
+.strength-pill.STRONG   { background:var(--green-dim); color:var(--green); }
+.strength-pill.MODERATE { background:var(--gold-dim);  color:var(--gold); }
+.strength-pill.WEAK     { background:var(--red-dim);   color:var(--red); }
+.signal-details { display:flex; gap:8px; flex-wrap:wrap; font-size:10px; color:var(--text3); font-family:var(--mono); }
+.pos-open-card { border:1px solid var(--border); border-radius:var(--r-sm); padding:9px 11px; margin-bottom:7px; }
+.pos-open-top  { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
+.pos-open-slug { font-size:11px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; margin-right:8px; }
+.pos-open-stats{ display:flex; gap:10px; font-size:10px; color:var(--text3); font-family:var(--mono); }
+.guard-row { display:flex; justify-content:space-between; margin-bottom:5px; }
+.guard-key { font-size:10px; color:var(--text3); font-family:var(--mono); }
+.guard-badge { font-size:9px; padding:1px 5px; border-radius:3px; background:var(--red-dim); color:var(--red); font-family:var(--mono); }
+.guard-badge.pass { background:var(--green-dim); color:var(--green); }
+
+/* ── Form ── */
+.form-input { background:var(--bg3); border:1px solid var(--border); border-radius:6px; color:var(--text); padding:8px 10px; font-size:13px; font-family:var(--mono); outline:none; width:100%; min-height:40px; }
+.form-input:focus { border-color:var(--blue); }
+.form-label { font-size:9px; color:var(--text3); text-transform:uppercase; letter-spacing:.6px; margin-bottom:4px; font-family:var(--mono); display:block; }
+.btn { background:var(--green-dim); border:1px solid var(--green); color:var(--green); border-radius:8px; padding:12px 20px; font-size:14px; font-family:var(--font); cursor:pointer; font-weight:700; transition:all .15s; width:100%; min-height:44px; }
+.btn:hover  { background:var(--green); color:var(--bg); }
+.btn:active { transform:scale(.98); }
+
+/* ── Empty state ── */
+.empty-state { color:var(--text3); text-align:center; padding:34px 18px; font-size:13px; background:rgba(17,28,46,.55); border:1px dashed var(--border2); border-radius:14px; }
+
+/* ── Desktop layout ── */
+@media (min-width:800px) {
+  .app-body { display:grid; grid-template-columns:420px 1fr; align-items:start; }
+  .col-left  { border-right:1px solid var(--border); min-height:calc(100vh - 96px); }
+  .col-right { border-top:none; }
+  .drawer    { display:block !important; border-top:none; }
+  .mob-menu-btn { display:none; }
+  .kpi-strip { grid-template-columns:repeat(6,1fr); }
+  .sh-stats-grid { grid-template-columns:repeat(4,1fr); }
+}
+
+/* ── Mobile fine-tuning ── */
+@media (max-width:480px) {
+  .cmdbar      { padding:12px 12px 10px; gap:8px; }
+  .cmdbar-stats { width:100%; margin-left:0; justify-content:space-between; gap:8px; }
+  .section     { padding:16px 14px; }
+  .hud-value   { font-size:13px; }
+  .hud         { padding:5px 8px; }
+  .pos-card    { padding:14px; border-radius:14px; }
+  .pos-top     { flex-direction:column; align-items:stretch; }
+  .pos-badge-col { align-items:flex-start; }
+  .pos-stats   { grid-template-columns:repeat(2,1fr); }
+  .sh-stats-grid { grid-template-columns:repeat(2,1fr); }
+  .kpi-strip   { grid-template-columns:repeat(2,1fr); }
+  .game-score-num { font-size:30px; }
+  .pos-team    { font-size:18px; }
+  .pnl-large   { font-size:22px; }
+  .game-ctx-pill { font-size:9px; padding:3px 8px; }
+  .prob-mlabel { font-size:7px; }
+  .tk-team     { min-width:40px; }
+}
+</style>
+</head>
+<body>
+<div class="shell-app">
+
+<!-- ── Command Bar ── -->
+<div class="cmdbar">
+  <div class="cmdbar-logo">⚾ Sports Bot</div>
+  <div class="cmdbar-sport">MLB</div>
+  <div id="mode-display"></div>
+  <div class="cmdbar-status">
+    <div class="dot" id="bot-dot"></div>
+    <span id="bot-status-text">connecting…</span>
+    <span class="refresh-ts" id="last-refresh"></span>
+  </div>
+  <div class="cmdbar-bridge off" id="bridge-badge">BRIDGE OFF</div>
+  <div class="cmdbar-stats">
+    <span class="cmdbar-stat">Bankroll: <b id="kpi-bankroll">$—</b></span>
+    <span class="cmdbar-stat">Open: <b id="cmd-open">—</b></span>
+    <span class="cmdbar-stat">Committed: <b id="cash-committed">$—</b></span>
+    <span class="cmdbar-stat">W%: <b id="cmd-winrate">—</b></span>
+    <span class="cmdbar-stat" style="display:none;">P&L: <b id="cmd-pnl">—</b></span>
+    <span class="cmdbar-stat" style="display:none;">Loop: <b id="cmd-loop">—</b></span>
+  </div>
+</div>
+
+<div class="shell-main">
+  <div class="tab-nav shell-top-tabs">
+    <button class="tab-btn active" onclick="switchTab('live',this)">LIVE</button>
+    <button class="tab-btn" onclick="switchTab('positions',this)">POSITIONS</button>
+    <button class="tab-btn" onclick="switchTab('games',this)">GAMES</button>
+    <button class="tab-btn" onclick="switchTab('history',this)">HISTORY</button>
+    <button class="tab-btn" onclick="switchTab('system',this)">SYSTEM</button>
+  </div>
+
+  <div class="shell-body">
+    <div class="shell-tab-content">
+      <section id="tab-live" class="shell-panel active">
+        <div class="shell-placeholder" style="display:none;">LIVE tab shell ready</div>
+
+        <div class="app-body">
+          <div class="col-left">
+            <div class="section">
+              <div class="live-monitor-header">
+                <div>
+                  <div class="section-title">Live Monitor</div>
+                  <div class="live-monitor-sub">Real paper positions over live games and market movement</div>
+                </div>
+                <span class="section-count" id="pos-count">0</span>
+              </div>
+              <div class="cash-strip">
+                <div class="cash-box"><div class="cash-label">Available Cash (not in positions)</div><div class="cash-val blue" id="cash-available">$—</div></div>
+                <div class="cash-box"><div class="cash-label">Capital Committed (entry cost)</div><div class="cash-val gold" id="live-committed">$—</div></div>
+                <div class="cash-box"><div class="cash-label">Live Equity (positions now)</div><div class="cash-val" id="live-equity">$—</div></div>
+              </div>
+              <div id="positions-list" class="monitor-grid">
+                <div class="empty-state">Loading live monitor…</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-right">
+            <div class="section" style="padding-bottom:10px;">
+              <div class="section-header">
+                <span class="section-title">Live Games</span>
+                <span class="refresh-ts">monitor-first</span>
+              </div>
+              <div id="live-games-focus"><div class="empty-state">Loading live game monitor…</div></div>
+            </div>
+
+            <div class="games-strip">
+              <div id="games-ticker" class="games-ticker"><div class="empty-state">loading games…</div></div>
+            </div>
+
+            <div class="kpi-strip">
+              <div class="kpi"><div class="kpi-label">Bankroll</div><div class="kpi-val green">$—</div><div class="kpi-sub" id="kpi-pct">—</div></div>
+              <div class="kpi"><div class="kpi-label">Win Rate R25</div><div class="kpi-val" id="kpi-winrate">—</div><div class="kpi-sub" id="kpi-trades">—</div></div>
+              <div class="kpi"><div class="kpi-label">Open</div><div class="kpi-val blue" id="kpi-open">—</div><div class="kpi-sub" id="kpi-loop">loop —</div></div>
+              <div class="kpi"><div class="kpi-label">Net P&L</div><div class="kpi-val" id="kpi-pnl">$—</div><div class="kpi-sub">realized</div></div>
+              <div class="kpi"><div class="kpi-label">Expectancy</div><div class="kpi-val" id="kpi-exp">—</div><div class="kpi-sub">per trade</div></div>
+              <div class="kpi"><div class="kpi-label">Live Games</div><div class="kpi-val gold" id="kpi-games">—</div><div class="kpi-sub" id="kpi-games-sub">espn</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-positions" class="shell-panel">
+        <div class="section">
+          <div class="section-header">
+            <span class="section-title">Positions</span>
+            <span class="section-count" id="positions-open-count">0 open</span>
+          </div>
+          <div id="positions-summary" class="cash-strip"></div>
+        </div>
+        <div class="section">
+          <div class="section-header"><span class="section-title">Open positions</span></div>
+          <div id="positions-open-list"><div class="empty-state">loading positions…</div></div>
+        </div>
+        <div class="section">
+          <div class="section-header"><span class="section-title">Recently closed</span></div>
+          <div id="positions-closed-list"><div class="empty-state">loading closed positions…</div></div>
+        </div>
+      </section>
+
+      <section id="tab-games" class="shell-panel">
+        <div class="section">
+          <div class="section-header">
+            <span class="section-title">Games</span>
+            <span class="section-count" id="games-total-count">0</span>
+          </div>
+          <div id="games-tab-list"><div class="empty-state">loading games…</div></div>
+        </div>
+      </section>
+
+      <section id="tab-history" class="shell-panel">
+        <div class="section">
+          <div class="section-header">
+            <span class="section-title">History</span>
+            <span class="section-count" id="history-total-count">0 trades</span>
+          </div>
+          <div id="history-summary" class="cash-strip"></div>
+        </div>
+        <div class="section">
+          <div id="history-list"><div class="empty-state">loading trade history…</div></div>
+        </div>
+      </section>
+
+      <section id="tab-system" class="shell-panel">
+        <div class="section">
+          <div class="section-header"><span class="section-title">System diagnostics</span></div>
+          <div id="system-health-grid" class="cash-strip"></div>
+        </div>
+        <div class="section">
+          <div class="section-header"><span class="section-title">Stream health</span></div>
+          <div id="system-stream-status"><div class="empty-state">loading stream health…</div></div>
+        </div>
+        <div class="section">
+          <div class="section-header"><span class="section-title">Process topology</span></div>
+          <div id="system-process-status"><div class="empty-state">loading process topology…</div></div>
+        </div>
+        <div class="section">
+          <div class="section-header"><span class="section-title">Diagnostics references</span></div>
+          <div id="system-diagnostics-list"><div class="empty-state">loading diagnostics…</div></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="drawer" id="drawer" style="display:none;">
+      <div id="tab-trades" class="tab-panel">
+        <div class="section-header" style="margin-bottom:8px;"><span class="section-title">Trade Log</span><span class="refresh-ts">secondary history</span></div>
+        <div id="trades-list"><div class="empty-state">loading…</div></div>
+      </div>
+
+      <div id="tab-shadow" class="tab-panel">
+        <div class="section-header" style="margin-bottom:10px;">
+          <span class="section-title">Shadow Feed</span>
+          <span class="refresh-ts" id="sh-log-age"></span>
+        </div>
+        <div class="sh-stats-grid">
+          <div class="sh-stat"><div class="sh-stat-val blue" id="sh-actionable">—</div><div class="sh-stat-label">Signals</div></div>
+          <div class="sh-stat"><div class="sh-stat-val dim" id="sh-notrade">—</div><div class="sh-stat-label">No Trade</div></div>
+          <div class="sh-stat"><div class="sh-stat-val" id="sh-winrate">—</div><div class="sh-stat-label">Win Rate</div></div>
+          <div class="sh-stat"><div class="sh-stat-val" id="sh-pnl-val">—</div><div class="sh-stat-label">P&L (u)</div></div>
+        </div>
+        <div id="shadow-feed"><div class="empty-state">loading shadow data…</div></div>
+      </div>
+
+      <div id="tab-candidates" class="tab-panel">
+        <div style="display:flex;gap:12px;font-size:10px;color:var(--text3);margin-bottom:10px;font-family:var(--mono);">
+          min conf: <span class="gold" id="thr-conf">—</span> ·
+          max spread: <span class="gold" id="thr-spread">—</span> ·
+          min depth: <span class="gold" id="thr-depth">—</span>
+        </div>
+        <div id="candidates-list"><div class="empty-state">loading…</div></div>
+      </div>
+
+      <div id="tab-manual" class="tab-panel">
+        <div style="margin-bottom:16px;">
+          <div style="font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;font-family:var(--mono);">Bot Open Positions</div>
+          <div id="open-positions"><div class="empty-state">no open positions</div></div>
+        </div>
+        <div style="margin-bottom:16px;">
+          <div style="font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;font-family:var(--mono);">Guard Stack</div>
+          <div id="guard-state"><div class="empty-state">—</div></div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;font-family:var(--mono);">Manual Trade Entry</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div><label class="form-label">Market Slug</label><input class="form-input" id="mt-slug" placeholder="mlb-yankees-vs-…"></div>
+          <div style="display:grid;grid-template-columns:1fr 80px 70px;gap:8px;">
+            <div><label class="form-label">Side</label><select class="form-input" id="mt-side"><option>BUY_YES</option><option>BUY_NO</option></select></div>
+            <div><label class="form-label">Entry $</label><input class="form-input" id="mt-entry" type="number" step="0.01" min="0.01" max="0.99" placeholder="0.65"></div>
+            <div><label class="form-label">Qty $</label><input class="form-input" id="mt-qty" type="number" step="1" placeholder="50"></div>
+          </div>
+          <div><label class="form-label">Note</label><input class="form-input" id="mt-note" placeholder="pitcher matchup…"></div>
+          <button class="btn" onclick="submitManualTrade()">Enter Trade</button>
+          <div id="mt-result" style="font-size:11px;color:var(--text3);font-family:var(--mono);text-align:center;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Utils ─────────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fmt2   = n => (n == null ? '—' : Number(n).toFixed(2));
+const fmtPct = n => (n == null ? '—' : (n >= 0 ? '+' : '') + Number(n).toFixed(1) + '%');
+const fmtPx  = n => (n == null ? '—' : (Number(n) * 100).toFixed(1) + '¢');
+const fmtUsd = n => (n == null ? '—' : (n >= 0 ? '+$' : '-$') + Math.abs(Number(n)).toFixed(2));
+const clr    = n => (n == null ? '' : n >= 0 ? 'green' : 'red');
+const timeAgo = iso => {
+  if (!iso) return '';
+  const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+  if (s < 60) return s + 's';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  return Math.floor(s/3600) + 'h ago';
+};
+const humanAge = iso => {
+  if (!iso) return 'Freshness unknown';
+  const delta = Math.max(0, Math.floor((Date.now() - new Date(iso)) / 1000));
+  const h = Math.floor(delta / 3600);
+  const m = Math.floor((delta % 3600) / 60);
+  const s = delta % 60;
+  if (h > 0) return `${h}h ${m}m ago`;
+  if (m > 0) return `${m}m ${s}s ago`;
+  return `${s}s ago`;
+};
+const shortTime = iso => {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:false});
+};
+const TEAM_ABBR = {
+  'New York Yankees':'NYY','Boston Red Sox':'BOS','Los Angeles Dodgers':'LAD',
+  'San Francisco Giants':'SF','Chicago Cubs':'CHC','Chicago White Sox':'CWS',
+  'Houston Astros':'HOU','Atlanta Braves':'ATL','New York Mets':'NYM',
+  'Philadelphia Phillies':'PHI','Toronto Blue Jays':'TOR','Tampa Bay Rays':'TB',
+  'Baltimore Orioles':'BAL','Minnesota Twins':'MIN','Cleveland Guardians':'CLE',
+  'Detroit Tigers':'DET','Kansas City Royals':'KC','Oakland Athletics':'OAK',
+  'Seattle Mariners':'SEA','Los Angeles Angels':'LAA','Texas Rangers':'TEX',
+  'Colorado Rockies':'COL','Arizona Diamondbacks':'ARI','San Diego Padres':'SD',
+  'Miami Marlins':'MIA','Washington Nationals':'WSH','Pittsburgh Pirates':'PIT',
+  'Cincinnati Reds':'CIN','Milwaukee Brewers':'MIL','St. Louis Cardinals':'STL',
+};
+const shortTeam = n => TEAM_ABBR[n] || (n||'?').split(' ').pop().slice(0,6);
+const slugToGameParts = slug => {
+  const m = (slug||'').match(/^mlb-([a-z]+)-([a-z]+)-\d{4}-\d{2}-\d{2}$/);
+  return m ? { away: m[1].toUpperCase(), home: m[2].toUpperCase() } : null;
+};
+const ordinal   = n => { const s=['th','st','nd','rd'],v=n%100; return s[(v-20)%10]||s[v]||s[0]; };
+const fmtDuration = iso => {
+  if (!iso) return '—';
+  const sec = Math.max(0, Math.floor((Date.now() - new Date(iso)) / 1000));
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let latestState = null;
+let latestShadowData = { recs: [], pnl: {} };
+let latestTrades = [];
+let _lastRenderedOpenSlugs = '';
+let _lastRenderedClosedCount = -1;
+let latestGames = [];
+let latestOpenPaperPositions = [];
+let stateStream = null;
+let latestStreamTs = null;
+let liveCardNodes = new Map();
+let _availableCash = 0;
+
+async function fetchState() {
+  try {
+    latestState = await (await fetch('/api/state')).json();
+    renderState(latestState);
+    renderUnifiedPositions();
+  } catch(e) {}
+}
+function renderState(s) {
+  latestState = s;
+  const dot = $('bot-dot'), txt = $('bot-status-text');
+  let systemText = 'OFFLINE';
+  if (s.stale) {
+    dot.className = 'dot stale';
+    txt.textContent = 'stale ' + (s.file_age_sec ? Math.round(s.file_age_sec)+'s' : '');
+    systemText = 'STALE';
+  } else if (s.error && !s.loop_count) {
+    dot.className = 'dot dead'; txt.textContent = 'bot offline';
+    systemText = 'OFFLINE';
+  } else {
+    dot.className = 'dot live'; txt.textContent = 'loop ' + (s.loop_count ?? '?');
+    systemText = 'LIVE · L' + (s.loop_count ?? '?');
+  }
+  const modeText = (s.mode?.mode || s.mode || 'neutral').toString().toUpperCase();
+  const br  = s.bankroll || {}, net = br.net_pnl ?? 0, pct = br.pct_gain ?? 0;
+  $('kpi-bankroll').textContent = '$' + fmt2(br.current ?? br.start ?? 500);
+  $('cash-available').textContent = '$' + fmt2(br.available_cash ?? br.current ?? br.start ?? 500);
+  $('cash-committed').textContent = '$' + fmt2(br.capital_committed ?? 0);
+  if ($('live-committed')) $('live-committed').textContent = '$' + fmt2(br.capital_committed ?? 0);
+  _availableCash = br.available_cash ?? 0;
+  $('kpi-bankroll').className = 'kpi-val ' + clr(net);
+  $('kpi-pct').textContent = fmtPct(pct);
+  $('kpi-pct').className = 'kpi-sub ' + clr(pct);
+  $('kpi-pnl').textContent = (net >= 0 ? '+$' : '-$') + Math.abs(net).toFixed(2);
+  $('kpi-pnl').className = 'kpi-val ' + clr(net);
+  $('cmd-pnl').textContent = (net >= 0 ? '+$' : '-$') + Math.abs(net).toFixed(2);
+  const r25 = s.r25 || {}, perf = s.performance || {};
+  const wr = r25.win_rate ?? perf.win_rate;
+  $('kpi-winrate').textContent = wr != null ? (wr*100).toFixed(0)+'%' : '—';
+  $('cmd-winrate').textContent = s?.r25?.win_rate != null ? (s.r25.win_rate * 100).toFixed(0) + '%' : '—';
+  $('kpi-winrate').className = 'kpi-val ' + (wr == null ? '' : wr >= .5 ? 'green' : 'red');
+  $('kpi-trades').textContent = (s.total_closed ?? 0) + ' trades';
+  const positions = Array.isArray(s.open_positions)
+    ? s.open_positions.filter(p => p && typeof p === 'object')
+    : [];
+  $('cmd-open').textContent = '…';
+  $('kpi-open').textContent = '…';
+  $('kpi-loop').textContent = 'loop ' + (s.loop_count ?? '?');
+  $('cmd-loop').textContent = s.loop_count ?? '?';
+  const exp = r25.expectancy ?? perf.expectancy;
+  $('kpi-exp').textContent = exp != null ? (exp >= 0 ? '+$' : '-$') + Math.abs(exp).toFixed(2) : '—';
+  $('kpi-exp').className = 'kpi-val ' + clr(exp);
+  $('mode-display').innerHTML = `<span class="mode-badge ${(s.mode?.mode || s.mode || 'neutral').toString().toLowerCase()}">${(s.mode?.mode || s.mode || 'neutral').toString().toLowerCase()}</span>`;
+  const bridgeEnabled = !!s.bridge_enabled;
+  const bridgeBadge = $('bridge-badge');
+  bridgeBadge.textContent = bridgeEnabled ? 'BRIDGE ON' : 'BRIDGE OFF';
+  bridgeBadge.className = 'cmdbar-bridge ' + (bridgeEnabled ? 'on' : 'off');
+  renderBotPositions(positions);
+  renderGuardState(s);
+  renderPositionsTab(latestOpenPaperPositions, latestTrades, s);
+  renderSystemTab(s, null, latestShadowData);
+}
+
+function computeLiveEquity(openPaperPositions) {
+  let total = 0;
+  let hasAny = false;
+  for (const r of openPaperPositions) {
+    if (r.qty == null || r.current_price == null) continue;
+    hasAny = true;
+    total += Number(r.qty) * Number(r.current_price);
+  }
+  return hasAny ? total : null;
+}
+function renderBotPositions(positions) {
+  if (!positions.length) { $('open-positions').innerHTML = '<div class="empty-state">no open positions</div>'; return; }
+  $('open-positions').innerHTML = positions.map(p => {
+    const side = (p.side||'').includes('YES') ? 'yes' : 'no';
+    const slug = p.market_slug || '', ss = slug.length>32 ? slug.slice(0,32)+'…' : slug;
+    return `<div class="pos-open-card">
+      <div class="pos-open-top">
+        <span class="pos-open-slug" title="${slug}">${ss}</span>
+        <span class="side-pill ${side}">${side.toUpperCase()}</span>
+      </div>
+      <div class="pos-open-stats">
+        <span>entry: <b class="blue">${fmtPx(p.entry_px)}</b></span>
+        <span>conf: <b class="gold">${p.confidence ? (p.confidence*100).toFixed(0)+'%' : '—'}</b></span>
+        <span>${p.mode || ''}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+function renderGuardState(s) {
+  const g = s.last_guard_result || s.guard || {};
+  if (!Object.keys(g).length) { $('guard-state').innerHTML = '<div class="empty-state">—</div>'; return; }
+  $('guard-state').innerHTML = Object.entries(g).slice(0,8).map(([k,v]) => {
+    const pass = v === true || v === 'pass' || v === 'ok';
+    const val  = typeof v === 'boolean' ? (v ? '✓' : '✗') : String(v);
+    return `<div class="guard-row"><span class="guard-key">${k}</span><span class="guard-badge ${pass?'pass':''}">${val}</span></div>`;
+  }).join('');
+}
+async function fetchBankroll() {
+  try { await fetch('/api/bankroll'); } catch(e) {}
+}
+
+// ── Games ─────────────────────────────────────────────────────────────────────
+async function fetchGames() {
+  try {
+    const d = await (await fetch('/api/games')).json();
+    latestGames = d.games || [];
+    renderGames(latestGames, d.fetched_at);
+    renderUnifiedPositions();
+    renderLiveGamesFocus(latestGames, latestOpenPaperPositions);
+    if (d.error) $('kpi-games-sub').textContent = 'error';
+  } catch(e) {}
+}
+function buildDiamond(f1, f2, f3) {
+  const g = '#00d09e', e = '#172035';
+  return `<svg class="diamond-svg" viewBox="0 0 38 38">
+    <rect x="15" y="4"  width="8" height="8" transform="rotate(45 19 8)"  fill="${f2?g:e}" rx="1"/>
+    <rect x="4"  y="15" width="8" height="8" transform="rotate(45 8 19)"  fill="${f3?g:e}" rx="1"/>
+    <rect x="26" y="15" width="8" height="8" transform="rotate(45 30 19)" fill="${f1?g:e}" rx="1"/>
+    <polygon points="19,34 16,31 16,28 22,28 22,31" fill="#172035"/>
+  </svg>`;
+}
+function renderGames(games, fetchedAt) {
+  const live = games.filter(g => { const s=(g.status||'').toLowerCase(); return !s.includes('final')&&!s.includes('scheduled')&&!s.includes('pre')&&!s.includes('warmup'); });
+  $('kpi-games').textContent = live.length;
+  $('kpi-games-sub').textContent = fetchedAt ? timeAgo(fetchedAt) : 'espn';
+  if (!games.length) { $('games-ticker').innerHTML = '<div class="empty-state">no games today</div>'; return; }
+  const sorted = [...games].sort((a,b) => {
+    const r = s => { const v=(s||'').toLowerCase(); return v.includes('final')?2:v.includes('scheduled')||v.includes('pre')||v.includes('warmup')?1:0; };
+    return r(a.status) - r(b.status);
+  });
+  $('games-ticker').innerHTML = sorted.map(g => {
+    const statusRaw = (g.status || '').toLowerCase();
+    const isLive = !['final','scheduled','pre_game','pre','warmup'].some(s => statusRaw.includes(s));
+    const isFinal = statusRaw.includes('final');
+    const status = isLive && g.inning ? `i${g.inning}` : (isFinal ? 'F' : 'S');
+    const chipCls = isLive ? 'live' : (isFinal ? 'final' : 'scheduled');
+    return `<div class="game-chip ${chipCls}">${shortTeam(g.away||'?')} ${g.away_score} · ${shortTeam(g.home||'?')} ${g.home_score} <span class="chip-status">(${status})</span></div>`;
+  }).join('');
+  renderGamesTab(games, latestOpenPaperPositions, latestShadowData);
+}
+
+// ── Shadow / Positions ────────────────────────────────────────────────────────
+const _seenSlugs    = new Set();
+const _priceHistory = new Map(); // slug → float[] (last 8 fair_win_prob values)
+const _lastFairProb = new Map(); // slug → previous fair value (flash detection)
+
+async function fetchShadow() {
+  try {
+    const data = await (await fetch('/api/mlb-shadow?limit=30')).json();
+    latestShadowData = data;
+    for (const r of (data.recs || [])) {
+      const slug = r.market_slug; if (!slug) continue;
+      const fair = r.fair_win_prob; if (fair == null) continue;
+      const hist = _priceHistory.get(slug) || [];
+      if (!hist.length || hist[hist.length - 1] !== fair) {
+        hist.push(fair);
+        if (hist.length > 8) hist.shift();
+        _priceHistory.set(slug, hist);
+      }
+    }
+    renderShadow(data);
+  } catch(e) {}
+}
+
+function renderShadow(data) {
+  const pnl = data.pnl || {}, wr = pnl.win_rate, pnlU = pnl.pnl_units;
+
+  // Compute total unrealized P&L across active positions
+  const totalUnrlzd = data?.pnl?.unrealized_pnl_dollars;
+  const unrlzdEl = $('hud-unrlzd');
+  unrlzdEl.textContent = totalUnrlzd != null ? fmtUsd(totalUnrlzd) : '—';
+  unrlzdEl.className = 'hud-value ' + (totalUnrlzd != null ? clr(totalUnrlzd) : '');
+
+  // Stats bar
+  $('sh-actionable').textContent = data.actionable_count ?? 0;
+  $('sh-notrade').textContent    = data.no_trade_count ?? 0;
+  const wrEl = $('sh-winrate');
+  wrEl.textContent = wr != null ? (wr*100).toFixed(1)+'%' : '—';
+  wrEl.className = 'sh-stat-val ' + (wr == null ? '' : wr >= .5 ? 'green' : 'red');
+  const pEl = $('sh-pnl-val');
+  pEl.textContent = pnlU != null ? (pnlU >= 0 ? '+' : '') + pnlU.toFixed(2) : '—';
+  pEl.className = 'sh-stat-val ' + clr(pnlU);
+  if (data.log_age_sec != null) $('sh-log-age').textContent = Math.round(data.log_age_sec) + 's ago';
+
+  if (data.error && !(data.recs||[]).length) {
+    $('shadow-feed').innerHTML    = `<div class="empty-state">${data.error}</div>`;
+    return;
+  }
+  const recs = data.recs || [];
+  renderShadowFeed(recs);
+  renderGamesTab(latestGames, latestOpenPaperPositions, data);
+  renderSystemTab(latestState, null, data);
+}
+
+function sourceBadge(metaSource, type) {
+  if (type === 'shadow') return '<span class="status-badge pending">SHADOW</span>';
+  if (metaSource === 'model_bridge') return '<span class="status-badge pending" style="color:var(--blue);background:var(--blue-dim);">PAPER-MODEL</span>';
+  if (metaSource === 'manual') return '<span class="status-badge pending" style="color:var(--gold);background:var(--gold-dim);">MANUAL</span>';
+  return '<span class="status-badge pending" style="color:var(--green);background:var(--green-dim);">PAPER-BOT</span>';
+}
+
+function gameStatusChip(item) {
+  if (item.resolved || item.status === 'closed') return 'FINAL';
+  const gs = (item.game_status || '').toUpperCase();
+  if (gs.includes('FINAL') || gs.includes('POST')) return 'FINAL';
+  if (gs.includes('PRE') || gs.includes('WARMUP') || gs.includes('SCHEDULED')) return 'SCHEDULED';
+  if (gs.includes('PROGRESS') || gs.includes('LIVE')) return 'LIVE';
+  if (item.inning && item.inning > 0) return 'LIVE';
+  return 'SCHEDULED';
+}
+
+function inferTeamsFromTrade(t) {
+  const parts = slugToGameParts(t.market_slug || '');
+  const away = parts?.away || '?';
+  const home = parts?.home || '?';
+  const isYes = (t.side || '') === 'BUY_YES';
+  return {
+    away_team: away,
+    home_team: home,
+    backed_team: isYes ? away : home,
+    faded_team: isYes ? home : away,
+    held_contract_side: isYes ? 'YES' : 'NO',
+    side_label: isYes ? 'WIN' : 'LOSE',
+  };
+}
+
+function buildOpenPaperPositions(trades) {
+  const openPaperTrades = Array.isArray(trades) ? trades.filter(t => t && t.status === 'open') : [];
+  return openPaperTrades.map(t => {
+    const teams = inferTeamsFromTrade(t);
+    const entryPx = Number(t.entry_px ?? 0);
+    const qty = Number(t.qty ?? 0);
+    return {
+      ...t,
+      market_slug: t.market_slug,
+      side: t.side,
+      entry_px: entryPx,
+      exit_px: t.exit_px,
+      pnl_usd: t.pnl_usd,
+      status: t.status,
+      qty,
+      source: t.source,
+      tp_price: t.tp_price,
+      sl_price: t.sl_price,
+      current_price: null,
+      current_price_stale: true,
+      confidence: t.confidence ?? null,
+      ...teams,
+      size_usd: qty && entryPx ? qty * entryPx : null,
+      ts_open: t.ts_open,
+      unrealized_pct: null,
+      live_equity_usd: null,
+      _type: 'paper',
+      _source: t.source,
+    };
+  });
+}
+
+function buildUnifiedPositionCards(items) {
+  return items.map(r => {
+    const isYes = (r.side || '') === 'BUY_YES';
+    const priceClass = r.current_price_stale ? 'gold pos-current-price stale-price' : 'gold pos-current-price';
+    const currentHeldPrice = r.current_price;
+    const unrealizedPct = (currentHeldPrice != null && r.entry_px)
+      ? ((currentHeldPrice - r.entry_px) / r.entry_px) * 100
+      : null;
+    const liveEquityUsd = r.live_equity_usd;
+    const unrealizedUsd = r.unrealized_pnl_usd;
+    const game = `${r.away_team || '?'} @ ${r.home_team || '?'}`;
+    const statusChip = gameStatusChip(r);
+    const staleBadge = r.current_price_stale ? '<span class="status-badge pending">STALE</span>' : '';
+    const marketFreshnessVal = r.source_ts ? humanAge(r.source_ts) : 'Feed age unavailable';
+    const gameFreshnessVal = r.game_source_ts ? humanAge(r.game_source_ts) : 'Game age unavailable';
+    const confPct = r.confidence != null ? (r.confidence * 100).toFixed(0) : '—';
+    const headlineText = r.backed_team ? `${r.backed_team} backed` : 'Backed side';
+    const fadedText = r.faded_team ? `${r.faded_team} faded` : r.market_slug;
+    const timeOpen = fmtDuration(r.ts_open);
+    const currentPriceLabel = 'Current held price';
+
+    return `<div class="pos-card action-${isYes ? 'yes' : 'no'} live" data-slug="${r.market_slug}">
+      <div class="pos-top">
+        <div class="pos-team-col">
+          <div class="pos-matchup">${game}</div>
+          <div class="pos-team">${headlineText}</div>
+          <div class="pos-subrow">
+            <span class="pos-source-chip">${fadedText}</span>
+            <span class="pos-source-chip">${isYes ? 'YES contract' : 'NO contract'}</span>
+            <span class="pos-source-chip">open ${timeOpen}</span>
+            ${staleBadge}
+          </div>
+        </div>
+        <div class="pos-badge-col">
+          <span class="status-badge live">${statusChip}</span>
+          <div class="pnl-large ${clr(unrealizedUsd)} pos-unrealized-usd">${fmtUsd(unrealizedUsd)}</div>
+          <div class="pnl-est-label pos-unrealized-pct">${unrealizedPct != null ? fmtPct(unrealizedPct) : '—'}</div>
+        </div>
+      </div>
+
+      <div class="pos-stats">
+        <div class="stat-box"><div class="stat-label">Entry</div><div class="stat-val blue">${fmtPx(r.entry_px)}</div></div>
+        <div class="stat-box"><div class="stat-label">${currentPriceLabel}</div><div class="stat-val ${priceClass}">${fmtPx(currentHeldPrice)}</div></div>
+        <div class="stat-box"><div class="stat-label">Live Equity</div><div class="stat-val ${clr(liveEquityUsd)} pos-live-equity">${fmtUsd(liveEquityUsd)}</div></div>
+        <div class="stat-box"><div class="stat-label">Size USD</div><div class="stat-val">${fmtUsd(r.size_usd)}</div></div>
+        <div class="stat-box"><div class="stat-label">TP / SL</div><div class="stat-val">${fmtPx(r.tp_price)} / ${fmtPx(r.sl_price)}</div></div>
+        <div class="stat-box"><div class="stat-label">Confidence</div><div class="stat-val blue">${confPct === '—' ? '—' : confPct + '%'}</div></div>
+      </div>
+
+      <div class="pos-stats">
+        <div class="stat-box"><div class="stat-label">Game status</div><div class="stat-val">${r.game_status || statusChip}</div></div>
+        <div class="stat-box"><div class="stat-label">Inning</div><div class="stat-val pos-inning">${r.inning_half ? `${r.inning_half} ${ordinal(r.inning || 0)}` : '—'}</div></div>
+        <div class="stat-box"><div class="stat-label">Score</div><div class="stat-val pos-score">${r.away_score != null && r.home_score != null ? `${r.away_score} - ${r.home_score}` : '—'}</div></div>
+        <div class="stat-box"><div class="stat-label">Outs</div><div class="stat-val pos-outs">${r.outs != null ? r.outs : '—'}</div></div>
+        <div class="stat-box"><div class="stat-label">Game freshness</div><div class="stat-val pos-game-freshness">${gameFreshnessVal}</div></div>
+        <div class="stat-box"><div class="stat-label">Market freshness</div><div class="stat-val pos-market-freshness">${marketFreshnessVal}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function syncLiveCardNodeMap() {
+  liveCardNodes = new Map();
+  document.querySelectorAll('.pos-card[data-slug]').forEach(node => {
+    liveCardNodes.set(node.dataset.slug, node);
+  });
+}
+
+function _applyMarkToCard(node, trade) {
+  const currentHeldPrice = trade.current_price;
+  const unrealizedPct = (currentHeldPrice != null && trade.entry_px)
+    ? ((currentHeldPrice - trade.entry_px) / trade.entry_px) * 100
+    : null;
+  const priceEl = node.querySelector('.pos-current-price');
+  const pnlUsdEl = node.querySelector('.pos-unrealized-usd');
+  const pnlPctEl = node.querySelector('.pos-unrealized-pct');
+  const liveEquityEl = node.querySelector('.pos-live-equity');
+  const inningEl = node.querySelector('.pos-inning');
+  const scoreEl = node.querySelector('.pos-score');
+  const outsEl = node.querySelector('.pos-outs');
+  const gameFreshEl = node.querySelector('.pos-game-freshness');
+  const marketFreshEl = node.querySelector('.pos-market-freshness');
+  const staleBadge = node.querySelector('.status-badge.pending');
+  if (priceEl) {
+    priceEl.textContent = fmtPx(currentHeldPrice);
+    priceEl.className = `stat-val ${trade.current_price_stale ? 'gold pos-current-price stale-price' : 'gold pos-current-price'}`;
+  }
+  if (pnlUsdEl) {
+    pnlUsdEl.textContent = fmtUsd(trade.unrealized_pnl_usd);
+    pnlUsdEl.className = `pnl-large ${clr(trade.unrealized_pnl_usd)} pos-unrealized-usd`;
+  }
+  if (pnlPctEl) pnlPctEl.textContent = unrealizedPct != null ? fmtPct(unrealizedPct) : '—';
+  if (liveEquityEl) {
+    liveEquityEl.textContent = fmtUsd(trade.live_equity_usd);
+    liveEquityEl.className = `stat-val ${clr(trade.live_equity_usd)} pos-live-equity`;
+  }
+  if (inningEl) inningEl.textContent = trade.inning_half ? `${trade.inning_half} ${ordinal(trade.inning || 0)}` : '—';
+  if (scoreEl) scoreEl.textContent = trade.away_score != null && trade.home_score != null ? `${trade.away_score} - ${trade.home_score}` : '—';
+  if (outsEl) outsEl.textContent = trade.outs != null ? trade.outs : '—';
+  if (gameFreshEl) gameFreshEl.textContent = trade.game_source_ts ? humanAge(trade.game_source_ts) : 'Game age unavailable';
+  if (marketFreshEl) marketFreshEl.textContent = trade.source_ts ? humanAge(trade.source_ts) : 'Feed age unavailable';
+  if (staleBadge) staleBadge.style.display = trade.current_price_stale ? '' : 'none';
+}
+
+function updateLivePositionCardInPlace(trade) {
+  // Update all rendered cards for this slug (covers both LIVE and POSITIONS tabs)
+  document.querySelectorAll(`.pos-card[data-slug="${trade.market_slug}"]`).forEach(node => {
+    _applyMarkToCard(node, trade);
+  });
+}
+
+function applyStreamPositionsMark(payload) {
+  latestStreamTs = payload?.ts || null;
+  const marks = new Map((payload?.positions || []).map(p => [p.market_slug, p]));
+  latestOpenPaperPositions = latestOpenPaperPositions.map(p => {
+    const mark = marks.get(p.market_slug);
+    if (!mark) return p;
+    const next = {
+      ...p,
+      current_price: mark.current_price,
+      current_price_stale: !!mark.current_price_stale,
+      unrealized_pnl_usd: mark.unrealized_pnl_usd,
+      live_equity_usd: mark.live_equity_usd,
+      best_bid: mark.best_bid,
+      best_ask: mark.best_ask,
+      spread: mark.spread,
+      source_ts: mark.source_ts,
+      mark_source: mark.mark_source,
+      game_status: mark.game_status,
+      inning: mark.inning,
+      inning_half: mark.inning_half,
+      outs: mark.outs,
+      home_score: mark.home_score,
+      away_score: mark.away_score,
+      game_source_ts: mark.game_source_ts,
+    };
+    updateLivePositionCardInPlace(next);
+    return next;
+  });
+  if (payload?.live_equity_total != null) {
+    $('live-equity').textContent = fmtUsd(payload.live_equity_total);
+    $('live-equity').className = 'cash-val ' + clr(payload.live_equity_total);
+    const _mtm = _availableCash + payload.live_equity_total;
+    $('kpi-bankroll').textContent = '$' + fmt2(_mtm);
+  }
+  const txt = $('bot-status-text');
+  if (txt) {
+    if (!latestStreamTs) {
+      txt.textContent = 'Market feed reconnecting';
+    } else if (payload?.stale) {
+      txt.textContent = 'Market feed live · prices stale';
+    } else {
+      txt.textContent = 'Market feed live';
+    }
+  }
+}
+
+function ensureStateStream() {
+  if (stateStream) return;
+  try {
+    stateStream = new EventSource('/api/stream/state');
+    stateStream.addEventListener('positions_mark', ev => {
+      try {
+        applyStreamPositionsMark(JSON.parse(ev.data));
+      } catch (e) {}
+    });
+    stateStream.onerror = () => {
+      const txt = $('bot-status-text');
+      if (txt) txt.textContent = 'Market feed reconnecting';
+    };
+  } catch (e) {}
+}
+
+function renderUnifiedPositions() {
+  const trades = Array.isArray(latestTrades) ? latestTrades : [];
+  const openPaperPositions = buildOpenPaperPositions(trades);
+  const markMap = new Map((latestOpenPaperPositions || []).map(p => [p.market_slug, p]));
+  latestOpenPaperPositions = openPaperPositions.map(p => ({ ...p, ...(markMap.get(p.market_slug) || {}) }));
+
+  $('pos-count').textContent = latestOpenPaperPositions.length;
+  $('kpi-open').textContent = latestOpenPaperPositions.length;
+  $('cmd-open').textContent = latestOpenPaperPositions.length;
+  const liveEquity = computeLiveEquity(latestOpenPaperPositions);
+  $('live-equity').textContent = fmtUsd(liveEquity);
+  $('live-equity').className = 'cash-val ' + clr(liveEquity);
+  if (!latestOpenPaperPositions.length) {
+    $('positions-list').innerHTML = '<div class="empty-state">No live paper positions right now.<br><span style="font-size:11px;color:var(--text4);font-family:var(--mono);">Live games still appear above, and trade history stays secondary.</span></div>';
+    renderLiveGamesFocus(latestGames, latestOpenPaperPositions);
+    renderPositionsTab(latestOpenPaperPositions, latestTrades, latestState);
+    renderGamesTab(latestGames, latestOpenPaperPositions, latestShadowData);
+    syncLiveCardNodeMap();
+    return;
+  }
+  $('positions-list').innerHTML = buildUnifiedPositionCards(latestOpenPaperPositions);
+  syncLiveCardNodeMap();
+  renderLiveGamesFocus(latestGames, latestOpenPaperPositions);
+  renderPositionsTab(latestOpenPaperPositions, latestTrades, latestState);
+  renderGamesTab(latestGames, latestOpenPaperPositions, latestShadowData);
+}
+
+function calcPnl(r) {
+  if (!r.resolved) return null;
+  const entry = r.action === 'BUY_YES' ? r.ask_yes : r.ask_no;
+  if (!entry || entry <= 0) return null;
+  const won = r.action === 'BUY_YES' ? r.outcome === true : r.outcome === false;
+  return won ? (1.0 / entry - 1.0) : -1.0;
+}
+
+function calcUnrealizedPnl(r) {
+  if (r.unrealized_pnl_dollars != null) return r.unrealized_pnl_dollars;
+  if (r.resolved) return calcPnl(r);
+  const fair = r.fair_win_prob;
+  if (fair == null) return null;
+  if (r.action === 'BUY_YES') {
+    const entry = r.ask_yes; if (!entry || entry <= 0) return null;
+    return (fair - entry) / entry;
+  } else {
+    const entry = r.ask_no; if (!entry || entry <= 0) return null;
+    return ((1 - fair) - entry) / entry;
+  }
+}
+
+function buildSparkline(slug) {
+  const hist = _priceHistory.get(slug);
+  if (!hist || hist.length < 2) return '';
+  const W = 60, H = 20, pad = 2;
+  const mn = Math.min(...hist), mx = Math.max(...hist);
+  const rng = mx - mn || 0.01;
+  const pts = hist.map((v, i) => {
+    const x = pad + (i / (hist.length - 1)) * (W - pad * 2);
+    const y = (H - pad) - ((v - mn) / rng) * (H - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const last = hist[hist.length - 1], first = hist[0];
+  const lineClr = last >= first ? '#00d09e' : '#ff4d6d';
+  return `<div class="sparkline-wrap">
+    <div class="sparkline-label">fair prob trend</div>
+    <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+      <polyline points="${pts}" fill="none" stroke="${lineClr}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>
+  </div>`;
+}
+
+function buildProbTrack(r) {
+  const isYes  = r.action === 'BUY_YES';
+  const entry  = isYes ? r.ask_yes : r.ask_no;
+  const fair   = r.fair_win_prob;
+  if (entry == null || fair == null) return '';
+
+  // Map 0-1 prices → 0-100% track positions
+  // For BUY_YES: entry is ask_yes (¢/100), fair is home win prob
+  // For BUY_NO:  entry is ask_no, "now" is (1-fair) (prob of NO winning)
+  const nowVal   = isYes ? fair : (1 - fair);
+  const entryVal = entry;
+  const slVal    = r.sl_price ?? entry;
+  const tpVal    = r.tp_price ?? entry;
+
+  const clamp = v => Math.min(99, Math.max(1, v * 100));
+  const nowPx   = clamp(nowVal);
+  const entryPx = clamp(entryVal);
+  const slPx    = clamp(slVal);
+  const tpPx    = clamp(tpVal);
+
+  const winning  = nowPx >= entryPx;
+  const zoneLeft = Math.min(nowPx, entryPx);
+  const zoneW    = Math.abs(nowPx - entryPx);
+
+  const suppressSlLabel = Math.abs(entryPx - slPx) < 8;
+
+  const pnlUsd = r.unrealized_pnl_dollars;
+  const pnlSign = pnlUsd != null ? fmtUsd(pnlUsd) : '';
+
+  return `<div class="prob-track-v2">
+    <div class="prob-base-fill" style="width:${nowPx}%"></div>
+    <div class="prob-zone-fill ${winning?'positive':'negative'}" style="left:${zoneLeft}%;width:${zoneW}%"></div>
+    <div class="prob-marker sl"    style="left:${slPx}%"></div>
+    <div class="prob-marker entry" style="left:${entryPx}%"></div>
+    <div class="prob-marker tp"    style="left:${tpPx}%"></div>
+    <div class="prob-marker-now"   style="left:${nowPx}%"></div>
+    <div class="prob-marker-labels">
+      <span class="prob-mlabel sl"    style="left:${slPx}%">${suppressSlLabel?'':'SL'}</span>
+      <span class="prob-mlabel entry" style="left:${entryPx}%">ENTRY</span>
+      <span class="prob-mlabel now ${winning?'':'losing'}" style="left:${nowPx}%">NOW${pnlSign?' '+pnlSign:''}</span>
+      <span class="prob-mlabel tp"    style="left:${tpPx}%">TP</span>
+    </div>
+  </div>`;
+}
+
+function renderShadowFeed(recs) {
+  if (!recs.length) { $('shadow-feed').innerHTML = '<div class="empty-state">no recommendations yet</div>'; return; }
+  const shown = recs.slice(0, 8);
+  $('shadow-feed').innerHTML = shown.map(r => {
+    const isYes  = r.action === 'BUY_YES';
+    const edge   = isYes ? r.edge_yes : r.edge_no;
+    const eStr   = edge != null ? (edge >= 0 ? '+' : '') + (edge*100).toFixed(1)+'%' : '—';
+    const eCls   = clr(edge);
+    const game   = r.away_team && r.home_team ? `${shortTeam(r.away_team)}@${shortTeam(r.home_team)}` : '';
+    const statusChip = gameStatusChip(r);
+    const inn = (statusChip === 'LIVE' && r.inning) ? ` i${r.inning}` : '';
+    const livePnl = fmtUsd(r.unrealized_pnl_dollars);
+    let rowCls   = r.resolved
+      ? ((isYes ? r.outcome === true : r.outcome === false) ? 'won' : 'lost')
+      : 'live';
+    return `<div class="shadow-ticker-row ${rowCls}">
+      <span class="tk-team">${r.tracked_team || '?'}</span>
+      <span class="tk-game">${game}${inn}</span>
+      <span class="tk-edge ${eCls}">${eStr}</span>
+      <span class="tk-badge ${isYes?'yes':'no'}">${isYes?'YES':'NO'}</span>
+      <span class="tk-ago">${r.status_label || 'OPEN'} · ${livePnl} · ${timeAgo(r.ts)}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Trades ────────────────────────────────────────────────────────────────────
+async function fetchTrades() {
+  try {
+    latestTrades = (await (await fetch('/api/trades?limit=60')).json()).trades || [];
+    renderTrades(latestTrades);
+    renderHistoryTab(latestTrades);
+    renderPositionsTab(latestOpenPaperPositions, latestTrades, latestState);
+    renderUnifiedPositions();
+  } catch(e) {}
+}
+function renderTrades(trades) {
+  if (!trades.length) { $('trades-list').innerHTML = '<div class="empty-state">no trades yet</div>'; return; }
+  $('trades-list').innerHTML = trades.map(t => {
+    const pnl  = t.pnl_usd, pnlCls = clr(pnl);
+    const pStr = pnl == null ? '—' : (pnl >= 0 ? '+$' : '-$') + Math.abs(pnl).toFixed(2);
+    const side = (t.side||'').includes('YES') ? 'yes' : 'no';
+    const slug = t.market_slug || '';
+    const teams = tradeTeams(t);
+    const teamDisplay = `${teams.away} @ ${teams.home}`;
+    const sizeUsd = (t.qty && t.entry_px) ? fmtUsd(t.qty * t.entry_px) : '—';
+    const src  = t.source === 'manual' ? ' <span style="color:var(--gold);font-size:9px;">[M]</span>' : '';
+    return `<div class="trade-card">
+      <span class="side-pill ${side}">${teams.direction}</span>
+      <div class="trade-main">
+        <div class="trade-slug" title="${slug}">${teamDisplay}${src}</div>
+        <div class="trade-meta">
+          <span>${teams.backed} ${teams.direction}</span>
+          <span>${shortTime(t.ts_open)}</span>
+          <span class="trade-size">${sizeUsd}</span>
+          <span>${fmtPx(t.entry_px)} → ${fmtPx(t.exit_px)}</span>
+          ${t.reason_close?`<span>${t.reason_close}</span>`:''}
+          ${t.confidence?`<span class="gold">${(t.confidence*100).toFixed(0)}%</span>`:''}
+          <span class="status-pill ${t.status||''}">${t.status||'—'}</span>
+        </div>
+      </div>
+      <div class="trade-pnl ${pnlCls}">${pStr}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Candidates ────────────────────────────────────────────────────────────────
+async function fetchCandidates() {
+  try {
+    const d = await (await fetch('/api/candidates')).json();
+    renderCandidates(d.candidates || [], d.thresholds || {});
+  } catch(e) {}
+}
+function renderCandidates(cands, thr) {
+  $('thr-conf').textContent   = thr.min_confidence ? (thr.min_confidence*100).toFixed(0)+'%' : '—';
+  $('thr-spread').textContent = thr.max_spread ? (thr.max_spread*100).toFixed(1)+'¢' : '—';
+  $('thr-depth').textContent  = thr.min_depth_usd ? '$'+thr.min_depth_usd : '—';
+  if (!cands.length) { $('candidates-list').innerHTML = '<div class="empty-state">no recent candidates</div>'; return; }
+  $('candidates-list').innerHTML = cands.map(c => {
+    const conf = c.confidence ?? 0, min = thr.min_confidence ?? .58, pass = conf >= min;
+    const side = (c.side||'').includes('YES') ? 'yes' : 'no';
+    const slug = c.slug||'', ss = slug.length>32?slug.slice(0,32)+'…':slug;
+    const gate = c.gate_blocked || c.blocked_by || '', reason = c.reason || c.signal_reason || '';
+    return `<div class="cand-card">
+      <div class="cand-top">
+        <span class="cand-slug" title="${slug}">${ss}</span>
+        <div style="display:flex;gap:5px;align-items:center;">
+          <span class="side-pill ${side}">${(c.side||'').replace('BUY_','')}</span>
+          <span class="cand-conf" style="color:${pass?'var(--green)':'var(--gold)'};">${(conf*100).toFixed(1)}%</span>
+        </div>
+      </div>
+      <div class="cand-bar-track"><div class="cand-bar-fill" style="width:${Math.min(100,conf*100)}%;background:${pass?'var(--green)':'var(--gold)'};"></div></div>
+      <div class="cand-details">
+        ${c.yes_price!=null?`<span>yes: ${fmtPx(c.yes_price)}</span>`:''}
+        ${c.spread!=null?`<span>spread: ${(c.spread*100).toFixed(1)}¢</span>`:''}
+        ${gate?`<span class="red">blocked: ${gate}</span>`:(pass?`<span class="green">✓ passed</span>`:'')}
+        ${reason?`<span>sig: ${reason}</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function tradeTeams(t) {
+  const parts = slugToGameParts(t.market_slug || '');
+  const away = parts?.away || '?';
+  const home = parts?.home || '?';
+  const isYes = (t.side || '').includes('YES');
+  return {
+    away,
+    home,
+    backed: isYes ? away : home,
+    faded: isYes ? home : away,
+    direction: isYes ? 'WIN' : 'LOSE',
+  };
+}
+
+function renderHistoryTab(trades) {
+  const closed = (trades || []).filter(t => t.status === 'closed');
+  if (closed.length === _lastRenderedClosedCount) return;
+  _lastRenderedClosedCount = closed.length;
+  $('history-total-count').textContent = `${closed.length} trades`;
+  const totalPnl = closed.reduce((s, t) => s + Number(t.pnl_usd || 0), 0);
+  const wins = closed.filter(t => Number(t.pnl_usd || 0) > 0).length;
+  const winRate = closed.length ? (wins / closed.length) * 100 : null;
+  const avgPnl = closed.length ? totalPnl / closed.length : null;
+  $('history-summary').innerHTML = `
+    <div class="cash-box"><div class="cash-label">Total trades</div><div class="cash-val">${closed.length}</div></div>
+    <div class="cash-box"><div class="cash-label">Win rate</div><div class="cash-val ${clr(winRate != null ? winRate - 50 : null)}">${winRate != null ? winRate.toFixed(1) + '%' : '—'}</div></div>
+    <div class="cash-box"><div class="cash-label">Total P&L</div><div class="cash-val ${clr(totalPnl)}">${fmtUsd(totalPnl)}</div></div>
+    <div class="cash-box"><div class="cash-label">Avg P&L</div><div class="cash-val ${clr(avgPnl)}">${fmtUsd(avgPnl)}</div></div>
+  `;
+  $('history-list').innerHTML = closed.length ? closed.map(t => {
+    const teams = tradeTeams(t);
+    const sizeUsd = (t.qty && t.entry_px) ? fmtUsd(t.qty * t.entry_px) : '—';
+    return `<div class="trade-card">
+      <span class="side-pill ${(t.side||'').includes('YES') ? 'yes' : 'no'}">${teams.direction}</span>
+      <div class="trade-main">
+        <div class="trade-slug">${teams.away} @ ${teams.home}</div>
+        <div class="trade-meta">
+          <span>${shortTime(t.ts_open)}</span>
+          <span>${teams.backed} ${teams.direction}</span>
+          <span>${fmtPx(t.entry_px)} → ${fmtPx(t.exit_px)}</span>
+          <span>${sizeUsd}</span>
+          <span>${t.reason_close || '—'}</span>
+          ${t.confidence?`<span class="gold">${(t.confidence*100).toFixed(0)}%</span>`:''}
+        </div>
+      </div>
+      <div class="trade-pnl ${clr(t.pnl_usd)}">${fmtUsd(t.pnl_usd)}</div>
+    </div>`;
+  }).join('') : '<div class="empty-state">no closed trades yet</div>';
+}
+
+function renderPositionsTab(openPositions, trades, state) {
+  const open = openPositions || [];
+  const closed = (trades || []).filter(t => t.status === 'closed').slice(0, 10);
+  const todayRealized = closed.reduce((sum, t) => sum + Number(t.pnl_usd || 0), 0);
+  const totalOpenEquity = open.reduce((sum, p) => sum + Number(p.live_equity_usd || 0), 0);
+  $('positions-open-count').textContent = `${open.length} open`;
+  $('positions-summary').innerHTML = `
+    <div class="cash-box"><div class="cash-label">Open equity</div><div class="cash-val ${clr(totalOpenEquity)}">${fmtUsd(totalOpenEquity)}</div></div>
+    <div class="cash-box"><div class="cash-label">Realized P&L</div><div class="cash-val ${clr(todayRealized)}">${fmtUsd(todayRealized)}</div></div>
+    <div class="cash-box"><div class="cash-label">Open count</div><div class="cash-val">${open.length}</div></div>
+    <div class="cash-box"><div class="cash-label">Bankroll</div><div class="cash-val">${fmtUsd(state?.bankroll?.current)}</div></div>
+  `;
+  // Only rebuild open position cards when the set of positions changes — SSE updates fields in-place
+  const slugKey = open.map(p => p.market_slug).sort().join(',');
+  if (slugKey !== _lastRenderedOpenSlugs) {
+    _lastRenderedOpenSlugs = slugKey;
+    $('positions-open-list').innerHTML = open.length ? buildUnifiedPositionCards(open) : '<div class="empty-state">no open positions</div>';
+    syncLiveCardNodeMap();
+  }
+  $('positions-closed-list').innerHTML = closed.length ? closed.map(t => {
+    const teams = tradeTeams(t);
+    const sizeUsd = (t.qty && t.entry_px) ? fmtUsd(t.qty * t.entry_px) : '—';
+    return `<div class="trade-card">
+      <span class="side-pill ${(t.side||'').includes('YES') ? 'yes' : 'no'}">${teams.direction}</span>
+      <div class="trade-main">
+        <div class="trade-slug">${teams.away} @ ${teams.home}</div>
+        <div class="trade-meta">
+          <span>${teams.backed} ${teams.direction}</span>
+          <span>${fmtPx(t.entry_px)} → ${fmtPx(t.exit_px)}</span>
+          <span>${sizeUsd}</span>
+          <span>${t.reason_close || '—'}</span>
+          <span>${t.source || 'bot'}</span>
+        </div>
+      </div>
+      <div class="trade-pnl ${clr(t.pnl_usd)}">${fmtUsd(t.pnl_usd)}</div>
+    </div>`;
+  }).join('') : '<div class="empty-state">no recently closed positions</div>';
+}
+
+function renderGamesTab(games, openPositions, shadowData) {
+  const openBySlug = new Map((openPositions || []).map(p => [p.market_slug, p]));
+  const advisoryBySlug = new Map(((shadowData?.recs) || []).map(r => [r.market_slug, r]));
+  $('games-total-count').textContent = String((games || []).length);
+  if (!(games || []).length) {
+    $('games-tab-list').innerHTML = '<div class="empty-state">no games available</div>';
+    return;
+  }
+  const sorted = [...games].sort((a, b) => {
+    const aSlug = `mlb-${shortTeam(a.away||'?').toLowerCase()}-${shortTeam(a.home||'?').toLowerCase()}`;
+    const bSlug = `mlb-${shortTeam(b.away||'?').toLowerCase()}-${shortTeam(b.home||'?').toLowerCase()}`;
+    return (openBySlug.has(bSlug) - openBySlug.has(aSlug));
+  });
+  $('games-tab-list').innerHTML = sorted.map(g => {
+    const slug = `mlb-${shortTeam(g.away||'?').toLowerCase()}-${shortTeam(g.home||'?').toLowerCase()}`;
+    const open = openBySlug.get(slug);
+    const advisory = advisoryBySlug.get(slug);
+    return `<div class="game-monitor-card">
+      <div class="game-monitor-top">
+        <div>
+          <div class="game-monitor-score">${shortTeam(g.away||'?')} ${g.away_score} · ${g.home_score} ${shortTeam(g.home||'?')}</div>
+          <div class="game-monitor-meta"><span>${g.status_display || g.status || 'LIVE'}</span><span>${g.inning_half ? `${g.inning_half} ${ordinal(g.inning || 0)}` : ''}</span><span>${g.outs != null ? `${g.outs} outs` : ''}</span></div>
+        </div>
+        ${open ? '<span class="status-badge live">OPEN POSITION</span>' : ''}
+      </div>
+      ${open ? `<div class="monitor-trade-box"><div class="section-title">Position</div><div class="monitor-trade-grid"><div class="stat-box"><div class="stat-label">Backed</div><div class="stat-val">${open.backed_team} ${open.side_label}</div></div><div class="stat-box"><div class="stat-label">Unrealized</div><div class="stat-val ${clr(open.unrealized_pnl_usd)}">${fmtUsd(open.unrealized_pnl_usd)}</div></div></div></div>` : ''}
+      ${advisory ? `<div class="monitor-trade-box advisory" style="margin-top:10px;opacity:.82;border-style:dashed;"><div class="section-title">Shadow Advisory — Not Executed</div><div class="monitor-trade-grid"><div class="stat-box"><div class="stat-label">Tracked team</div><div class="stat-val">${advisory.tracked_team || '—'}</div></div><div class="stat-box"><div class="stat-label">Confidence</div><div class="stat-val blue">${advisory.confidence != null ? (advisory.confidence * 100).toFixed(0) + '%' : '—'}</div></div></div></div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+async function fetchSystemDiagnostics() {
+  try {
+    const debug = await (await fetch('/api/debug/market-stream')).json();
+    renderSystemTab(latestState, debug, latestShadowData);
+  } catch(e) {
+    renderSystemTab(latestState, null, latestShadowData);
+  }
+}
+
+function renderSystemTab(state, debug, shadowData) {
+  const r25 = state?.r25 || {};
+  $('system-health-grid').innerHTML = `
+    <div class="cash-box"><div class="cash-label">Bridge</div><div class="cash-val">${state?.bridge_enabled ? 'ON' : 'OFF'}</div></div>
+    <div class="cash-box"><div class="cash-label">Loop count</div><div class="cash-val">${state?.loop_count ?? '—'}</div></div>
+    <div class="cash-box"><div class="cash-label">Open trades</div><div class="cash-val">${state?.bankroll?.open_trade_count ?? '—'}</div></div>
+    <div class="cash-box"><div class="cash-label">R25 sample</div><div class="cash-val">${r25.sample_size ?? '—'}</div></div>
+  `;
+  $('system-stream-status').innerHTML = debug ? `
+    <div class="trade-card"><div class="trade-main"><div class="trade-slug">Polymarket stream</div><div class="trade-meta"><span>connected: ${debug.connected}</span><span>thread_alive: ${debug.thread_alive}</span><span>tracked: ${debug.tracked_asset_count}</span><span>mark_count: ${debug.mark_count_received}</span><span>last hub slug: ${debug.last_state_hub_update_slug || '—'}</span></div></div></div>
+  ` : '<div class="empty-state">stream diagnostics unavailable</div>';
+  $('system-process-status').innerHTML = `
+    <div class="trade-card"><div class="trade-main"><div class="trade-slug">bot_core / bridge topology</div><div class="trade-meta"><span>bridge_enabled: ${state?.bridge_enabled}</span><span>capital_committed: ${fmtUsd(state?.bankroll?.capital_committed)}</span><span>available_cash: ${fmtUsd(state?.bankroll?.available_cash)}</span><span>bot stale: ${state?.stale}</span></div></div></div>
+  `;
+  $('system-diagnostics-list').innerHTML = `
+    <div class="trade-card"><div class="trade-main"><div class="trade-slug">Shadow Engine (Advisory Only)</div><div class="trade-meta"><span>signals: ${shadowData?.actionable_count ?? '—'}</span><span>no_trade: ${shadowData?.no_trade_count ?? '—'}</span><span>log_age: ${shadowData?.log_age_sec ?? '—'}s</span></div></div></div>
+  `;
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+let activeTab = 'live';
+function switchTab(name, el) {
+  document.querySelectorAll('.shell-top-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.shell-panel').forEach(p => p.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const panel = $('tab-' + name);
+  if (panel) panel.classList.add('active');
+  activeTab = name;
+  refreshTab(name);
+}
+function refreshTab(name) {
+  if (name === 'live') {
+    fetchState();
+    fetchGames();
+  } else if (name === 'positions') {
+    fetchState();
+  } else if (name === 'games') {
+    fetchGames();
+    fetchShadow();
+  } else if (name === 'history') {
+    fetchTrades();
+  } else if (name === 'system') {
+    fetchCandidates();
+    fetchState();
+    fetchSystemDiagnostics();
+  }
+}
+function toggleDrawer() {
+  const drawer = $('drawer');
+  if (drawer) drawer.classList.toggle('open');
+}
+
+function renderLiveGamesFocus(games, openPaperPositions) {
+  const liveGames = Array.isArray(games)
+    ? games.filter(g => {
+        const s = (g.status || '').toLowerCase();
+        return !s.includes('final') && !s.includes('scheduled') && !s.includes('pre') && !s.includes('warmup');
+      })
+    : [];
+  const liveBySlug = new Map(liveGames.map(g => {
+    const away = shortTeam(g.away || '?');
+    const home = shortTeam(g.home || '?');
+    return [`mlb-${away.toLowerCase()}-${home.toLowerCase()}`, g];
+  }));
+
+  const focused = (openPaperPositions || []).map(p => {
+    const parts = slugToGameParts(p.market_slug || '');
+    const key = parts ? `mlb-${parts.away.toLowerCase()}-${parts.home.toLowerCase()}` : null;
+    const game = key ? liveBySlug.get(key) : null;
+    return { p, game };
+  });
+
+  if (focused.length) {
+    $('live-games-focus').innerHTML = focused.map(({p, game}) => {
+      const parts = slugToGameParts(p.market_slug || '');
+      const away = game ? shortTeam(game.away) : (parts?.away || '?');
+      const home = game ? shortTeam(game.home) : (parts?.home || '?');
+      const side = (p.side || '').includes('YES') ? 'WIN' : 'LOSE';
+      const currentPx = p.current_price;
+      const committed = (p.qty != null && p.entry_px != null) ? (p.qty * p.entry_px) : null;
+      const equity = (p.qty != null && currentPx != null) ? (p.qty * currentPx) : null;
+      const pnl = p.unrealized_pnl_usd ?? null;
+      return `<div class="game-monitor-card action-${(p.side||'').includes('YES') ? 'yes' : 'no'}">
+        <div class="game-monitor-top">
+          <div>
+            <div class="section-title">Live baseball monitor</div>
+            <div class="game-monitor-score">${away} ${game ? game.away_score : '—'} · ${game ? game.home_score : '—'} ${home}</div>
+            <div class="game-monitor-meta">
+              <span class="live-state-pill">${game?.status_display || game?.status || 'Awaiting live game state'}</span>
+              <span class="live-state-pill">${game?.inning_half ? `${game.inning_half} ${ordinal(game.inning || 0)}` : 'inning —'}</span>
+              <span class="live-state-pill">${game?.outs != null ? `${game.outs} outs` : 'outs —'}</span>
+              <span class="live-state-pill">${game?.balls != null && game?.strikes != null ? `${game.balls}-${game.strikes}` : 'count —'}</span>
+            </div>
+            ${game?.away_pitcher || game?.home_pitcher ? `<div class="monitor-pitcher">Pitchers: ${game.away_pitcher || '?'} / ${game.home_pitcher || '?'}</div>` : ''}
+          </div>
+          <div class="pos-badge-col">
+            <span class="status-badge live">${game?.status || 'LIVE'}</span>
+            <span class="action-pill ${(p.side||'').includes('YES') ? 'yes' : 'no'}">${side}</span>
+          </div>
+        </div>
+        <div class="game-monitor-row">
+          <div class="baseball-state">
+            <div class="live-game-state">
+              ${buildDiamond(!!game?.on_first, !!game?.on_second, !!game?.on_third)}
+              <div class="live-state-stack">
+                <div class="baseball-line">
+                  <span>Matchup: <b>${away} @ ${home}</b></span>
+                  <span>Held: <b>${side}</b></span>
+                </div>
+                <div class="baseball-line">
+                  <span>Source: <b>${p.source || 'bot'}</b></span>
+                  <span>Runners: <b>${[game?.on_first?'1B':null, game?.on_second?'2B':null, game?.on_third?'3B':null].filter(Boolean).join(' / ') || 'bases empty'}</b></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="monitor-trade-box">
+            <div class="monitor-trade-grid">
+              <div class="stat-box"><div class="stat-label">Entry</div><div class="stat-val blue">${fmtPx(p.entry_px)}</div></div>
+              <div class="stat-box"><div class="stat-label">Current</div><div class="stat-val gold">${fmtPx(currentPx)}</div></div>
+              <div class="stat-box"><div class="stat-label">Committed</div><div class="stat-val">${fmtUsd(committed)}</div></div>
+              <div class="stat-box"><div class="stat-label">Live Equity</div><div class="stat-val">${fmtUsd(equity)}</div></div>
+              <div class="stat-box"><div class="stat-label">Unrealized</div><div class="stat-val ${clr(pnl)}">${fmtUsd(pnl)}</div></div>
+              <div class="stat-box"><div class="stat-label">TP / SL</div><div class="stat-val">${fmtPx(p.tp_price)} / ${fmtPx(p.sl_price)}</div></div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+    return;
+  }
+
+  if (liveGames.length) {
+    $('live-games-focus').innerHTML = liveGames.slice(0, 3).map(g => `
+      <div class="game-monitor-card">
+        <div class="game-monitor-top">
+          <div>
+            <div class="section-title">Live baseball monitor</div>
+            <div class="game-monitor-score">${shortTeam(g.away||'?')} ${g.away_score} · ${g.home_score} ${shortTeam(g.home||'?')}</div>
+            <div class="game-monitor-meta"><span>${g.status_display || g.status || 'LIVE'}</span><span>${g.inning_half ? `${g.inning_half} ${ordinal(g.inning || 0)}` : ''}</span><span>${g.outs != null ? `${g.outs} outs` : ''}</span><span>${g.balls != null && g.strikes != null ? `${g.balls}-${g.strikes}` : ''}</span></div>
+            ${g.away_pitcher || g.home_pitcher ? `<div class="monitor-pitcher">Pitchers: ${g.away_pitcher || '?'} / ${g.home_pitcher || '?'}</div>` : ''}
+          </div>
+          <span class="status-badge live">${g.status || 'LIVE'}</span>
+        </div>
+        <div class="baseball-state">${buildDiamond(!!g.on_first, !!g.on_second, !!g.on_third)}</div>
+      </div>`).join('');
+    return;
+  }
+
+  $('live-games-focus').innerHTML = '<div class="empty-state">No live paper positions and no live games right now.<br><span style="font-size:11px;color:var(--text4);font-family:var(--mono);">Trade history and diagnostics remain below as secondary tools.</span></div>';
+}
+
+// ── Manual Trade ──────────────────────────────────────────────────────────────
+async function submitManualTrade() {
+  const slug  = $('mt-slug').value.trim(), side = $('mt-side').value;
+  const entry = parseFloat($('mt-entry').value), qty = parseFloat($('mt-qty').value) || 50;
+  const note  = $('mt-note').value.trim();
+  if (!slug || !entry) { $('mt-result').textContent = '⚠ slug + entry required'; return; }
+  try {
+    const d = await (await fetch('/api/manual-trade', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({market_slug:slug, side, entry_px:entry, qty_usd:qty, note}),
+    })).json();
+    if (d.ok) {
+      $('mt-result').style.color = 'var(--green)';
+      $('mt-result').textContent  = '✓ trade entered';
+      $('mt-slug').value = ''; $('mt-entry').value = ''; $('mt-note').value = '';
+      setTimeout(() => { $('mt-result').textContent = ''; }, 3000);
+      fetchTrades();
+    } else {
+      $('mt-result').style.color = 'var(--red)';
+      $('mt-result').textContent  = d.error || 'error';
+    }
+  } catch(e) {
+    $('mt-result').style.color = 'var(--red)';
+    $('mt-result').textContent  = 'network error';
+  }
+}
+
+// ── Poll loop ─────────────────────────────────────────────────────────────────
+let pollCount = 0;
+async function poll() {
+  pollCount++;
+  fetchState();
+  fetchGames();
+  fetchShadow();
+  if (pollCount % 3 === 0) fetchBankroll();
+  refreshTab(activeTab);
+  $('last-refresh').textContent = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+}
+
+// Initial load
+fetchState();
+fetchGames();
+fetchShadow();
+fetchBankroll();
+fetchTrades();
+ensureStateStream();
+
+setInterval(poll, 10000);
+</script>
+</body>
+</html>

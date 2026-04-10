@@ -1,0 +1,25 @@
+{
+  "task_id": "DASH_006",
+  "status": "partial",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py"
+  ],
+  "summary": [
+    "Added tp_price and sl_price to /api/trades payloads in dashboard_server.py.",
+    "tp_price is fixed at 0.85 and sl_price is computed server-side from entry_px and side."
+  ],
+  "commands_run": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2",
+    "python dashboard_server.py",
+    "python -c \"from dashboard_server import _fetch_trades; import json; trades=_fetch_trades(3); print(json.dumps([{'market_slug': t.get('market_slug'), 'tp_price': t.get('tp_price'), 'sl_price': t.get('sl_price')} for t in trades], indent=2))\""
+  ],
+  "result": [
+    "Dashboard server started successfully.",
+    "Verification showed /api/trades-derived rows now include tp_price and sl_price fields."
+  ],
+  "risks": [
+    "Task brief still required removing hardcoded TP_PRICE / SL_PCT constants from dashboard.html, but dashboard.html was not included in allowed_files, so that frontend half was not performed.",
+    "HANDOFF_DASH_006.md was missing; execution followed TASK_DASH_006.json only."
+  ],
+  "next_recommended_task": "DASH_006B or corrected DASH_006 allowing dashboard.html edits"
+}

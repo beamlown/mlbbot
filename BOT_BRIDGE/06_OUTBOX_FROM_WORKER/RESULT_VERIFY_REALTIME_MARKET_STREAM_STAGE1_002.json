@@ -1,0 +1,28 @@
+{
+  "task_id": "VERIFY_REALTIME_MARKET_STREAM_STAGE1_002",
+  "status": "done",
+  "final_result": "PARTIAL",
+  "proven": {
+    "tracked_assets_non_empty": true,
+    "subscribe_payload_contains_real_asset_ids": true,
+    "fallback_sse_still_live": true,
+    "fallback_still_exists": true
+  },
+  "not_yet_proven": {
+    "websocket_connection_open_success": false,
+    "market_messages_received": false,
+    "parser_extracting_live_marks": false,
+    "state_hub_receiving_marks": false,
+    "sse_stream_backed_mark_source": false
+  },
+  "runtime_evidence": {
+    "tracked_assets": "non-empty mapping returned from _tracked_open_assets()",
+    "subscribe_payload": "non-empty assets_ids payload produced from tracked asset mapping",
+    "state_hub_snapshot": {},
+    "sse_observation": "positions_mark route still returned fallback-shaped payload with no stream-backed marks",
+    "dashboard_log_observation": "no market_stream runtime event evidence currently exposed in dashboard.log"
+  },
+  "exact_gap": "The zero-subscription blocker is fixed, but there is still no proof of runtime websocket ingress. Without any market_stream observability, the remaining ambiguity is whether the websocket is not opening, not receiving messages, or receiving unparsed messages.",
+  "tiny_fix_needed_if_continuing": "Add minimal runtime observability in core/market_stream.py (connection opened, subscribe payload, first message type, parse/store success) so the remaining ingress failure can be identified precisely.",
+  "conclusion": "Stage 1 cannot yet be marked complete. Token mapping and subscribe payload are now correct, but true live mark ingress into state_hub/SSE remains unproven."
+}

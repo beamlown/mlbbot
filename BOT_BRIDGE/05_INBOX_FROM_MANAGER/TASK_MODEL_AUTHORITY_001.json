@@ -1,0 +1,18 @@
+{
+  "task_id": "MODEL_AUTHORITY_001",
+  "title": "Enforce model authority by disabling local MLB trade origination in production",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "authority_cleanup",
+  "allowed_files": ["bot_core.py", "signal_base.py", "model_bridge.py", "recommendation_api.py"],
+  "do_not_touch": ["dashboard.html", "dashboard_server.py", "launch_all.py", "core/other files", "mlb_model/other files"],
+  "objective": "Take the smallest safe first step toward the required authority model by removing sports_bot_v2 local MLB trade origination from production entry flow while keeping bridge/execution protections intact.",
+  "acceptance_criteria": [
+    "sports_bot_v2 no longer originates MLB trade decisions in production mode",
+    "bridge/model path remains functional",
+    "execution/risk protections remain intact",
+    "result clearly explains what authority violation was removed",
+    "change is narrow and reversible"
+  ],
+  "rollback": "Revert the narrow bot_core.py authority gate change to restore old local origination behavior."
+}

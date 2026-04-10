@@ -1,0 +1,19 @@
+{
+  "task_id": "BRIDGE_ENABLE_001",
+  "status": "done",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py"
+  ],
+  "summary": [
+    "Re-enabled the model bridge kill switch by setting ENABLE_MODEL_BRIDGE = True.",
+    "No other lines were changed."
+  ],
+  "commands_run": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2",
+    "python -c \"from core.model_bridge import ENABLE_MODEL_BRIDGE; print(ENABLE_MODEL_BRIDGE)\""
+  ],
+  "result": [
+    "Verification printed True."
+  ],
+  "next_recommended_task": "DASH_005"
+}

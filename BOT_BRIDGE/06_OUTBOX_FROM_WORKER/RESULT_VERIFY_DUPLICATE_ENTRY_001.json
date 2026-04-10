@@ -1,0 +1,52 @@
+{
+  "task_id": "VERIFY_DUPLICATE_ENTRY_001",
+  "status": "blocked",
+  "verification_only": true,
+  "production_code_changed": false,
+  "rerun": true,
+  "summary": {
+    "duplicate_opens_fixed": false,
+    "counts_truthful": false,
+    "remaining_bug_found": true,
+    "hard_failure": true
+  },
+  "findings": [
+    "Fresh re-check still shows live duplicate-open behavior and capacity-breach state.",
+    "Two bot_core.py processes are still running simultaneously.",
+    "Two dashboard_server.py processes and two resolution_watcher processes are also still running.",
+    "Logs still contain duplicate BRIDGE OPEN events for the same slug with paired trade ids and identical prices.",
+    "Logs still show repeated 'BRIDGE SKIP - at capacity (4/3)' behavior.",
+    "Runtime state currently reports open=4, so counts are still not in a clean truthful state.",
+    "No production code changes were made during verification rerun."
+  ],
+  "evidence": {
+    "process_snapshot": [
+      "bot_core.py pid 42956",
+      "bot_core.py pid 40320",
+      "dashboard_server.py pid 42808",
+      "dashboard_server.py pid 17528",
+      "integration.resolution_watcher pid 10516",
+      "integration.resolution_watcher pid 6852",
+      "launch_all.py pid 10920",
+      "launch_all.py pid 38984"
+    ],
+    "state_observation": {
+      "status_line": "loop=230 sport=baseball mode=conservative open=4 guard_block=138",
+      "open_positions_count": 4,
+      "bridge_enabled": true
+    },
+    "duplicate_log_examples": [
+      "18:25:22 trade=99 and trade=100 mlb-sea-laa-2026-04-05 BUY_NO @ 0.4121",
+      "18:29:02 trade=101 and trade=102 mlb-stl-det-2026-04-05 BUY_YES @ 0.4321",
+      "18:31:31 trade=103 and trade=104 mlb-sea-laa-2026-04-05 BUY_YES @ 0.7839",
+      "18:36:19 trade=105 and trade=106 mlb-mia-nyy-2026-04-05 BUY_YES @ 0.1688",
+      "18:39:54 trade=107 and trade=108 mlb-sea-laa-2026-04-05 BUY_YES @ 0.5527",
+      "18:42:17 trade=109 and trade=110 mlb-hou-oak-2026-04-05 BUY_YES @ 0.3115"
+    ],
+    "capacity_log_examples": [
+      "Repeated 'BRIDGE SKIP - at capacity (4/3)' lines in bot_baseball_20260405.log"
+    ]
+  },
+  "blocked_reason": "The duplicate-entry fix is not verified as effective in live behavior. Fresh evidence still shows duplicate opens and 4/3 capacity breach under a multi-process runtime. Verification-only scope does not allow production edits.",
+  "next_action_needed": "Manager/ops should treat this as still failing in practice and issue a follow-up fix/ops task rather than approving the duplicate-entry fix."
+}

@@ -1,0 +1,63 @@
+{
+  "task_id": "DASHBOARD_TRUTH_CHAIN_CLOSE_001",
+  "status": "done",
+  "final_status": "CLOSED_VERIFIED",
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "truth_model_proof": {
+    "single_source_of_truth_for_main_active_positions": "dashboard.html -> renderUnifiedPositions() -> buildOpenPaperPositions(trades, shadowRecs), where trades comes from /api/trades and buildOpenPaperPositions filters to t.status === 'open' only",
+    "role_of_shadow_now": [
+      "Shadow drawer feed / diagnostics",
+      "Optional enrichment of executed paper positions via matching market_slug",
+      "Not a standalone source of active position cards"
+    ],
+    "remaining_shadow_competition_paths": "None found in current main positions path. sourceBadge() still knows how to render SHADOW badges, but renderUnifiedPositions() no longer creates shadow-only position cards.",
+    "canonical_count_ownership": "pos-count, kpi-open, and cmd-open are all set from openPaperPositions.length inside renderUnifiedPositions()",
+    "lifecycle_semantics": {
+      "row_existence": "real open paper trades only",
+      "status_chip": "OPEN / resolved states shaped from trade status + pnl outcome",
+      "source_labels": "PAPER-BOT / PAPER-MODEL / MANUAL for executed trades; shadow remains diagnostic-only",
+      "resolved_presentation": "main active panel shows open paper positions only; trade log/manual/debug views hold broader lifecycle context"
+    }
+  },
+  "supersession_map": {
+    "completed_and_absorbed": [
+      "DASHBOARD_TRUTH_002",
+      "SYSTEM_UNIFY_001",
+      "VERIFY_DASHBOARD_TRUTH_002"
+    ],
+    "completed_supporting_tasks": [
+      "DASH_009",
+      "DASH_010",
+      "DASH_011",
+      "DASH_012",
+      "DASH_013",
+      "DASH_014",
+      "DASH_015",
+      "DASH_016"
+    ],
+    "separate_parallel_track_not_required_for_closure": [
+      "DASHBOARD_V2_001",
+      "VERIFY_DASHBOARD_V2_001",
+      "DASHBOARD_V2_ROUTE_001"
+    ],
+    "older_polish_or_restore_tasks_effectively_superseded_by_current_truth_model": [
+      "DASHBOARD_POLISH_001",
+      "DASHBOARD_STYLE_FUN_001",
+      "DASHBOARD_HIERARCHY_FIX_001",
+      "DASHBOARD_RESTORE_BASEBALL_MONITOR_001"
+    ]
+  },
+  "tiny_fix_applied": {
+    "was_needed": true,
+    "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "change": "renderState() now sets cmd-open and kpi-open to a transient placeholder ('…') instead of writing competing state-based counts before renderUnifiedPositions() applies canonical DB/open-paper-trade truth.",
+    "reason": "This removes the last visible count-ownership ambiguity without redesigning the dashboard."
+  },
+  "notes": [
+    "No backend change was required.",
+    "No shadow/model/execution logic was changed.",
+    "The dashboard truth chain is now closed as a single coherent paper-truth model."
+  ]
+}

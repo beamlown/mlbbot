@@ -1,0 +1,18 @@
+{
+  "task_id": "EXECUTION_METADATA_PERSISTENCE_PROOF_001",
+  "title": "Prove execution metadata persists into opened-position artifact via isolated DB path",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "metadata_persistence_proof",
+  "allowed_files": ["bot_core.py", "core/paper_exec.py", "core/db.py"],
+  "objective": "Use a controlled isolated DB proof path to show that the rich execution-bound metadata persists into an opened-position artifact without mutating the real production DB or placing a live trade.",
+  "acceptance_criteria": [
+    "persisted opened-position artifact shown directly",
+    "rich metadata fields visibly present or explicitly absent",
+    "recommended_size_dollars behavior proven in persisted artifact path",
+    "no live trade placed",
+    "no production DB mutation occurred",
+    "final result is VERIFIED, PARTIAL, or BLOCKED"
+  ],
+  "rollback": "Proof-only. Remove the temporary isolated DB/helper script if cleanup is desired."
+}

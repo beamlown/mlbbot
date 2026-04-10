@@ -1,0 +1,16 @@
+{
+  "task_id": "EXIT_GAME_AWARE_001",
+  "decision": "implemented",
+  "files_changed": [
+    "sports_bot_v2/bot_core.py"
+  ],
+  "commit": "8f44072",
+  "lines_added": 20,
+  "lines_added_in_commit": 615,
+  "rollback": "git -C C:\\Users\\johnny\\Desktop revert <commit_hash>",
+  "verification": [
+    "Import includes NEAR_RESOLUTION_PRICE at bot_core.py:86",
+    "HOLD_TO_RESOLUTION guard inserted in exit loop before check_exit (log at line 550, check_exit at line 555)",
+    "Only in-scope implementation file modified: sports_bot_v2/bot_core.py"
+  ]
+}

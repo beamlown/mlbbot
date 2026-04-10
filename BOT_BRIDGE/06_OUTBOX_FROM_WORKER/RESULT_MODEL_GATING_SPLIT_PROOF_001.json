@@ -1,0 +1,50 @@
+{
+  "task_id": "MODEL_GATING_SPLIT_PROOF_001",
+  "status": "done",
+  "final_status": "CLOSED_VERIFIED",
+  "plain_english_boundary": {
+    "mlb_model": "Produces baseball-judgment recommendations: fair probability, edge, confidence, action, size guidance, thesis/reasons, and game-state-aware recommendation context.",
+    "sports_bot_v2_model_bridge": "Applies execution-side intake/gating: freshness checks, confidence/edge thresholds, entry price validity, duplicate/open-slug rejection, market-type restrictions, and approval filtering before execution.",
+    "sports_bot_v2_bot_core": "Runs only the bridge-approved production execution path. Local MLB origination is disabled by default and does not drive production opens."
+  },
+  "file_block_proof": {
+    "recommendation_api_baseball_judgment": [
+      "Recommendation object construction with fair/model probability outputs",
+      "action_candidate / side selection",
+      "edge_yes / edge_no computation",
+      "confidence calculation",
+      "size_tier / size_mult assignment",
+      "reasons/thesis generation",
+      "game-state-aware recommendation fields"
+    ],
+    "model_bridge_execution_gating": [
+      "get_approved_intents(...)",
+      "MAX_REC_AGE_SEC freshness gating",
+      "MIN_EDGE threshold gating",
+      "MIN_CONFIDENCE threshold gating",
+      "GAMESTATE_MAX_AGE_SEC freshness gating",
+      "BOOK_MAX_AGE_SEC freshness gating",
+      "already_open_slugs rejection",
+      "duplicate_batch rejection",
+      "market_type restriction",
+      "entry_px validity check"
+    ],
+    "bot_core_production_path": [
+      "ALLOW_LOCAL_MLB_ORIGINATION default-off gate",
+      "LOCAL MLB ORIGINATION DISABLED early continue",
+      "get_approved_intents(open_slugs) bridge branch",
+      "bridge-issued Signal creation",
+      "open_position(...) and insert_open_trade(...) only after bridge approval"
+    ]
+  },
+  "current_production_path_plain_english": "mlb_model recommendation -> sports_bot_v2/core/model_bridge.py execution-side approval filter -> sports_bot_v2/bot_core.py bridge execution branch -> open_position -> insert_open_trade. The old local MLB origination path is disabled by default and not part of production opens.",
+  "second_brain_check": {
+    "sports_bot_v2_second_brain_in_production": false,
+    "details": "signal_base/local origination logic still exists in codebase but is gated off from the production open path by default."
+  },
+  "remaining_real_boundary_violation": {
+    "exists": false,
+    "details": "No remaining execution-style gate was proven to still live in recommendation_api.py in a way that requires a code move right now. The actual active execution gating is already primarily in sports_bot_v2/core/model_bridge.py."
+  },
+  "conclusion": "This architecture item should be closed honestly. The current production authority boundary is clean enough for this stage, and no real code move is needed in the allowed files right now."
+}

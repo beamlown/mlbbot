@@ -1,0 +1,19 @@
+{
+  "task_id": "DUPLICATE_ENTRY_LIVE_REAUDIT_001",
+  "title": "Live duplicate-entry protection re-audit",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "execution_integrity",
+  "allowed_files": ["core/db.py", "bot_core.py"],
+  "do_not_touch": ["dashboard.html", "dashboard_server.py", "launch_all.py", "mlb_model/"],
+  "objective": "Verify from live DB, runtime state, and current logs that duplicate open positions for the same market_slug are actually prevented in the running stack right now.",
+  "acceptance_criteria": [
+    "live DB path is explicitly identified",
+    "unique open-slug index presence is proven yes/no",
+    "current duplicate open row count is reported",
+    "runtime insert path is verified from current source",
+    "recent log evidence is summarized",
+    "final outcome is VERIFIED or BLOCKED"
+  ],
+  "rollback": "Verification-only unless a hard failure is proven."
+}

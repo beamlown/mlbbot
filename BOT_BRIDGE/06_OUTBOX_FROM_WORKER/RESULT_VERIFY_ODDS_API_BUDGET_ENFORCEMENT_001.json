@@ -1,0 +1,71 @@
+{
+  "task_id": "VERIFY_ODDS_API_BUDGET_ENFORCEMENT_001",
+  "status": "done",
+  "final_result": "VERIFIED",
+  "thresholds": {
+    "daily_hard_cap": 600,
+    "monthly_soft_target": 18000,
+    "monthly_hard_cap": 20000,
+    "soft_throttle_mod": 3
+  },
+  "proof_method": {
+    "type": "isolated_temp_budget_file",
+    "helper_script": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\proof_verify_odds_budget_001.py",
+    "output_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\proof_verify_odds_budget_001_output.json",
+    "real_api_burn": false,
+    "live_budget_file_mutated": false
+  },
+  "sample_budget_file_states_used": [
+    {
+      "name": "daily_limit_hit",
+      "before": {"date": "2026-04-08", "count": 600, "month": "2026-04", "month_count": 1000, "mode": "normal"},
+      "after": {"date": "2026-04-08", "count": 600, "month": "2026-04", "month_count": 1000, "mode": "normal"},
+      "allowed": false
+    },
+    {
+      "name": "monthly_soft_throttle_skip",
+      "before": {"date": "2026-04-08", "count": 10, "month": "2026-04", "month_count": 18000, "mode": "normal"},
+      "after": {"date": "2026-04-08", "count": 10, "month": "2026-04", "month_count": 18000, "mode": "soft_throttle"},
+      "allowed": false
+    },
+    {
+      "name": "monthly_soft_throttle_allow_on_mod",
+      "before": {"date": "2026-04-08", "count": 11, "month": "2026-04", "month_count": 18000, "mode": "normal"},
+      "after": {"date": "2026-04-08", "count": 12, "month": "2026-04", "month_count": 18001, "mode": "soft_throttle"},
+      "allowed": true
+    },
+    {
+      "name": "monthly_hard_stop",
+      "before": {"date": "2026-04-08", "count": 20, "month": "2026-04", "month_count": 20000, "mode": "normal"},
+      "after": {"date": "2026-04-08", "count": 20, "month": "2026-04", "month_count": 20000, "mode": "hard_stop"},
+      "allowed": false
+    },
+    {
+      "name": "normal_increment",
+      "before": {"date": "2026-04-08", "count": 5, "month": "2026-04", "month_count": 1200, "mode": "normal"},
+      "after": {"date": "2026-04-08", "count": 6, "month": "2026-04", "month_count": 1201, "mode": "normal"},
+      "allowed": true
+    }
+  ],
+  "mode_transitions_proven": [
+    "normal -> normal below monthly target",
+    "normal -> soft_throttle at 18000/month",
+    "soft_throttle skip behavior active on non-mod fetches",
+    "soft_throttle still allows some reduced-frequency fetches",
+    "normal -> hard_stop at 20000/month",
+    "daily hard cap blocks further non-essential fetches at 600/day"
+  ],
+  "runtime_budget_file_fields_verified": [
+    "date",
+    "count",
+    "month",
+    "month_count",
+    "mode"
+  ],
+  "dashboard_independence_check": {
+    "dashboard_depends_on_odds_streaming": false,
+    "details": "dashboard realtime path is driven by /api/stream/state and local/open-position state, not by sharp_odds or Odds API streaming."
+  },
+  "provisional_review_file_created": true,
+  "conclusion": "All three budget modes were proven using isolated budget-file scenarios with no unnecessary real API burn. Odds API budget enforcement is behaving correctly and dashboard realtime remains independent of Odds API streaming."
+}

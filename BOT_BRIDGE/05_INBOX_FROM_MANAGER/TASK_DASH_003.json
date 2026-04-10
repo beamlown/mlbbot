@@ -1,0 +1,38 @@
+{
+  "task_id": "DASH_003",
+  "title": "Replace full scoreboard with compact games ticker",
+  "objective": "The Live Games section currently renders large game cards, consuming most of the visible screen. Replace with a compact single-row ticker of score chips so positions are visible without scrolling.",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "do_not_touch": [
+    "dashboard_server.py",
+    "bot_core.py",
+    "core/"
+  ],
+  "prerequisite": "DASH_002 must be complete first (same file — no concurrent edits)",
+  "inputs": [
+    "dashboard.html — games section HTML around line 401-407: <div class='section'>Live Games + <div id='games-list'>",
+    "dashboard.html — renderGames() or equivalent JS function that populates #games-list",
+    "/api/games endpoint returns: away_team, home_team, away_score, home_score, inning, status, game_id fields"
+  ],
+  "deliverables": [
+    "Replace the games section div with a compact ticker div: <div id='games-ticker'> with horizontal flex-wrap layout",
+    "Each game becomes a small chip: '<abbr> <score> · <abbr> <home_score> (<i{inning}|F|S>)'",
+    "Chip background: green-dim for live (inning set), text3 for final/scheduled",
+    "Update the JS render function to build chips instead of full cards",
+    "Remove the large section-header and section padding around games"
+  ],
+  "acceptance_criteria": [
+    "Games section occupies a single line (or two lines if many games wrap)",
+    "Each chip shows: away abbr, away score, home abbr, home score, status indicator",
+    "Live games (with inning) have a subtle green accent",
+    "No full game cards with large padding",
+    "KPI strip and drawer are immediately visible without scrolling"
+  ],
+  "verification": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2 && python dashboard_server.py",
+    "Open http://localhost:5000 — games should be a compact ticker, not a full scoreboard"
+  ],
+  "rollback": "Revert dashboard.html only."
+}

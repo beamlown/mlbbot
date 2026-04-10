@@ -1,0 +1,55 @@
+{
+  "task_id": "BOT_DATE_GATE_DEFENSE_001",
+  "priority": "HIGH",
+  "type": "implementation",
+  "subsystem": "bot_core",
+  "allowed_files": ["bot_core.py"],
+  "note": "bot_core.py only. Defensive slug-date check in the local origination path. No changes to model_bridge.py (already has date gate), paper_exec.py, or risk.py.",
+
+  "context": {
+    "incident": "Trade ID 200 (mlb-cws-kc-2026-04-11, BUY_YES) was opened on Apr 9 for a game 2 days out. Source='bot' — opened via local origination, which has no slug-date filter. Model bridge already rejects future-dated slugs (model_bridge.py line 127: slug_date != today → reject), but local origination bypasses this entirely.",
+    "root_cause": "ALLOW_LOCAL_MLB_ORIGINATION was enabled in the Apr-6 process. The local origination code path (bot_core.py ~line 344) has no date check — it will bet on any slug in the discovery cache including games days away.",
+    "current_state": "All stale processes killed. Fresh processes started via launch_all.py. ALLOW_LOCAL_MLB_ORIGINATION defaults to 0 (not in .env), so local origination is currently disabled. This task adds defensive date gating so the bug cannot recur even if local origination is re-enabled."
+  },
+
+  "implementation": {
+    "file": "sports_bot_v2/bot_core.py",
+
+    "where": "In the local origination path, immediately after the ALLOW_LOCAL_MLB_ORIGINATION guard (line ~351, after the continue statement). Before the call to generate_signal().",
+
+    "add_import_if_missing": "from datetime import date as _date  (check if 'date' is already imported from datetime — it may already be present as 'from datetime import datetime, timezone')",
+
+    "code_to_insert": [
+      "# Date gate: only bet on today's games (same check as model_bridge.py line 127)",
+      "try:",
+      "    _slug_parts = market.slug.split('-')",
+      "    _slug_date = _date.fromisoformat('-'.join(_slug_parts[-3:]))",
+      "except Exception:",
+      "    _slug_date = None",
+      "if _slug_date != _date.today():",
+      "    logger.debug('LOCAL DATE GATE REJECT slug=%s slug_date=%s today=%s', market.slug, _slug_date, _date.today())",
+      "    continue"
+    ],
+
+    "note": "Mirror of the check in model_bridge.py _extract_slug_date() / line 127. If slug date can't be parsed, also reject (None != date.today()). This runs after the ALLOW_LOCAL_MLB_ORIGINATION continue so it adds zero overhead when local origination is disabled."
+  },
+
+  "verification": {
+    "steps": [
+      "Confirm only bot_core.py changed",
+      "Confirm no new trade opens for a slug dated tomorrow or later (check DB after next bot loop)",
+      "Confirm today's game slugs still pass (manual check: _date.fromisoformat('-'.join('mlb-cws-kc-2026-04-10'.split('-')[-3:])) == date.today())"
+    ]
+  },
+
+  "do_not": [
+    "Edit model_bridge.py (already has the gate)",
+    "Edit any file other than bot_core.py",
+    "Restart any process (code-only change)"
+  ],
+
+  "result_format": {
+    "file": "06_OUTBOX_FROM_WORKER/RESULT_BOT_DATE_GATE_DEFENSE_001.json",
+    "required_fields": ["decision", "files_changed", "commit", "lines_added", "rollback"]
+  }
+}

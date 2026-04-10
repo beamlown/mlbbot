@@ -1,0 +1,72 @@
+﻿# Secrets & credentials
+.env
+*.env
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.*
+*.secret
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.mypy_cache/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+
+# Runtime state
+runtime/bot.pid
+runtime/launcher.pid
+runtime/state.json
+runtime/ob_snapshots/
+
+# Databases
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Large data / model artifacts
+*.parquet
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.pt
+*.pth
+*.onnx
+*.npy
+*.npz
+*.arrow
+*.csv
+
+# JSONL logs (can be huge)
+*.jsonl
+
+# Raw data directories
+mlb_model/data/raw/
+mlb_model/data/features/
+mlb_model/artifacts/

@@ -1,0 +1,42 @@
+{
+  "task_id": "PAPER_RESET_AND_CLEAN_START_001",
+  "status": "done",
+  "final_outcome": "VERIFIED",
+  "production_code_changed": false,
+  "runtime_target": "http://localhost:8900",
+  "trades_closed": 3,
+  "close_actions": [
+    {
+      "id": 145,
+      "market_slug": "mlb-bal-cws-2026-04-08",
+      "exit_px": 0.58,
+      "reason_close": "paper_reset_closeout_live_mark"
+    },
+    {
+      "id": 151,
+      "market_slug": "mlb-hou-col-2026-04-08",
+      "exit_px": 0.5,
+      "reason_close": "paper_reset_closeout_fallback_no_live_mark"
+    },
+    {
+      "id": 155,
+      "market_slug": "mlb-phi-sf-2026-04-08",
+      "exit_px": 0.5,
+      "reason_close": "paper_reset_closeout_fallback_no_live_mark"
+    }
+  ],
+  "preserved_history": true,
+  "forced_bankroll_reset": false,
+  "why_no_forced_500_baseline": "Current dashboard/accounting logic computes bankroll current from preserved realized history, so forcing an exact 500 baseline would conflict with the requirement to preserve truthful historical bankroll state without code/accounting changes.",
+  "final_runtime_state": {
+    "bankroll_current": -556.95,
+    "available_cash": -556.95,
+    "capital_committed": 0.0,
+    "open_position_count": 0
+  },
+  "verification": {
+    "api_state_proved": true,
+    "api_trades_proved": true,
+    "one_line_proof": "localhost:8900/api/state now shows open_trade_count=0 and capital_committed=0.0, and /api/trades?limit=60 shows the three former open ids as closed with paper_reset_closeout_* reasons."
+  }
+}

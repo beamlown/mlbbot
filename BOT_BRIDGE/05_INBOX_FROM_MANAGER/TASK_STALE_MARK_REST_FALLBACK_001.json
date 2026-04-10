@@ -1,0 +1,119 @@
+{
+  "task_id": "STALE_MARK_REST_FALLBACK_001",
+  "priority": "HIGH",
+  "type": "implementation",
+  "subsystem": "dashboard / market_stream",
+  "allowed_files": ["dashboard_server.py"],
+  "note": "dashboard_server.py only. No changes to market_stream.py, state_hub.py, or any other file.",
+
+  "context": {
+    "why": "Polymarket WebSocket only sends delta price_change events. After reconnects on pre-game or low-activity markets, no price updates arrive for tracked tokens. The mark goes stale (stale_after_sec=15.0) and stays stale indefinitely. No REST fallback exists. This causes 'Market feed stale' on the dashboard for all pre-game positions.",
+    "root_cause": "market_stream.py _on_open re-subscribes on reconnect, but Polymarket does not push the current price on subscription — only on actual price changes. ARI/NYM NO token saw no price movement after 2 reconnects → mark_age=238s.",
+    "fix_summary": "Add a polling fallback in _stream_positions_mark() that fires a Polymarket CLOB REST call for any stale mark older than 30s, throttled to once per 20s per slug, injecting the result into state_hub via GLOBAL_STATE_HUB.update_mark(). This is entirely in dashboard_server.py — no stream changes."
+  },
+
+  "implementation": {
+    "file": "sports_bot_v2/dashboard_server.py",
+
+    "step1_module_level_additions": {
+      "where": "After the AUTO_STOP_LOSS_PCT line (~line 56), before the Logging section",
+      "add": [
+        "CLOB_BOOK = 'https://clob.polymarket.com/book'",
+        "STALE_REST_POLL_SEC = 30.0     # Only trigger REST poll if mark is older than this",
+        "STALE_REST_THROTTLE_SEC = 20.0 # Min seconds between REST polls for same slug",
+        "_rest_poll_ts: dict[str, float] = {}  # slug → last REST poll wall-clock time",
+        "_rest_poll_lock = threading.Lock()"
+      ]
+    },
+
+    "step2_helper_function": {
+      "where": "Add as a new function immediately before _stream_positions_mark() (~line 389)",
+      "code": [
+        "def _poll_stale_mark(slug: str, market_id: str, asset_id: str) -> None:",
+        "    \"\"\"Fetch current price from Polymarket CLOB REST API and inject into state_hub.\"\"\"",
+        "    try:",
+        "        url = f\"{CLOB_BOOK}?token_id={asset_id}\"",
+        "        data = _http_get(url, timeout=5)",
+        "        bids = data.get('bids') or []",
+        "        asks = data.get('asks') or []",
+        "        best_bid = float(bids[0]['price']) if bids else None",
+        "        best_ask = float(asks[0]['price']) if asks else None",
+        "        current_price = best_bid if best_bid is not None else best_ask",
+        "        spread = round(best_ask - best_bid, 6) if (best_bid is not None and best_ask is not None) else None",
+        "        if current_price is not None:",
+        "            GLOBAL_STATE_HUB.update_mark(",
+        "                market_slug=slug,",
+        "                market_id=market_id,",
+        "                asset_id=asset_id,",
+        "                current_price=current_price,",
+        "                best_bid=best_bid,",
+        "                best_ask=best_ask,",
+        "                spread=spread,",
+        "                source='rest_fallback',",
+        "            )",
+        "            log.info('[STALE_POLL] %s → cp=%.4f bid=%s ask=%s', slug, current_price, best_bid, best_ask)",
+        "        else:",
+        "            log.warning('[STALE_POLL] %s → empty book (no bid or ask)', slug)",
+        "    except Exception as exc:",
+        "        log.warning('[STALE_POLL] %s failed: %s', slug, exc)"
+      ]
+    },
+
+    "step3_stream_positions_mark_change": {
+      "where": "In _stream_positions_mark(), immediately after line 398: marks = GLOBAL_STATE_HUB.snapshot(stale_after_sec=15.0) and before line 399: trades = _fetch_trades(limit=100)",
+      "insert": [
+        "    # REST fallback: for any mark stale >30s that hasn't been polled in the last 20s,",
+        "    # fetch current price from Polymarket CLOB REST and inject into state_hub.",
+        "    _now_ts = time.time()",
+        "    _to_poll = []",
+        "    with _rest_poll_lock:",
+        "        for _slug, _info in tracked.items():",
+        "            _mark = marks.get(_slug) or {}",
+        "            _mark_age = _now_ts - float(_mark.get('source_ts') or 0)",
+        "            _last_poll = _rest_poll_ts.get(_slug, 0)",
+        "            if _mark_age > STALE_REST_POLL_SEC and (_now_ts - _last_poll) > STALE_REST_THROTTLE_SEC:",
+        "                _rest_poll_ts[_slug] = _now_ts  # claim slot before releasing lock",
+        "                _to_poll.append((_slug, _info['market_id'], _info['asset_id']))",
+        "    for _slug, _market_id, _asset_id in _to_poll:",
+        "        _poll_stale_mark(_slug, _market_id, _asset_id)",
+        "    if _to_poll:",
+        "        marks = GLOBAL_STATE_HUB.snapshot(stale_after_sec=15.0)  # re-snapshot with fresh REST data"
+      ],
+      "note": "The lock is held only for the fast timestamp check+claim. HTTP calls happen outside the lock so concurrent SSE connections do not deadlock. Re-snapshot only runs if at least one poll fired."
+    }
+  },
+
+  "verification": {
+    "steps": [
+      "Confirm dashboard_server.py is the only file changed (git diff --name-only or equivalent)",
+      "Confirm CLOB_BOOK, STALE_REST_POLL_SEC, STALE_REST_THROTTLE_SEC, _rest_poll_ts, _rest_poll_lock are added at module level",
+      "Confirm _poll_stale_mark() is defined before _stream_positions_mark()",
+      "Confirm the REST fallback block is inserted between the snapshot() call and the trades = _fetch_trades() call",
+      "Trigger verification: kill the WebSocket connection (or wait for stale mark), then call http://localhost:8900/api/stream/state and confirm stale=False within ~35s",
+      "Confirm [STALE_POLL] log lines appear in dashboard_server output",
+      "Confirm mark_source='rest_fallback' in SSE positions payload after a REST poll fires",
+      "Confirm throttle: second SSE tick does NOT re-poll (log shows no second [STALE_POLL] within 20s)"
+    ]
+  },
+
+  "do_not": [
+    "Edit market_stream.py",
+    "Edit state_hub.py",
+    "Edit any file other than dashboard_server.py",
+    "Restart any process (only code change — operator will restart after review)",
+    "Add REST polling inside a background thread (keep it inline in the SSE handler)"
+  ],
+
+  "result_format": {
+    "file": "06_OUTBOX_FROM_WORKER/RESULT_STALE_MARK_REST_FALLBACK_001.json",
+    "required_fields": [
+      "decision",
+      "files_changed",
+      "lines_added",
+      "stale_before",
+      "stale_after",
+      "log_sample",
+      "rollback"
+    ]
+  }
+}

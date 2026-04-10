@@ -1,0 +1,61 @@
+{
+  "task_id": "PAPER_BRIDGE_002",
+  "status": "done",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\types.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\db.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "summary": [
+    "Added end-to-end source persistence for paper trades with Trade.source defaulting to 'bot', DB migration for trades.source, paper_exec passthrough, dashboard API sourcing from DB, and state.json source surfacing.",
+    "Created core/model_bridge.py with default-disabled kill switch and guarded latest-per-slug bridge gating that discards NO_TRADE before evaluation and emits BRIDGE GATE PASS/REJECT logs.",
+    "Added a minimal additive bridge hook to bot_core.py that can open paper trades via existing paper_exec using source='model_bridge' when the bridge is manually enabled later."
+  ],
+  "schema_changes": [
+    "Added Trade.source with default 'bot' in core/types.py.",
+    "Added additive SQLite migration in core/db.py: ALTER TABLE trades ADD COLUMN source TEXT DEFAULT 'bot' guarded by OperationalError.",
+    "Updated insert_open_trade/fetch_open_trades/fetch_recent_closed/_row_to_trade to persist and read the source column."
+  ],
+  "gates_implemented": [
+    "ENABLE_MODEL_BRIDGE=False kill switch returns [] and logs BRIDGE DISABLED",
+    "latest actionable recommendation per market_slug only",
+    "discard NO_TRADE before gates",
+    "approved model_version only: mlb_winprob_v1_lgbm",
+    "action must be BUY_YES or BUY_NO",
+    "recommendation age < 120s",
+    "moneyline only; reject nrfi/spread/total/o/u/prop slugs",
+    "slug date must match today",
+    "edge >= 0.05",
+    "confidence >= 0.25",
+    "game_state_age_sec < 60",
+    "book_age_sec < 30",
+    "reject if slug already open",
+    "one intent per slug per loop"
+  ],
+  "commands_run": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2",
+    "python bot_core.py",
+    "python dashboard_server.py"
+  ],
+  "tests_run": [
+    "Ran bot_core.py and observed DB migration log line: 'DB migration: added source column'.",
+    "Confirmed kill switch behavior path is present in core/model_bridge.py and left ENABLE_MODEL_BRIDGE=False in the submitted patch.",
+    "Ran dashboard_server.py and confirmed server started on http://localhost:8900 without regression.",
+    "Checked runtime/state.json after patching to confirm existing positions file remained readable; it did not yet refresh during the short verification window."
+  ],
+  "result": [
+    "Files patched successfully and bot/dashboard both started after the change set.",
+    "Kill switch default remains OFF in submitted patch.",
+    "Dedup logic is implemented in model_bridge.py before gating by collapsing to the latest entry per slug and skipping NO_TRADE records.",
+    "source='model_bridge' is wired through Trade -> DB -> dashboard API/state path for future bridge-created paper trades; existing trades default to source='bot'."
+  ],
+  "risks": [
+    "I did not manually flip ENABLE_MODEL_BRIDGE=True during this run, so no live BRIDGE GATE PASS/REJECT lines were observed in process output and no new model_bridge position was created during verification.",
+    "runtime/state.json shown during verification was still the prior snapshot because bot_core.py was terminated before a fresh loop/state write completed.",
+    "bot_core bridge execution uses market lookup from current discovery set by slug; if a gated intent references a slug absent from current discovery, it logs a market_lookup rejection instead of opening a trade."
+  ],
+  "next_recommended_task": "Run PAPER_BRIDGE_003 verification pass with ENABLE_MODEL_BRIDGE temporarily set True and capture BRIDGE GATE PASS/REJECT plus a source=model_bridge position in state/api."
+}

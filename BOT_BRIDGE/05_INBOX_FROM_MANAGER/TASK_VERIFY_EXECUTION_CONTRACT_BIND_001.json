@@ -1,0 +1,18 @@
+{
+  "task_id": "VERIFY_EXECUTION_CONTRACT_BIND_001",
+  "title": "Verify execution contract binding in live code path",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "execution_contract_verification",
+  "allowed_files": ["bot_core.py", "core/paper_exec.py"],
+  "objective": "Prove that the bound execution fields flow correctly through the live code path and did not introduce execution/accounting regressions.",
+  "acceptance_criteria": [
+    "recommended_size_dollars behavior proven",
+    "caps proven intact",
+    "TP/SL metadata proven preserved",
+    "held outcome / matchup / reasons / freshness proven preserved where observable",
+    "no execution/accounting regression found",
+    "final result is VERIFIED, PARTIAL, or BLOCKED"
+  ],
+  "rollback": "Verification only unless a hard failure is proven."
+}

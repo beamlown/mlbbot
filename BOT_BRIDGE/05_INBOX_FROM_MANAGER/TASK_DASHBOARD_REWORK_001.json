@@ -1,0 +1,129 @@
+{
+  "task_id": "DASHBOARD_REWORK_001",
+  "title": "Dashboard redesign — command-centric HUD, unified positions panel",
+  "objective": "Rebuild dashboard.html from shadow-advisory-centric framing to a trade-execution-first interface. The current layout gives Shadow Feed equal prominence with Active Positions. After rework: HUD shows system/execution health; left column shows a single unified Positions panel merging paper trades and shadow recs; Shadow Feed demoted to a drawer tab.",
+  "allowed_files": [
+    "sports_bot_v2/dashboard.html",
+    "sports_bot_v2/dashboard_server.py"
+  ],
+  "do_not_touch": [
+    "sports_bot_v2/core/",
+    "sports_bot_v2/bot_core.py",
+    "sports_bot_v2/launch_all.py",
+    "mlb_model/",
+    "models/",
+    "training pipeline",
+    "execution logic"
+  ],
+  "context": {
+    "api_endpoints": {
+      "/api/state": "bot loop health, open_positions array (slug, side, entry_px, confidence, mode), bankroll, r25 stats, mode",
+      "/api/trades": "all trades (recent closed + open), fields: market_slug, side, entry_px, exit_px, pnl_usd, status, source, confidence, ts_open",
+      "/api/mlb-shadow": "shadow recs with full computed fields: market_slug, action, fair_win_prob, entry_price, current_price, tp_price, sl_price, unrealized_pnl_dollars, status_label, resolved, away_team, home_team, inning, tracked_team, confidence, edge_yes, edge_no, ts",
+      "/api/games": "ESPN scoreboard with live score, inning, base runners, count",
+      "/api/signals": "derived from open positions in state.json",
+      "/api/candidates": "raw bot candidate queue with confidence, spread, gate results",
+      "/api/bankroll": "bankroll snapshot",
+      "/api/markets": "discovered market slugs"
+    },
+    "source_values": {
+      "bot": "native bot signal, paper-executed",
+      "model_bridge": "shadow model recommendation, paper-executed",
+      "manual": "manually entered via dashboard form",
+      "shadow_only": "(virtual — not in DB) shadow rec that was NOT paper-executed"
+    },
+    "current_layout": {
+      "hud_strip": ["Shadow P&L (units)", "Win Rate", "Active (shadow count)", "Unrlzd P&L (shadow dollars)"],
+      "left_col": ["Active Positions section (shadow recs only)", "Shadow Advisory section (stats bar + ticker feed)"],
+      "right_col": ["Live Games", "KPI strip (Bankroll, Win Rate R25, Open, Net P&L, Expectancy, Live Games)", "Drawer (tabs: Trade Log, Candidates, Markets, Signals, Manual)"]
+    },
+    "existing_good_components": [
+      "pos-card with prob-track-v2 — keep and extend",
+      "status-badge / action-pill — keep",
+      "game-card with diamond and count display — keep",
+      "shadow-ticker-row — move to drawer tab",
+      "trade-card — keep in Trade Log tab",
+      "Dark theme, CSS design tokens: --green, --red, --gold, --blue"
+    ]
+  },
+  "deliverables": {
+    "section_A_hud": {
+      "description": "Rename and reframe the 4-cell sticky HUD strip",
+      "new_cells": [
+        "SYSTEM: bot status dot + loop count (was implicit in header only)",
+        "MODE: mode badge (neutral/aggressive/defensive)",
+        "POSITIONS: count of all open positions (paper executed — from /api/state open_positions.length)",
+        "LIVE P&L: total unrealized P&L in dollars across all active shadow recs (from /api/mlb-shadow pnl.unrealized_pnl_dollars)"
+      ],
+      "remove": "Shadow-specific framing from HUD labels. 'Shadow P&L' → 'Live P&L'. 'Active' cell counts paper positions, not shadow recs."
+    },
+    "section_B_positions": {
+      "description": "Unified Active Positions panel — replaces current left column's two sections",
+      "data_sources": "/api/mlb-shadow (shadow recs) + /api/trades (paper open trades)",
+      "merge_logic": "Fetch both. For each open paper trade (status='open' from /api/trades), check if a shadow rec exists with same market_slug — if yes, enrich with shadow rec fields (current_price, tp_price, sl_price, unrealized_pnl_dollars, status_label). For shadow recs with no matching paper trade, show as SHADOW source.",
+      "card_fields": [
+        "matchup: away_team @ home_team (from shadow rec) or slug short-form",
+        "side pill: YES / NO",
+        "source badge: PAPER-BOT (source=bot), PAPER-MODEL (source=model_bridge), MANUAL (source=manual), SHADOW (shadow-only, unexecuted)",
+        "entry price (cents)",
+        "current price (cents) — from shadow rec current_price if available",
+        "live PnL dollars — from shadow unrealized_pnl_dollars if available",
+        "TP price (cents)",
+        "SL price (cents)",
+        "confidence %",
+        "game status chip: LIVE / NEAR-CLOSE / FINAL / SCHEDULED (from /api/games cross-reference or inning field)",
+        "status badge: OPEN / RESOLVED_WIN / RESOLVED_LOSS / SL_ZONE / PENDING"
+      ],
+      "prob_track": "Keep existing prob-track-v2 component, it already renders entry/current/TP/SL correctly",
+      "remove": "Shadow Advisory stats bar (sh-stats-grid with Signals/No Trade/Win Rate/P&L). Shadow Feed ticker. These move to a new Shadow tab in the drawer."
+    },
+    "section_C_resolution": {
+      "description": "Resolved positions must show resolved, not open",
+      "requirement": "shadow recs with resolved=true already render with status_label (RESOLVED_WIN/RESOLVED_LOSS). Paper trades with status=closed must also show as resolved in the unified panel. A closed paper trade should render with a resolved card style (won/lost), not disappear — keep in panel for 10 minutes after close, then let it age out naturally via /api/trades limit.",
+      "note": "No backend change needed. Front end: in unified render, treat t.status === 'closed' as resolved. If t.pnl_usd > 0 → 'won' card class, else → 'lost' card class."
+    },
+    "section_D_secondary": {
+      "description": "Deprioritize scouting / scan data",
+      "changes": [
+        "Add a 'Shadow' tab to the drawer tab-nav (between Trade Log and Candidates). This tab renders the shadow feed ticker (compact rows) and the sh-stats-grid summary.",
+        "Candidates, Markets, Signals tabs stay but are not default. Default tab = Trade Log (unchanged).",
+        "Remove the standalone Shadow Advisory section from the left column entirely.",
+        "Manual tab stays in drawer (unchanged)."
+      ]
+    },
+    "layout_after": {
+      "hud_strip": "System | Mode | Positions | Live P&L",
+      "left_col": "Unified Active Positions panel (full left column, no Shadow Feed section below it)",
+      "right_col": "Live Games (unchanged) + KPI strip (can simplify or keep as-is) + Drawer (tabs: Trade Log | Shadow | Candidates | Markets | Signals | Manual)"
+    }
+  },
+  "acceptance_criteria": [
+    "HUD cells are labeled: system status, mode, active positions count (paper), live P&L dollars",
+    "Left column shows ONE section: Unified Active Positions — no separate Shadow Feed section below it",
+    "Each position card shows source badge: PAPER-BOT, PAPER-MODEL, MANUAL, or SHADOW",
+    "Paper trades enriched with shadow rec data when slug matches (current price, PnL, TP, SL visible on card)",
+    "Shadow-only recs (not executed) still appear in the Unified Positions panel with SHADOW badge",
+    "Shadow Feed ticker and shadow stats bar appear only inside the new Shadow drawer tab — NOT in left column",
+    "Resolved positions (resolved=true OR status=closed) show won/lost card styling",
+    "Drawer has a Shadow tab between Trade Log and Candidates",
+    "All existing drawer tabs still function (Trade Log, Candidates, Markets, Signals, Manual)",
+    "No production logic files touched (core/, bot_core.py, launch_all.py, mlb_model/)",
+    "Page still loads and renders with no JS errors when /api/mlb-shadow or /api/trades returns empty"
+  ],
+  "verification": [
+    "python -m sports_bot_v2.dashboard_server",
+    "Open http://localhost:8000 and confirm: HUD shows system/mode/positions/pnl labels",
+    "Confirm left column has single Unified Positions section with no Shadow Feed below it",
+    "Confirm drawer has Shadow tab that contains the shadow ticker",
+    "Confirm source badges render on position cards"
+  ],
+  "rollback": "Revert dashboard.html only. dashboard_server.py changes (if any) are additive and backward-safe.",
+  "notes": [
+    "dashboard_server.py already returns all needed fields — /api/mlb-shadow has entry_price, current_price, tp_price, sl_price, unrealized_pnl_dollars, status_label, resolved. /api/trades has source, entry_px, exit_px, pnl_usd, status.",
+    "Slug-matching between /api/trades open records and /api/mlb-shadow recs is the key frontend enrichment pattern.",
+    "The prob-track-v2 component is already correct — do not rewrite it, just ensure it receives the right entry/current/tp/sl values.",
+    "If a minor backend addition is truly needed (e.g. /api/trades needs to also return open-only), it may be added to dashboard_server.py only.",
+    "CSS design tokens are already correct — dark theme, --green/--red/--gold/--blue. Keep them.",
+    "Mobile-friendliness: the existing responsive grid already works on mobile. Don't break it."
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "task_id": "LIVE_SESSION_VERIFY_002",
+  "result": "PARTIAL",
+  "mode": "live_verification_only",
+  "production_code_changed": false,
+  "runtime_base_url": "http://localhost:8900",
+  "queried_endpoints": [
+    "http://localhost:8900/api/state",
+    "http://localhost:8900/api/games",
+    "http://localhost:8900/api/trades?limit=60",
+    "http://localhost:8900/api/stream/state"
+  ],
+  "clean_paper_session_state": {
+    "open_positions": 0,
+    "capital_committed": 0.0
+  },
+  "live_payload_sample": {
+    "live_game": {
+      "espn_id": "401814862",
+      "matchup": "San Diego Padres @ Pittsburgh Pirates",
+      "status": "STATUS_IN_PROGRESS",
+      "status_display": "Top 2nd",
+      "score": "0-0",
+      "inning": 2,
+      "inning_half": "top",
+      "outs": 1
+    },
+    "stream": {
+      "http_status": 200,
+      "first_line": "event: positions_mark"
+    },
+    "state": {
+      "open_trade_count": 0,
+      "capital_committed": 0.0
+    }
+  },
+  "live_card_behavior_summary": "Dashboard/UI and runtime surfaces showed a true live game card during a clean zero-position paper state, but no progression delta occurred inside the sampled observation window.",
+  "truth_source_summary": "No shadow/debug override of main live truth was proven; stream/state/game surfaces remained coherent and the stream endpoint stayed live.",
+  "position_math_summary": "Not provable in this task window because no new paper trade opened and scope did not allow forcing one.",
+  "mismatch": "No hard contradiction found, but live progression-over-time and live-position math under a fresh open trade were not observable.",
+  "success_criteria_met": {
+    "actual_live_window_present": true,
+    "live_game_card_present": true,
+    "state_endpoint_live": true,
+    "games_endpoint_live": true,
+    "trades_endpoint_live": true,
+    "stream_endpoint_live": true,
+    "live_game_progression_fully_proven": false,
+    "live_market_progression_fully_proven": false,
+    "position_math_under_live_open_trade_proven": false,
+    "truth_source_sanity_partially_proven": true
+  }
+}

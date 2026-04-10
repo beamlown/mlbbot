@@ -1,0 +1,35 @@
+{
+  "task_id": "VERIFY_REALTIME_MARKET_STREAM_STAGE1_FINAL",
+  "status": "done",
+  "final_result": "VERIFIED",
+  "sample_sse_payload_summary": {
+    "route": "/api/stream/state",
+    "event": "positions_mark",
+    "proof": [
+      {
+        "market_slug": "mlb-phi-sf-2026-04-08",
+        "mark_source": "polymarket_stream",
+        "current_price": "non-null",
+        "best_bid": "present",
+        "best_ask": "present",
+        "spread": "present",
+        "source_ts": "present",
+        "unrealized_pnl_usd": "present",
+        "live_equity_usd": "present"
+      }
+    ]
+  },
+  "end_to_end_chain_proven": {
+    "websocket_runtime": true,
+    "parser": true,
+    "state_hub": true,
+    "sse": true
+  },
+  "exact_mark_source_value": "polymarket_stream",
+  "non_null_price_fields": [
+    "current_price"
+  ],
+  "best_bid_best_ask_spread_present": true,
+  "fallback_still_exists": true,
+  "conclusion": "REALTIME_MARKET_STREAM_STAGE1 is now working end-to-end: true live Polymarket marks reach state_hub and are emitted through /api/stream/state for tracked open positions while fallback behavior remains intact."
+}

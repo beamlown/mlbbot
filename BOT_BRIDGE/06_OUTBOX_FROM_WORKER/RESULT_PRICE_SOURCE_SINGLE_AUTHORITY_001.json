@@ -1,0 +1,49 @@
+{
+  "task_id": "PRICE_SOURCE_SINGLE_AUTHORITY_001",
+  "status": "VERIFIED",
+  "runtime_target": "http://localhost:8900",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "exact_current_price_paths_found": [
+    {
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\market_stream.py",
+      "path": "websocket -> GLOBAL_STATE_HUB.update_mark(...)",
+      "role": "primary live mark writer"
+    },
+    {
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\state_hub.py",
+      "path": "stores and serves latest mark snapshot",
+      "role": "backend mark owner"
+    },
+    {
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+      "path": "SSE positions payload builder",
+      "role": "backend truth surface for current_price + mark_source"
+    },
+    {
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+      "path": "buildOpenPaperPositions(...) previously seeded current_price from rec?.current_price",
+      "role": "incorrect competing frontend writer"
+    }
+  ],
+  "root_cause": "Frontend open-paper-position construction was seeding current_price from shadow recommendation context (`rec?.current_price`), allowing live card price to flip away from fresh stream-backed backend truth.",
+  "fix": {
+    "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "function": "buildOpenPaperPositions",
+    "old": "current_price: rec?.current_price ?? null",
+    "new": "current_price: null"
+  },
+  "source_precedence_after_fix": [
+    "fresh polymarket_stream mark from backend state/SSE wins",
+    "fallback may apply only when stream mark is missing or stale",
+    "shadow never writes/overrides live paper card current_price"
+  ],
+  "live_proof_sample": {
+    "surface": "http://localhost:8900/api/stream/state",
+    "event": "positions_mark",
+    "sample_summary": "Observed repeated positions_mark payloads with stable mark_source=polymarket_stream and no flip back to a second current_price source."
+  },
+  "mark_source_stability": "stable as polymarket_stream in the observed live sample",
+  "hard_mismatch_remaining": "none proven after the fix"
+}

@@ -1,0 +1,23 @@
+{
+  "task_id": "DUPLICATE_ENTRY_FIX_001",
+  "status": "completed",
+  "blocked": false,
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\db.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "changes": {
+    "core/db.py": [
+      "Added init_db() try/except wrapper to create partial unique index idx_trades_one_open_per_slug on trades(market_slug) where status='open'.",
+      "Added info log on successful index ensure and warning log on failure.",
+      "Changed insert_open_trade return type to int | None.",
+      "Made insert_open_trade atomic with BEGIN IMMEDIATE, open-slug pre-check SELECT, and sqlite3.IntegrityError handling returning None.",
+      "Preserved existing INSERT columns including source."
+    ],
+    "bot_core.py": [
+      "Native open loop now checks insert_open_trade(...) result; on None logs OPEN SKIPPED (duplicate slug) and continues.",
+      "Model bridge open section now checks insert_open_trade(...) result; on None logs BRIDGE OPEN SKIPPED (duplicate slug) and continues."
+    ]
+  },
+  "notes": "No disallowed files were modified."
+}

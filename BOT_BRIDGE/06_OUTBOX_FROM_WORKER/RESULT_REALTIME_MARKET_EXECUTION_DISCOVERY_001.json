@@ -1,0 +1,54 @@
+{
+  "task_id": "REALTIME_MARKET_EXECUTION_DISCOVERY_001",
+  "status": "done",
+  "reusable_polymarket_integration_points_found": {
+    "market_data": [
+      {
+        "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\orderbook.py",
+        "role": "Current normalized Polymarket orderbook snapshot fetch path",
+        "notes": "Uses Polymarket/Gamma/CLOB-style REST orderbook access, not websocket streaming."
+      },
+      {
+        "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\discovery.py",
+        "role": "Market discovery / metadata path for tradable Polymarket markets"
+      },
+      {
+        "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\sports\\mlb\\adapter.py",
+        "role": "MLB mapping layer between discovered markets and baseball-specific handling"
+      }
+    ],
+    "user_order_fill_data": [
+      {
+        "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+        "role": "Local simulated execution lifecycle only",
+        "notes": "Tracks paper opens/closes, not realtime Polymarket user stream events."
+      },
+      {
+        "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\db.py",
+        "role": "Persisted local trade/open/close state",
+        "notes": "No Polymarket user websocket/fill subscription layer present."
+      }
+    ],
+    "existing_reusable_websocket_client_layer": {
+      "found": false,
+      "details": "No existing reusable websocket/client layer for Polymarket market stream or user/order/fill stream was found in the allowed discovery set. Existing integration is REST/poll based."
+    },
+    "dashboard_server_hosting_assessment": {
+      "can_host_first_slice_cleanly": true,
+      "details": "dashboard_server.py already hosts the SSE fanout to the browser and can consume a server-side local state source. But a clean server-side market/user stream source is still missing and should not be crammed directly into dashboard_server.py if realtime Polymarket streams are added."
+    }
+  },
+  "new_files_truly_needed": true,
+  "exact_minimum_implementation_file_set": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\market_stream.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\state_hub.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py"
+  ],
+  "recommended_first_realtime_slice": {
+    "scope": "Server-side Polymarket market stream only for tracked open-position assets",
+    "why_first": "It directly replaces the current held-side current-price motion path with true market-realtime inputs while keeping user/fill stream work separate for the next step.",
+    "fallback": "Keep current REST/poll snapshot path and current browser polling intact when stream is absent or stale.",
+    "odds_api_rule": "Odds API remains verification-only and non-streaming."
+  },
+  "conclusion": "Reusable REST-based Polymarket market data integration already exists, but no reusable websocket/user-stream layer was found. New narrow stream/state files are justified for implementation."
+}

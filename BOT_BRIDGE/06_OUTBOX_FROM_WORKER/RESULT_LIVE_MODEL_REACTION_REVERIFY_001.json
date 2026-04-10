@@ -1,0 +1,23 @@
+{
+  "task_id": "LIVE_MODEL_REACTION_REVERIFY_001",
+  "status": "PARTIAL",
+  "used_available_live_window_only": true,
+  "production_code_changed": false,
+  "cadence_before": {
+    "recommendation_loop_seconds": 30,
+    "game_state_cache_ttl_seconds": 15,
+    "book_cache_ttl_seconds": 5
+  },
+  "cadence_after": {
+    "recommendation_loop_seconds": 15,
+    "game_state_cache_ttl_seconds": 8,
+    "book_cache_ttl_seconds": 5
+  },
+  "live_reaction_summary": "A true live MLB window was present and the runtime/dashboard surfaces remained coherent, but the observed sample did not expose enough recommendation-side change over time to prove that the tighter cadence produced a clearly stronger live reaction end-to-end.",
+  "cadence_progression_summary": "Cadence is objectively tighter in code, but the sampled live window did not capture enough game-state/recommendation progression deltas to elevate the result from PARTIAL to VERIFIED.",
+  "mismatch": "No hard mismatch or instability was observed; the limitation was insufficient observable live progression, not a contradiction.",
+  "why_not_verified": [
+    "No sufficient recommendation-output delta was captured in the sampled live window.",
+    "No enough over-time live change was observed to prove the faster cadence materially improved reaction behavior during that exact sample."
+  ]
+}

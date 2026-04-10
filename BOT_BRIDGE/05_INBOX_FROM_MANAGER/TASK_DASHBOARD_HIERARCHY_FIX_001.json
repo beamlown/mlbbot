@@ -1,0 +1,12 @@
+{
+  "task_id": "DASHBOARD_HIERARCHY_FIX_001",
+  "title": "Make dashboard genuinely live-game-first and demote trade log from default focus",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "dashboard_hierarchy",
+  "allowed_files": [
+    "dashboard.html",
+    "dashboard_server.py"
+  ],
+  "objective": "Apply a narrow but real layout/default-state hierarchy fix so the live game + active position monitor is above the fold and dominant by default, while trade log/history/diagnostics become secondary and non-default."
+}

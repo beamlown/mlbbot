@@ -1,0 +1,34 @@
+{
+  "task_id": "DASHBOARD_V2_001",
+  "status": "done",
+  "allowed_files": [
+    "dashboard_v2.html"
+  ],
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_v2.html"
+  ],
+  "report": {
+    "v2_is_fresh_build": true,
+    "live_game_monitor_above_fold": true,
+    "trade_log_secondary": true,
+    "shadow_secondary": true,
+    "active_position_semantics_clear": true,
+    "accounting_understandable": true,
+    "truth_regression": false
+  },
+  "v2_structure": {
+    "top_command_bar": true,
+    "primary_live_monitor_area": true,
+    "secondary_live_games_strip": true,
+    "accounting_strip": true,
+    "secondary_drawers_sections": [
+      "shadow diagnostics",
+      "trade log"
+    ]
+  },
+  "notes": [
+    "Built from scratch side-by-side as dashboard_v2.html.",
+    "Used only current endpoints: /api/state, /api/trades, /api/games, /api/mlb-shadow.",
+    "No backend addition was required for the V2 shell."
+  ]
+}

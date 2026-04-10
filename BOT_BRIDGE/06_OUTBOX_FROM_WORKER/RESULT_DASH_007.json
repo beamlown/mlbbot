@@ -1,0 +1,20 @@
+{
+  "task_id": "DASH_007",
+  "status": "done",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "summary": [
+    "Removed Markets and Signals tabs/panels from the drawer.",
+    "Removed related fetch/render logic so only Trade Log, Shadow, Candidates, and Manual remain."
+  ],
+  "commands_run": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2",
+    "python dashboard_server.py"
+  ],
+  "result": [
+    "Dashboard server started successfully after removing Markets and Signals tabs.",
+    "Drawer now has exactly four intended tabs in the template: Trade Log, Shadow, Candidates, Manual."
+  ],
+  "next_recommended_task": "DASH_008"
+}

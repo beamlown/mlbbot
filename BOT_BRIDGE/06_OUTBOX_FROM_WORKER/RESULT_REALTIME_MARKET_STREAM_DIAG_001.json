@@ -1,0 +1,45 @@
+{
+  "task_id": "REALTIME_MARKET_STREAM_DIAG_001",
+  "status": "done",
+  "final_result": "VERIFIED_CAUSE_FOUND",
+  "exact_cause": {
+    "category": "runtime state / token mapping",
+    "details": "_tracked_open_assets() was returning an empty mapping in the live runtime because the current runtime discovery cache did not yet provide token IDs for the open-position markets. With no tracked asset IDs, the market websocket had nothing to subscribe to, so no live marks could enter state_hub."
+  },
+  "proof_of_work": {
+    "tracked_assets_before_refresh": {},
+    "sse_symptom": {
+      "mark_source": "poll_fallback",
+      "current_price": null,
+      "best_bid": null,
+      "best_ask": null,
+      "spread": null,
+      "source_ts": null
+    },
+    "open_positions_inspected": "Current open trades were present in _fetch_trades(), so the problem was not absence of open positions.",
+    "discovery_cache_check": "runtime/last_discovery.json existed, but the live runtime mapping initially produced no usable token-id subscriptions for tracked open positions.",
+    "after_refresh_token_proof": "After a discovery refresh, runtime/last_discovery.json contained yes_token_id/no_token_id for the open-position slugs, and _tracked_open_assets() returned non-empty tracked asset mappings."
+  },
+  "exact_token_ids_inspected": {
+    "example_slugs_checked": [
+      "mlb-phi-sf-2026-04-08",
+      "mlb-hou-col-2026-04-08",
+      "mlb-bal-cws-2026-04-08"
+    ],
+    "result": "After refresh, these slugs resolved to concrete yes_token_id / no_token_id values."
+  },
+  "subscribe_payload_diagnosis": {
+    "payload_shape": {
+      "assets_ids": "derived from tracked asset mapping",
+      "type": "market",
+      "custom_feature_enabled": true
+    },
+    "status": "payload logic itself was not the first blocker because tracked asset mapping was empty at runtime before refresh."
+  },
+  "parser_statehub_diagnosis": {
+    "status": "not yet disproven",
+    "details": "Parser/state_hub were not the first confirmed failure point. The first confirmed failure was zero tracked assets to subscribe."
+  },
+  "tiny_fix_needed": false,
+  "runtime_action_needed_next": "Refresh discovery cache in the active runtime path and restart/reload the dashboard server so the live process subscribes using the now-persisted token IDs. Then re-test live mark ingress."
+}

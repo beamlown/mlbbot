@@ -1,0 +1,16 @@
+{
+  "task_id": "LIVE_FEED_STATUS_POLISH_001",
+  "scope": "tiny frontend-only polish for feed/freshness/status presentation",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "BOT_BRIDGE result/review files"
+  ],
+  "plan": [
+    "audit current feed/freshness labels in dashboard.html",
+    "patch copy/formatting only in frontend if possible",
+    "write handoff/result/review artifacts"
+  ],
+  "frontend_only": true,
+  "status": "in_progress"
+}

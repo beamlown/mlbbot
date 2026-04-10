@@ -1,0 +1,30 @@
+{
+  "task_id": "DASH_013",
+  "title": "Fix shadow feed ticker — inning shown for pre-game recs",
+  "objective": "The shadow feed ticker in the drawer (renderShadowFeed()) has the same pre-game inning bug that DASH_012 fixed on position cards. Line 898 appends inning text whenever r.inning is truthy, regardless of game_status. gameStatusChip() was already fixed in DASH_012 — reuse it here.",
+  "allowed_files": ["dashboard.html"],
+  "do_not_touch": ["dashboard_server.py", "launch_all.py", "bot_core.py", "core/", "mlb_model/"],
+
+  "deliverables": [
+    {
+      "label": "Gate inning on LIVE status in renderShadowFeed()",
+      "file": "dashboard.html",
+      "where": "renderShadowFeed() line ~898",
+      "change": "Find:\n  const inn    = r.inning ? ` i${r.inning}` : '';\n\nReplace with:\n  const statusChip = gameStatusChip(r);\n  const inn = (statusChip === 'LIVE' && r.inning) ? ` i${r.inning}` : '';"
+    }
+  ],
+
+  "acceptance_criteria": [
+    "Shadow ticker rows for pre-game recs show only the matchup — no inning number",
+    "Shadow ticker rows for live in-game recs still show the inning (e.g. 'SEA@LAA i3')",
+    "No JS console errors"
+  ],
+
+  "verification": [
+    "Open dashboard → Shadow tab.",
+    "Any rec for a game not yet started: game column shows 'AWAY@HOME' with no inning suffix.",
+    "Any rec for a live game: game column shows 'AWAY@HOME i3' (or current inning)."
+  ],
+
+  "rollback": "Revert dashboard.html only."
+}

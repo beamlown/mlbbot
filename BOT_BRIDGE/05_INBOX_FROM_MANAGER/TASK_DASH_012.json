@@ -1,0 +1,49 @@
+{
+  "task_id": "DASH_012",
+  "title": "Fix game status chip — LIVE shown for unstarted games",
+  "objective": "The game context pill on position cards shows 'i1 · LIVE' with a green dot for games that haven't started yet. ESPN reports inning=1 and game_status='STATUS_IN_PROGRESS' during pre-game warmup, and the current gameStatusChip() function treats any truthy inning value as LIVE. Fix using the game_status field and only show inning/live-dot for genuinely live games.",
+  "allowed_files": ["dashboard.html"],
+  "do_not_touch": ["dashboard_server.py", "launch_all.py", "bot_core.py", "core/", "mlb_model/"],
+  "queued_reason": "Same file as DASH_011 — activate only after DASH_011 is APPROVED",
+  "status": "QUEUED — DO NOT START. Wait for REVIEW_DASH_011.md Decision: APPROVED before executing.",
+
+  "context": {
+    "root_cause_1": "gameStatusChip() (line ~666) returns 'LIVE' whenever item.inning is truthy. ESPN sends inning=1 during pre-game warmup, so the pill shows 'i1 · LIVE' before the game starts.",
+    "root_cause_2": "The live-dot (<span class='live-dot'></span>) always renders inside the gameCtxPill regardless of game status — green dot for scheduled games is misleading.",
+    "root_cause_3": "The inning number renders whenever r.inning is truthy — even for scheduled/pre-game games where inning=1 is warmup noise.",
+    "available_data": "Shadow recs carry a game_status field (e.g. 'STATUS_IN_PROGRESS', 'STATUS_PRE_GAME', 'STATUS_SCHEDULED', 'STATUS_FINAL'). This field is available on the rec object but gameStatusChip() does not use it."
+  },
+
+  "deliverables": [
+    {
+      "label": "Fix 1 — Update gameStatusChip() to use game_status field",
+      "file": "dashboard.html",
+      "where": "gameStatusChip() function lines ~666-670",
+      "change": "Replace the current function:\n\nfunction gameStatusChip(item) {\n  if (item.resolved || item.status === 'closed') return 'FINAL';\n  if (item.inning) return 'LIVE';\n  return 'SCHEDULED';\n}\n\nWith:\n\nfunction gameStatusChip(item) {\n  if (item.resolved || item.status === 'closed') return 'FINAL';\n  const gs = (item.game_status || '').toUpperCase();\n  if (gs.includes('FINAL') || gs.includes('POST')) return 'FINAL';\n  if (gs.includes('PRE') || gs.includes('WARMUP') || gs.includes('SCHEDULED')) return 'SCHEDULED';\n  if (gs.includes('PROGRESS') || gs.includes('LIVE')) return 'LIVE';\n  if (item.inning && item.inning > 0) return 'LIVE';\n  return 'SCHEDULED';\n}"
+    },
+    {
+      "label": "Fix 2 — Only show live-dot and inning for live games",
+      "file": "dashboard.html",
+      "where": "buildUnifiedPositionCards() — near line 684 where inn is declared, and line 721 where gameCtxPill is built",
+      "change": "Currently:\n  const inn = r.inning ? `i${r.inning}` : '';\n  ...\n  const gameCtxPill = (game || inn) ? `<div class='game-ctx-pill'><span class='live-dot'></span>${game}${inn ? ' · ' + inn : ''} · ${gameStatusChip(r)}</div>` : '';\n\nReplace with:\n  const statusChip = gameStatusChip(r);\n  const inn = (statusChip === 'LIVE' && r.inning) ? `i${r.inning}` : '';\n  const liveIndicator = statusChip === 'LIVE' ? '<span class=\"live-dot\"></span>' : '';\n  ...\n  const gameCtxPill = game ? `<div class='game-ctx-pill'>${liveIndicator}${game}${inn ? ' · ' + inn : ''} · ${statusChip}</div>` : '';"
+    }
+  ],
+
+  "acceptance_criteria": [
+    "A scheduled/pre-game position card shows 'SCHEDULED' status — NOT 'LIVE' or 'i1'",
+    "No green live-dot on cards for scheduled/pre-game games",
+    "No inning number shown for scheduled/pre-game games",
+    "A genuinely live in-game position card shows 'iN · LIVE' with green dot (N = actual inning)",
+    "A resolved/closed position (if any remain visible) shows 'FINAL'",
+    "No JS console errors"
+  ],
+
+  "verification": [
+    "Reload dashboard with the LAD@WSN open trade showing.",
+    "If LAD@WSN has not started: pill shows 'LAD @ WSN · SCHEDULED' with no green dot and no inning number.",
+    "If LAD@WSN is live: pill shows 'LAD @ WSN · iN · LIVE' with green dot.",
+    "Check browser console for JS errors."
+  ],
+
+  "rollback": "Revert dashboard.html only."
+}

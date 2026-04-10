@@ -1,0 +1,118 @@
+{
+  "task_id": "PAPER_BRIDGE_002",
+  "title": "Persist and surface source='model_bridge' through the full paper trade stack",
+  "objective": "Add a source field to the Trade dataclass, trades DB schema, paper_exec open_position(), and dashboard query so that model-driven paper trades carry source='model_bridge' end-to-end. Paper mode only. No real money. No architecture redesign.",
+
+  "paper_only_notice": "THIS IS PAPER MODE ONLY. No real money is involved. No live order placement. No connection to any exchange, broker, or betting platform.",
+
+  "why_this_exists": "PAPER_BRIDGE_001 was BLOCKED because source='model_bridge' cannot be persisted without modifying paper_exec.py and db.py, which were listed as do_not_touch. This task expands scope only as far as the persistence path requires. The gate logic from PAPER_BRIDGE_001 is preserved unchanged.",
+
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\types.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\db.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "new_files_permitted": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py"
+  ],
+  "read_only_data_sources": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\logs\\shadow_recommendations.jsonl"
+  ],
+
+  "do_not_touch": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\signal_base.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "model training",
+    "model artifacts",
+    "order placement",
+    "live execution"
+  ],
+
+  "persistence_path": {
+    "step_1_types": "Add source: str = 'bot' to the Trade dataclass in core/types.py. Default 'bot' preserves all existing non-model trades with no behavior change.",
+    "step_2_db": "Add source column to trades table in core/db.py. Two changes required: (a) schema migration — run ALTER TABLE trades ADD COLUMN source TEXT DEFAULT 'bot' if column does not exist; do NOT rely on CREATE TABLE IF NOT EXISTS to add it to existing databases. (b) update insert_open_trade() to include source in the INSERT. (c) update _row_to_trade() and any SELECT queries in fetch_open_trades() / fetch_recent_closed() to include source column.",
+    "step_3_paper_exec": "Add source: str = 'bot' parameter to open_position() in core/paper_exec.py. Pass it through to the Trade constructor. Default 'bot' so all existing callers continue to work unchanged.",
+    "step_4_dashboard_server": "In dashboard_server.py, the _fetch_trades() function currently hard-codes source='bot' for all DB rows. Change it to SELECT source FROM trades and use the actual column value. Existing 'bot' trades will still return source='bot' from the column default. model_bridge trades will return source='model_bridge'.",
+    "step_5_model_bridge": "core/model_bridge.py implements the gate logic from PAPER_BRIDGE_001 (see preserved_gates below). When calling paper_exec.open_position(), pass source='model_bridge'.",
+    "step_6_bot_core": "bot_core.py gets a minimal additive call to model_bridge.get_approved_intents() after the existing loop body, as specified in PAPER_BRIDGE_001."
+  },
+
+  "schema_migration_rules": [
+    "The migration must be additive and backward-safe.",
+    "Use ALTER TABLE trades ADD COLUMN source TEXT DEFAULT 'bot' wrapped in a try/except for OperationalError in case the column already exists.",
+    "Run this migration inside init_db() or a dedicated migrate_db() call that runs at startup.",
+    "Existing rows get source='bot' by default — no data loss, no existing trade behavior change.",
+    "Non-model paper trades opened after this patch will get source='bot' by default — no caller changes required except in model_bridge."
+  ],
+
+  "preserved_gates": [
+    "ENABLE_MODEL_BRIDGE = False at top of model_bridge.py — default False, do not flip to True in submitted patch",
+    "Deduplicate shadow log: latest entry per market_slug only, NO_TRADE entries discarded before gate evaluation",
+    "model_version must be in APPROVED_MODEL_VERSIONS",
+    "action must be BUY_YES or BUY_NO",
+    "recommendation age below MAX_REC_AGE_SECONDS (120s)",
+    "market type moneyline only — reject slugs containing spread/total/nrfi/props",
+    "event date in slug matches today",
+    "edge exceeds MIN_EDGE (0.05)",
+    "confidence exceeds MIN_CONFIDENCE (0.25)",
+    "game_state_age_sec below MAX_GAME_STATE_AGE (60s)",
+    "book_age_sec below MAX_BOOK_AGE (30s)",
+    "no existing open position for this slug in DB",
+    "one intent per slug per loop"
+  ],
+
+  "backward_safety_rules": [
+    "All existing callers of open_position() must continue to work with no changes — the source parameter must default to 'bot'.",
+    "All existing trades in the DB must continue to display correctly — the source column default 'bot' covers this.",
+    "The Trade dataclass source field must default to 'bot' so existing construction sites do not break.",
+    "dashboard_server.py source field change must not break existing bot or manual trade display."
+  ],
+
+  "deliverables": [
+    "core/types.py — source field added to Trade dataclass",
+    "core/db.py — source column migration, INSERT update, SELECT update, _row_to_trade update",
+    "core/paper_exec.py — source param added to open_position(), passed to Trade",
+    "dashboard_server.py — _fetch_trades() reads source from DB column instead of hard-coding 'bot'",
+    "core/model_bridge.py — gate logic from PAPER_BRIDGE_001 plus source='model_bridge' in open_position() call",
+    "bot_core.py — minimal bridge call addition",
+    "summary of all schema changes made",
+    "restart steps",
+    "expected log output: BRIDGE DISABLED (kill switch), BRIDGE GATE PASS, BRIDGE GATE REJECT"
+  ],
+
+  "acceptance_criteria": [
+    "Trade dataclass has source field, defaults to 'bot'",
+    "trades table has source column, existing rows default to 'bot'",
+    "insert_open_trade() persists source",
+    "fetch_open_trades() and fetch_recent_closed() return source field",
+    "open_position() accepts source param, defaults to 'bot', all existing callers unaffected",
+    "dashboard_server._fetch_trades() reads source from DB column, not hard-coded",
+    "model_bridge.py passes source='model_bridge' when calling open_position()",
+    "ENABLE_MODEL_BRIDGE = False in submitted patch",
+    "kill switch returns empty list and logs BRIDGE DISABLED",
+    "log dedup: latest-per-slug only, NO_TRADE discarded before gating",
+    "all 13 gates from preserved_gates are implemented",
+    "existing non-model paper trades continue to work and display correctly",
+    "no changes to risk.py, signal_base.py, dashboard.html",
+    "no real execution path exists — paper only"
+  ],
+
+  "verification": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2",
+    "python bot_core.py",
+    "Confirm logs show: BRIDGE DISABLED — set ENABLE_MODEL_BRIDGE=True to activate",
+    "Confirm existing open positions still appear correctly in runtime/state.json",
+    "python dashboard_server.py — confirm server starts",
+    "Check /api/trades payload: existing trades show source='bot', no regressions",
+    "Manually flip ENABLE_MODEL_BRIDGE=True in model_bridge.py, rerun, check for BRIDGE GATE PASS or BRIDGE GATE REJECT log lines",
+    "If a gate pass occurs, confirm new position in state.json has source='model_bridge'",
+    "Flip ENABLE_MODEL_BRIDGE back to False before writing result"
+  ],
+
+  "rollback": "Revert core/types.py, core/db.py, core/paper_exec.py, dashboard_server.py, bot_core.py. Delete core/model_bridge.py. The source column in the DB will remain but is harmless — existing data is unaffected."
+}

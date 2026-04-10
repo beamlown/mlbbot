@@ -1,0 +1,70 @@
+{
+  "task_id": "EXIT_PARAMS_TIGHTEN_001",
+  "priority": "HIGH",
+  "type": "implementation",
+  "subsystem": "risk / exit",
+  "allowed_files": [".env"],
+  "note": ".env only. Pure parameter change — no code changes. All thresholds are read at process startup from env vars defined in core/risk.py lines 28-33.",
+
+  "context": {
+    "problem": "Current exit thresholds are too loose. TP at +85% means the bot holds through most of a game's price swing before exiting. SL at -20% means taking a large loss before cutting. Trailing stop activates at +15% with 20% drawdown tolerance — that's a wide band.",
+    "current_values": {
+      "AUTO_TAKE_PROFIT_PCT": "0.85  (exit when held price is +85% above entry)",
+      "AUTO_STOP_LOSS_PCT": "0.20   (exit when held price is -20% below entry)",
+      "NEAR_RESOLUTION_PRICE": "0.92 (exit when held price >= 92¢ — leaving 8¢ on the table)",
+      "TRAILING_STOP_ACTIVATE_PCT": "0.15  (trailing stop arms when up +15%)",
+      "TRAILING_STOP_DRAWDOWN_PCT": "0.20  (trailing stop triggers when peak drops 20%)"
+    },
+    "user_intent": "Tighten stops and take profits more aggressively on in-progress wins. Ride guaranteed wins (NEAR_RESOLUTION) less aggressively — raise threshold so we don't close at 92¢ when resolution at 100¢ is imminent."
+  },
+
+  "changes": {
+    "AUTO_TAKE_PROFIT_PCT": {
+      "from": "0.85",
+      "to": "0.40",
+      "rationale": "Take profits when up 40% on entry. For a 40¢ entry, TP at 56¢. Captures meaningful in-game price movement without overstaying. The separate NEAR_RESOLUTION_PRICE handles near-certain wins."
+    },
+    "AUTO_STOP_LOSS_PCT": {
+      "from": "0.20",
+      "to": "0.12",
+      "rationale": "Cut losses at -12% instead of -20%. For a 50¢ entry, SL at 44¢ instead of 40¢. Reduces max loss per trade by 40%."
+    },
+    "NEAR_RESOLUTION_PRICE": {
+      "from": "0.92",
+      "to": "0.97",
+      "rationale": "Ride near-certain wins longer. 97¢ vs 92¢ captures another 5¢ per contract (~$3-6 per position). At 97¢ the outcome is effectively decided. Also aligns with the planned game-aware exit (EXIT_GAME_AWARE_001) which will hold Final-state wins all the way to 1.00."
+    },
+    "TRAILING_STOP_ACTIVATE_PCT": {
+      "from": "0.15",
+      "to": "0.10",
+      "rationale": "Arm the trailing stop sooner — at +10% gain rather than +15%."
+    },
+    "TRAILING_STOP_DRAWDOWN_PCT": {
+      "from": "0.20",
+      "to": "0.12",
+      "rationale": "Tighter drawdown from peak before triggering. Match the new SL percentage."
+    }
+  },
+
+  "verification": {
+    "steps": [
+      "Confirm only .env changed",
+      "Confirm AUTO_TAKE_PROFIT_PCT=0.40 in .env",
+      "Confirm AUTO_STOP_LOSS_PCT=0.12 in .env",
+      "Confirm NEAR_RESOLUTION_PRICE=0.97 in .env",
+      "Restart bot_core.py after .env change (process reads these at startup)",
+      "Check next bot loop log: confirm new thresholds appear in any check_exit evaluations"
+    ],
+    "note": "Process restart required for .env changes to take effect. Coordinate with operator."
+  },
+
+  "do_not": [
+    "Edit risk.py, bot_core.py, or any code file",
+    "Change MAX_CONCURRENT_TRADES or confidence thresholds (separate concern)"
+  ],
+
+  "result_format": {
+    "file": "06_OUTBOX_FROM_WORKER/RESULT_EXIT_PARAMS_TIGHTEN_001.json",
+    "required_fields": ["decision", "files_changed", "old_values", "new_values", "restart_required"]
+  }
+}

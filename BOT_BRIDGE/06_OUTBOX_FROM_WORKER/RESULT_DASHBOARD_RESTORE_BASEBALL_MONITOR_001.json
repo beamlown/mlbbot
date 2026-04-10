@@ -1,0 +1,36 @@
+{
+  "task_id": "DASHBOARD_RESTORE_BASEBALL_MONITOR_001",
+  "status": "done",
+  "allowed_files": [
+    "dashboard.html",
+    "dashboard_server.py"
+  ],
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "report": {
+    "score_location": "main active baseball monitor card header as the largest visual anchor (`game-monitor-score`)",
+    "inning_outs_bases_location": {
+      "inning": "header live-state pills under the score",
+      "outs": "header live-state pills under the score",
+      "balls_strikes": "header live-state pills under the score when available",
+      "bases": "prominent baseball diamond + runners line inside the baseball-state block of the main card"
+    },
+    "pitcher_location": "main card header detail line (`monitor-pitcher`) directly beneath live game state pills when available",
+    "side_outcome_location": "main active card in both the action pill and the baseball-state detail line as the held WIN/LOSE outcome",
+    "committed_equity_unrealized_location": "trade/accounting block on the right side of the main hybrid card, via stat boxes for Committed, Live Equity, and Unrealized",
+    "committed_and_available_cash_verified_against_actual_open_trade": false,
+    "verification_note": "At verification time there were 0 open trades, so semantic wiring remains intact but live accounting could not be checked against an actually open position in this exact snapshot."
+  },
+  "acceptance_summary": {
+    "baseball_state_visually_prominent": true,
+    "game_now_readable": true,
+    "held_position_clear": true,
+    "trade_log_stays_secondary": true,
+    "truth_regression": false
+  },
+  "notes": [
+    "This pass increased baseball-state prominence without altering the stabilized truth model.",
+    "No backend change was needed."
+  ]
+}

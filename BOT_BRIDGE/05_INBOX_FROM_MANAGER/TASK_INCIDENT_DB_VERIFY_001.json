@@ -1,0 +1,37 @@
+{
+  "task_id": "INCIDENT_DB_VERIFY_001",
+  "title": "Incident DB verification — live DB path, index state, duplicate open rows, post-containment duplicate behavior",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "incident_db_verify",
+  "allowed_files": [],
+  "do_not_touch": [
+    "dashboard.html",
+    "dashboard_server.py",
+    "launch_all.py",
+    "bot_core.py",
+    "core/",
+    ".env",
+    "mlb_model/"
+  ],
+  "objective": "Verification-only first, cleanup second only if verification proves it is safe. Prove the live DB path/schema/index state, determine whether duplicate open rows currently exist, whether those rows should already be resolved, and whether new duplicates are still occurring after containment. No production code changes.",
+  "verification_targets": [
+    "exact live DB file path in use by remaining active stack",
+    "whether trades table has the expected unique open-slug protection index",
+    "whether duplicate open rows currently exist for the same market_slug",
+    "whether duplicate open rows are still actually open or should already be resolved/closed",
+    "whether the remaining live stack is still writing new duplicates after containment"
+  ],
+  "rules": [
+    "verification first",
+    "cleanup only if explicitly proven safe",
+    "no production code changes",
+    "preserve evidence",
+    "if DB inspection requires a helper script, it must be visible, plain, and read-only"
+  ],
+  "deliverables": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_INCIDENT_DB_VERIFY_001.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_INCIDENT_DB_VERIFY_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\07_REVIEWS\\PROVISIONAL_REVIEW_INCIDENT_DB_VERIFY_001.md"
+  ]
+}

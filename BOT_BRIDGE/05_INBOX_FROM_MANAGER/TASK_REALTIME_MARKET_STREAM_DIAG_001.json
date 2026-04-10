@@ -1,0 +1,16 @@
+{
+  "task_id": "REALTIME_MARKET_STREAM_DIAG_001",
+  "title": "Diagnose missing live Polymarket mark ingress in Stage 1 runtime path",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "realtime_market_stream_diag",
+  "allowed_files": ["core/market_stream.py", "core/state_hub.py", "dashboard_server.py", "core/discovery.py"],
+  "objective": "Identify the exact runtime cause preventing live Polymarket marks from entering the Stage 1 state hub/SSE path without widening scope or falsely marking Stage 1 complete.",
+  "acceptance_criteria": [
+    "exact cause of missing live mark ingress identified",
+    "if tiny code fix is needed, name it precisely",
+    "if no code fix is needed, name the runtime cause precisely",
+    "final result is VERIFIED_CAUSE_FOUND, PARTIAL, or BLOCKED"
+  ],
+  "rollback": "Diagnostic only unless a real tiny fix is separately requested."
+}

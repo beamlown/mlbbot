@@ -1,0 +1,55 @@
+{
+  "task_id": "DASHBOARD_LIVE_COMMAND_CENTER_001",
+  "final_status": "VERIFIED_CAUSE_FOUND",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "dashboard_server_modified": false,
+  "sse_positions_mark_fields": [
+    "type",
+    "ts",
+    "source",
+    "stale",
+    "open_count",
+    "live_equity_total",
+    "positions[].market_slug",
+    "positions[].current_price",
+    "positions[].current_price_stale",
+    "positions[].unrealized_pnl_usd",
+    "positions[].live_equity_usd",
+    "positions[].best_bid",
+    "positions[].best_ask",
+    "positions[].spread",
+    "positions[].source_ts",
+    "positions[].mark_source",
+    "positions[].game_status",
+    "positions[].inning",
+    "positions[].inning_half",
+    "positions[].outs",
+    "positions[].home_score",
+    "positions[].away_score",
+    "positions[].game_source_ts",
+    "positions[].game_stale",
+    "positions[].game_source"
+  ],
+  "current_price_js_line": "const currentHeldPrice = trade.current_price;",
+  "current_price_update_path": "ensureStateStream() -> applyStreamPositionsMark(payload) -> const next = { ...p, current_price: mark.current_price, ... } -> updateLivePositionCardInPlace(next) -> .pos-current-price DOM node",
+  "unrealized_pct_js_line": "const unrealizedPct = (currentHeldPrice != null && trade.entry_px) ? ((currentHeldPrice - trade.entry_px) / trade.entry_px) * 100 : null;",
+  "backed_team_display": "LIVE cards display backed_team prominently via sideText = `${trade.backed_team} ${trade.side_label}` and faded team as secondary metadata",
+  "shadow_absent_from_live": true,
+  "frontend_bid_branching_absent": true,
+  "grep_confirmation": {
+    "bid_yes_in_dashboard_html": false,
+    "bid_no_in_dashboard_html": false
+  },
+  "stale_badge_behavior": "LIVE cards show a STALE badge when trade.current_price_stale is true, sourced from SSE positions_mark.current_price_stale",
+  "account_strip_source": "renderState() reads /api/state bankroll and r25 fields, including r25.win_rate and r25.expectancy",
+  "live_tab_order": [
+    "game monitor",
+    "position cards",
+    "account strip"
+  ],
+  "in_place_dom_updates": true,
+  "commit": "2e7bfcc",
+  "commit_message": "Build live dashboard command center"
+}

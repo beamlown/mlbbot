@@ -1,0 +1,17 @@
+{
+  "task_id": "RUNTIME_ACTIVATE_REALTIME_STAGE2_001",
+  "title": "Activate live Stage 2 SSE runtime and verify route emission",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "runtime_activation",
+  "allowed_surfaces": ["runtime process inspection", "launcher/dashboard runtime", "read-only logs"],
+  "objective": "Restart the live dashboard server process cleanly so the on-disk Stage 2 SSE code is active, then prove /api/stream/state is live and polling fallback still works.",
+  "acceptance_criteria": [
+    "/api/stream/state returns 200",
+    "at least one live SSE payload is captured",
+    "polling endpoints still work",
+    "no code change unless truly required",
+    "final result is VERIFIED, PARTIAL, or BLOCKED"
+  ],
+  "rollback": "Restart the prior dashboard process path if needed. No code change intended."
+}

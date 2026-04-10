@@ -1,0 +1,21 @@
+{
+  "task_id": "R25_PROOF_FIX_001",
+  "status": "done",
+  "allowed_files": [
+    "dashboard_server.py"
+  ],
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py"
+  ],
+  "summary": [
+    "Proved the current r25 implementation did not match DASH_014 intent: it returned zeroed metrics for both empty samples and DB errors.",
+    "Applied the smallest correction inside _read_state() only.",
+    "Empty r25 samples now return win_rate=null and expectancy=null with sample_size=0.",
+    "DB-error fallback now returns null metrics and an explicit error field instead of pretending the account has a real zero-performance sample.",
+    "Updated losses counting to match the original DASH_014 task spec: pnl <= 0 counts as a loss."
+  ],
+  "notes": [
+    "No unrelated dashboard or server logic was changed.",
+    "Non-empty successful r25 calculations still return computed win_rate, wins, losses, expectancy, and sample_size."
+  ]
+}

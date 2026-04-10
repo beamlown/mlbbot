@@ -1,0 +1,62 @@
+{
+  "task_id": "MODEL_AUTHORITY_001",
+  "status": "done",
+  "final_outcome": "first_step_applied",
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "authority_violation_removed": "The production main loop in sports_bot_v2 no longer originates MLB trades from locally generated signals by default.",
+  "answers_before_change": {
+    "where_sports_bot_v2_originated_trade_decisions": "bot_core.py main market loop via generate_signal(...) -> check_entry_gates(...) -> open_position(...) -> insert_open_trade(...)",
+    "exact_local_decision_functions": [
+      "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py main loop",
+      "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\signal_base.py generate_signal()"
+    ],
+    "production_path_that_should_remain": "mlb_model recommendation -> core/model_bridge.py validation/intake -> bot_core.py bridge branch -> execution checks -> open_position() -> insert_open_trade()",
+    "minimum_first_step_change": "Gate local MLB origination behind ALLOW_LOCAL_MLB_ORIGINATION, default off, so bridge/model-issued recommendations are the only production open path.",
+    "bridge_fields_currently_thinned": [
+      "full true_probability",
+      "full market_probability",
+      "explicit TP",
+      "explicit SL",
+      "recommended_size_dollars",
+      "recommended_size_units",
+      "detailed reasoning/thesis payload"
+    ],
+    "responsibility_split": {
+      "mlb_model": ["whether to trade", "side", "true probability", "edge", "confidence", "TP", "SL", "recommended size", "no-trade"],
+      "bridge_contract": ["schema validation", "freshness", "transport of model-owned recommendation fields"],
+      "sports_bot_v2_execution_risk": ["liquidity/slippage checks", "bankroll/risk caps", "duplicate prevention", "execution", "position monitoring", "mechanical exits"]
+    }
+  },
+  "exact_file_changes": [
+    {
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+      "change": "Added ALLOW_LOCAL_MLB_ORIGINATION = os.getenv('ALLOW_LOCAL_MLB_ORIGINATION', '0') == '1'"
+    },
+    {
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+      "change": "Inserted an early continue before generate_signal(...) so local MLB origination is disabled by default and logged as model_authority_enforced."
+    }
+  ],
+  "verification": {
+    "disabled_local_path_proof": [
+      "bot_core.py line block shows local gate before generate_signal(...)",
+      "If ALLOW_LOCAL_MLB_ORIGINATION is unset, local path cannot reach generate_signal/open_position/insert_open_trade"
+    ],
+    "bridge_path_still_present": [
+      "bot_core.py bridge branch still calls get_approved_intents(open_slugs)",
+      "bridge branch still builds Signal from model intent and calls open_position(...) then insert_open_trade(...)"
+    ],
+    "execution_protections_preserved": [
+      "MAX_CONCURRENT_TRADES checks unchanged",
+      "duplicate protection via fetch_open_trades + insert_open_trade unchanged",
+      "market lookup and capacity checks unchanged in bridge path"
+    ]
+  },
+  "rollback": "Revert the small bot_core.py gate change or set ALLOW_LOCAL_MLB_ORIGINATION=1 to temporarily restore the local origination path.",
+  "notes": [
+    "This is intentionally only the first safe step. It does not yet widen the bridge payload or fully separate execution-style gating still living in mlb_model.",
+    "No strategy logic was redesigned."
+  ]
+}

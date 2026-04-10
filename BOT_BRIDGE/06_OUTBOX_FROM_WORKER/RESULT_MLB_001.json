@@ -1,0 +1,23 @@
+{
+  "task_id": "MLB_001",
+  "status": "done",
+  "files_changed": [
+    "integration/recommendation_api.py"
+  ],
+  "summary": [
+    "Added detailed exclusion logging for same-day MLB event slugs."
+  ],
+  "commands_run": [
+    "python -m integration.recommendation_api"
+  ],
+  "tests_run": [
+    "Observed not-live exclusion diagnostics in logs"
+  ],
+  "result": [
+    "Found future-dated slug mismatch causing exclusion"
+  ],
+  "risks": [
+    "May still need filter tweak after next run"
+  ],
+  "next_recommended_task": "MLB_002"
+}

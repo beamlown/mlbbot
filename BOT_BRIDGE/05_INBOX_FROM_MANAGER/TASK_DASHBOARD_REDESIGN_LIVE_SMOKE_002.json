@@ -1,0 +1,37 @@
+{
+  "task_id": "DASHBOARD_REDESIGN_LIVE_SMOKE_002",
+  "priority": "HIGH",
+  "type": "verification",
+  "subsystem": "dashboard",
+  "allowed_files": [],
+  "note": "Read-only. No production code changes. No file edits outside BOT_BRIDGE.",
+
+  "context": {
+    "why": "DASHBOARD_REDESIGN_LIVE_SMOKE_001 failed because the running dashboard_server.py had stale in-memory code with a BUY_NO sign bug. LIVE_CARD_PNL_SIGN_REGRESSION_001 resolved this by restarting the process (PID 35892 → PID 43288). Sign was verified PASS for all 3 open positions. This task re-runs the full smoke test now that the process is clean.",
+    "current_process": "PID 43288 running dashboard_server.py from sports_bot_v2/",
+    "sign_already_verified": "ARI/NYM BUY_NO current=0.40 entry=0.613 → -$17.38 ✓  |  CIN/MIA BUY_NO current=0.63 entry=0.543 → +$8.04 ✓"
+  },
+
+  "acceptance_criteria": [
+    "HTTP 200 from localhost:8900",
+    "/api/state returns bankroll, r25 win_rate, bridge_enabled",
+    "/api/trades returns open positions with side-correct TP/SL",
+    "SSE /api/stream/state: for each BUY_NO position with non-null current_price, verify unrealized_pnl_usd = round((current_price - entry_px) * qty, 4) — same sign, no branching",
+    "SSE: live_equity_usd and unrealized_pnl_usd are internally consistent (equity = qty * current_price)",
+    "Shadow absent from LIVE tab: confirm #shadow-feed not in tab-live HTML",
+    "Advisory label in GAMES tab: 'Shadow Advisory — Not Executed'",
+    "No new sign regression introduced",
+    "All tabs present: LIVE, POSITIONS, GAMES, HISTORY, SYSTEM"
+  ],
+
+  "do_not": [
+    "Edit any production file",
+    "Restart any process",
+    "Widen scope beyond verification"
+  ],
+
+  "result_format": {
+    "file": "06_OUTBOX_FROM_WORKER/RESULT_DASHBOARD_REDESIGN_LIVE_SMOKE_002.json",
+    "required_fields": ["decision", "sign_verification", "api_checks", "tab_structure_checks", "overall_verdict"]
+  }
+}

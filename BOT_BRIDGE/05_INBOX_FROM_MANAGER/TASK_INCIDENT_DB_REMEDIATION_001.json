@@ -1,0 +1,25 @@
+{
+  "task_id": "INCIDENT_DB_REMEDIATION_001",
+  "title": "Remediate duplicate open rows and enforce unique open-slug index in live DB",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "incident_db_remediation",
+  "allowed_files": [],
+  "objective": "Perform narrow live-DB remediation only: pause/stop remaining entry writer safely, back up the live DB, close/void duplicate open rows under the approved rule, create the missing unique open-slug index, and verify post-remediation truth alignment. No production code changes.",
+  "rules": [
+    "pause remaining entry writer before any DB write",
+    "backup live DB before any remediation",
+    "if backup fails, stop and return BLOCKED",
+    "do not delete rows",
+    "keep earliest open row for each duplicate slug",
+    "close/void extra duplicate open rows using approved remediation values",
+    "preserve source, row ids, ts_open, and original entry fields",
+    "create unique index only after duplicate open rows are remediated",
+    "verify single stack remains intact and no new duplicates appear in verification window"
+  ],
+  "deliverables": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_INCIDENT_DB_REMEDIATION_001.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_INCIDENT_DB_REMEDIATION_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\07_REVIEWS\\PROVISIONAL_REVIEW_INCIDENT_DB_REMEDIATION_001.md"
+  ]
+}

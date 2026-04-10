@@ -1,0 +1,48 @@
+{
+  "task_id": "EXECUTION_HELD_SIDE_SEMANTICS_001",
+  "final_status": "VERIFIED_CAUSE_FOUND",
+  "code_paths_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py"
+  ],
+  "root_cause_proof": {
+    "exact_paths": [
+      "core.risk.check_exit",
+      "core.risk.mark_to_market",
+      "core.paper_exec.mark_to_market_value",
+      "core.paper_exec.close_position"
+    ],
+    "issue": "execution semantics were expressed through repeated raw BUY_YES/BUY_NO branching instead of one explicit held-contract price concept, leaving TP/SL and close monitoring audit-ambiguous after the dashboard held-price fix"
+  },
+  "fix_point": {
+    "risk": "added _held_bid(side, ob) and replaced raw mark branching with current_held_price / held_unrealized_pct naming",
+    "paper_exec": "added _held_bid(side, ob), normalized mark_to_market_value to explicit current_held_price + held_exit_sim, and clarified close_position with held-side exit naming"
+  },
+  "before_after": {
+    "before": {
+      "risk_check_exit": "if BUY_YES: mark = ob.bid_yes else: mark = ob.bid_no; unrealized_pct = (mark - entry_px) / entry_px",
+      "risk_mark_to_market": "if BUY_YES: mark = ob.bid_yes else: mark = ob.bid_no; return (mark - entry_px) * qty",
+      "paper_exec_mark_to_market_value": "exit_sim = _fill_price_exit(trade.side, ob); return (exit_sim - entry_px) * qty",
+      "paper_exec_close_position": "exit_px = _fill_price_exit(trade.side, ob); gross_pnl = (exit_px - entry_px) * qty"
+    },
+    "after": {
+      "risk_check_exit": "current_held_price = _held_bid(trade.side, ob); held_unrealized_pct = (current_held_price - entry_px) / entry_px",
+      "risk_mark_to_market": "current_held_price = _held_bid(trade.side, ob); return (current_held_price - entry_px) * qty",
+      "paper_exec_mark_to_market_value": "current_held_price = _held_bid(trade.side, ob); held_exit_sim = current_held_price * (1.0 - PAPER_SLIPPAGE_PCT); return (held_exit_sim - entry_px) * qty",
+      "paper_exec_close_position": "held_exit_px = _fill_price_exit(trade.side, ob); gross_pnl = (held_exit_px - entry_px) * qty"
+    }
+  },
+  "tp_sl_now_uses_current_held_price": true,
+  "close_pricing_matches_actual_held_contract": true,
+  "bos_mil_opposite_side_close_risk_removed": true,
+  "buy_no_sign_inconsistency_execution_side_removed": true,
+  "temporary_containment_remains_needed": false,
+  "verification": {
+    "buy_no_positive_trace_062": 0.512195,
+    "buy_no_tp_trace_078": 0.902439,
+    "buy_yes_loss_trace_033": -0.195122,
+    "buy_yes_sl_trace_031": -0.243902
+  },
+  "proof_summary": "Execution monitoring and exit pricing are now explicitly normalized around current_held_price. SEA/TEX-style BUY_NO gains stay positive through monitoring, and BOS/MIL-style opposite-side close ambiguity is removed from the changed execution paths.",
+  "commit": "2dbb3fc"
+}

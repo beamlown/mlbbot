@@ -1,0 +1,39 @@
+{
+  "task_id": "VERIFY_DASHBOARD_TRUTH_002",
+  "status": "verified_with_minor_followup",
+  "verification_only": true,
+  "production_code_changed": false,
+  "summary": {
+    "dashboard_truth_fix_holds_live": true,
+    "remaining_mismatch": true,
+    "ready_for_usability_polish_over_truth_fixes": true
+  },
+  "findings": [
+    "Main position cards are sourced from open paper trades only via openPaperPositions built from /api/trades.",
+    "Shadow-only advisory entries do not feed main cards; shadow remains in diagnostics/background sections.",
+    "Real live PnL logic for paper positions uses actual qty, actual entry_px, and current_price when available.",
+    "Current-price stale handling is explicit in the card label: 'Current (stale)' when shadow enrichment price is unavailable.",
+    "All main open-position counts are intended to derive from the same normalized openPaperPositions array."
+  ],
+  "live_snapshot": {
+    "db_or_trades_truth": {
+      "api_trades_open_count": 1,
+      "latest_open_trade_id": 115,
+      "latest_open_trade_slug": "mlb-stl-det-2026-04-05"
+    },
+    "api_state_truth": {
+      "open_positions_count": 1,
+      "status_line": "loop=14 sport=baseball mode=neutral open=1 guard_block=133"
+    },
+    "shadow_diagnostics": {
+      "shadow_open_advisories": 15,
+      "shadow_only_not_main_cards": true
+    }
+  },
+  "remaining_mismatch_detail": "Count ownership is still slightly timing-sensitive because renderState() writes kpi-open/cmd-open from /api/state before renderUnifiedPositions() overwrites them from openPaperPositions. In the observed live snapshot both truths matched at 1, so no user-facing count break was present, but source ownership is still split across two render paths.",
+  "zero_open_specific_check": {
+    "applicable_in_this_window": false,
+    "reason": "At verification time there was 1 real open paper trade, not 0."
+  },
+  "conclusion": "The dashboard truth fix holds in live behavior for the main requirement: main cards come from real open paper trades only and shadow stays diagnostic. Remaining work is minor truth-source ownership polish rather than a fundamental truth-layer failure."
+}

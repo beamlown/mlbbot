@@ -1,0 +1,37 @@
+{
+  "task_id": "MLB_002",
+  "title": "Fix live game abbreviation alias gaps",
+  "objective": "Make same-day live markets using Polymarket/Kalshi abbreviations cws and oak match ESPN registry teams CHW and ATH so TOR@CWS and HOU@OAK are not dropped as no_registry_match.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py"
+  ],
+  "do_not_touch": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\models",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\training pipeline",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\execution logic",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2"
+  ],
+  "inputs": [
+    "current shadow loop logs showing no_registry_match for tor-cws and hou-oak",
+    "current recommendation_api.py discovery and matching code",
+    "existing team normalization behavior"
+  ],
+  "deliverables": [
+    "minimal patch",
+    "root cause summary",
+    "rerun command",
+    "expected healthy logs"
+  ],
+  "acceptance_criteria": [
+    "TOR@CWS same-day live market no longer drops as no_registry_match",
+    "HOU@OAK same-day live market no longer drops as no_registry_match",
+    "discovery coverage increases for those live games if markets exist",
+    "no duplicate_event_market regression",
+    "no change to model logic or execution behavior"
+  ],
+  "verification": [
+    "cd C:\\Users\\johnny\\Desktop\\mlb_model",
+    "python -m integration.recommendation_api"
+  ],
+  "rollback": "Revert recommendation_api.py only."
+}

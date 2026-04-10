@@ -1,0 +1,21 @@
+{
+  "task_id": "DASH_005",
+  "status": "done",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py"
+  ],
+  "summary": [
+    "Added bridge_enabled to the /api/state response via a safe import of core.model_bridge.ENABLE_MODEL_BRIDGE.",
+    "Graceful fallback remains False if the import ever fails."
+  ],
+  "commands_run": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2",
+    "python dashboard_server.py",
+    "python -c \"from dashboard_server import _read_state; import json; print(json.dumps({'bridge_enabled': _read_state().get('bridge_enabled')}, indent=2))\""
+  ],
+  "result": [
+    "Dashboard server started successfully.",
+    "Verification output showed {\n  \"bridge_enabled\": true\n}."
+  ],
+  "next_recommended_task": "DASH_006"
+}

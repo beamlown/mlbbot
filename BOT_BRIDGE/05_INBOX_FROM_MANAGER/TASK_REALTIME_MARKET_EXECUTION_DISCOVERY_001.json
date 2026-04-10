@@ -1,0 +1,16 @@
+{
+  "task_id": "REALTIME_MARKET_EXECUTION_DISCOVERY_001",
+  "title": "Discovery pass for Polymarket realtime market/user execution integration",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "realtime_market_execution_discovery",
+  "allowed_files": ["dashboard_server.py", "dashboard.html", "launch_all.py", "existing Polymarket-related files"],
+  "objective": "Discover existing reusable Polymarket market/user integration points and determine the smallest safe implementation file set for realtime market execution without changing code during discovery.",
+  "acceptance_criteria": [
+    "reusable Polymarket integration points identified",
+    "need for new files determined honestly",
+    "minimum implementation file set documented",
+    "recommended first realtime slice documented"
+  ],
+  "rollback": "Discovery only, no code changes."
+}

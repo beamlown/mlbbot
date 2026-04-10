@@ -1,0 +1,49 @@
+{
+  "task_id": "DASHBOARD_LIVE_GAME_MONITOR_001",
+  "status": "done",
+  "allowed_files": [
+    "dashboard.html",
+    "dashboard_server.py"
+  ],
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py"
+  ],
+  "report": {
+    "hierarchy_change": "Primary left-column object is now a live monitor view centered on hybrid position+game cards, with a compact accounting strip above it. Trade log remains available but is explicitly secondary inside the drawer.",
+    "live_game_focus_improved": [
+      "main section renamed and framed as 'Live Monitor'",
+      "active cards remain game-context-aware through matchup + live game status pill",
+      "bet side is now explicit in the card title as WIN/LOSE plus backed target",
+      "current price, committed capital, live equity, and unrealized PnL are surfaced together for monitoring"
+    ],
+    "trade_log_dominance_reduced": [
+      "trade log kept inside secondary drawer/tab space",
+      "trade tab explicitly labeled as secondary history",
+      "primary screen real estate now prioritizes live monitor cards and accounting strip"
+    ],
+    "side_price_pnl_accounting_clarity_fixed": [
+      "exact side made explicit via WIN/LOSE pill and title",
+      "entry and current price shown for the same real executed position",
+      "capital committed shown from actual qty * entry_px",
+      "live equity shown from actual qty * current_price when available",
+      "unrealized PnL remains based on actual trade basis",
+      "available cash vs capital in trades added from backend bankroll fields"
+    ],
+    "backend_changes_needed": true
+  },
+  "backend_addition": {
+    "scope": "tiny",
+    "added_fields": [
+      "bankroll.capital_committed",
+      "bankroll.available_cash",
+      "bankroll.open_trade_count"
+    ],
+    "source": "computed from live open trades in trades_sports.db without changing execution logic"
+  },
+  "notes": [
+    "Truth model preserved: main positions still come from real open paper trades only.",
+    "Shadow remains diagnostics/background only.",
+    "No model, strategy, or execution logic was changed."
+  ]
+}

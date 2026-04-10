@@ -1,0 +1,18 @@
+{
+  "task_id": "DASH_010",
+  "status": "done",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "summary": [
+    "Renamed the section title from 'Active Positions' to 'Positions'.",
+    "Changed the badge count to include only open paper positions plus shadow-only advisory positions, excluding resolved paper cards from the badge while still rendering them."
+  ],
+  "notes": [
+    "Executed only after REVIEW_DASH_009.md showed Decision: APPROVED.",
+    "Scope remained limited to dashboard.html."
+  ]
+}

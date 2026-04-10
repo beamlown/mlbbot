@@ -1,0 +1,97 @@
+{
+  "task_id": "DASHBOARD_REDESIGN_AUDIT_001",
+  "title": "Dashboard redesign — final audit against architecture spec, file map, gap report",
+  "status": "HOLD_PENDING_EXECUTION_TRUTH",
+  "gate": "Do NOT begin until DASHBOARD_REDESIGN_VERIFY_001 is APPROVED (PASS decision).",
+  "phase": 6,
+  "depends_on": [
+    "EXECUTION_HELD_SIDE_SEMANTICS_001",
+    "DASHBOARD_REDESIGN_ARCH_001",
+    "DASHBOARD_REDESIGN_SHELL_001",
+    "DASHBOARD_LIVE_COMMAND_CENTER_001",
+    "DASHBOARD_POSITIONS_HISTORY_SYSTEM_001",
+    "DASHBOARD_PERFORMANCE_POLISH_001",
+    "DASHBOARD_REDESIGN_VERIFY_001"
+  ],
+  "priority": 7,
+  "subsystem": "dashboard_audit",
+  "type": "audit",
+  "allowed_files": [],
+  "production_code_changes": false,
+  "do_not_touch": [
+    "dashboard.html",
+    "dashboard_server.py",
+    "bot_core.py",
+    "core/risk.py",
+    "core/paper_exec.py",
+    "core/db.py",
+    "core/model_bridge.py",
+    "core/types.py",
+    "mlb_model/"
+  ],
+
+  "objective": "Produce the final audit document: compare the implemented redesign against DASHBOARD_REDESIGN_SPEC_001.md item-by-item, produce a file change map, identify any outstanding gaps, and close the redesign task pack. This is the exit gate for the entire redesign effort.",
+
+  "audit_sections": {
+    "spec_compliance": [
+      "Read DASHBOARD_REDESIGN_SPEC_001.md. For each item in the spec, state whether it was implemented, partially implemented, or skipped.",
+      "Tab list compliance: all 5 tabs present with correct names and default?",
+      "LIVE tab focal area order: game monitor → position cards → account strip?",
+      "Payload mapping: for each field in the spec's payload table, confirm it is present in the UI sourced from the correct API",
+      "Demotion list: confirm each demoted item is no longer on the main page / LIVE tab",
+      "Truth-model checklist: re-run the checklist from the spec and confirm pass for each item"
+    ],
+    "file_change_map": [
+      "List every section/function in dashboard.html that was added or modified across all redesign phases",
+      "List every field added to dashboard_server.py if any were added",
+      "Confirm no files outside dashboard.html and dashboard_server.py were touched"
+    ],
+    "gap_report": [
+      "List any spec items that were not implemented and why",
+      "List any items that were implemented differently from the spec and whether that is acceptable",
+      "List any known outstanding issues (e.g. stream credentials still blocked, advisory data for GAMES tab may be sparse when no shadow recs exist)"
+    ],
+    "incident_closure": [
+      "Explicitly state: BUY_NO current_held_price path is now correct in both execution layer (EXECUTION_HELD_SIDE_SEMANTICS_001) and display layer (this redesign)",
+      "Explicitly state: backed_team semantics are now consistent from execution (paper_exec/risk) through transport (SSE) to display (LIVE tab cards)",
+      "Explicitly state: shadow advisory is now properly segregated — GAMES tab only, not competing with position truth"
+    ]
+  },
+
+  "deliverables": [
+    {
+      "file": "C:/Users/johnny/Desktop/BOT_BRIDGE/08_SHARED_CONTEXT/DASHBOARD_REDESIGN_AUDIT_REPORT_001.md",
+      "contents": [
+        "Spec compliance table: item | spec | implemented | status",
+        "File change map: file | function/section | change summary",
+        "Gap report: gap | reason | acceptable (yes/no)",
+        "Incident closure statements (BUY_NO pricing, backed_team, shadow segregation)",
+        "Overall verdict: COMPLETE, COMPLETE_WITH_GAPS, or INCOMPLETE"
+      ]
+    }
+  ],
+
+  "acceptance_criteria": [
+    "DASHBOARD_REDESIGN_AUDIT_REPORT_001.md exists in 08_SHARED_CONTEXT",
+    "Spec compliance table covers every item from DASHBOARD_REDESIGN_SPEC_001.md",
+    "File change map is complete — no phantom file changes",
+    "Incident closure section explicitly addresses BUY_NO pricing and shadow segregation",
+    "Overall verdict is COMPLETE or COMPLETE_WITH_GAPS (with gaps documented)",
+    "No production code changes"
+  ],
+
+  "proof_of_work": [
+    "Submit path to DASHBOARD_REDESIGN_AUDIT_REPORT_001.md",
+    "Include the overall verdict",
+    "Include the incident closure statements",
+    "Confirm zero file changes"
+  ],
+
+  "out_of_scope": [
+    "Any code changes",
+    "New features",
+    "New gaps being opened as new tasks (the audit documents them; the manager decides next steps)"
+  ],
+
+  "rollback": "No changes made. Delete DASHBOARD_REDESIGN_AUDIT_REPORT_001.md if audit is rejected."
+}

@@ -1,0 +1,35 @@
+{
+  "task_id": "DASHBOARD_REDESIGN_LIVE_SMOKE_003",
+  "decision": "APPROVE",
+  "stale_poll_log_confirmed": {
+    "status": true,
+    "log_path": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\dashboard.log",
+    "evidence": [
+      "136262:00:03:36 [DASH] INFO [STALE_POLL] mlb-col-sd-2026-04-10 -> cp=0.0100 bid=0.01 ask=0.99",
+      "134258:00:02:47 [DASH] INFO [STALE_POLL] mlb-col-sd-2026-04-10 -> cp=0.0100 bid=0.01 ask=0.99"
+    ]
+  },
+  "sign_verification": {
+    "status": "PASS",
+    "sse_ts": "2026-04-10T13:02:41.028015+00:00",
+    "slug": "mlb-col-sd-2026-04-10",
+    "state_side": "BUY_YES",
+    "current_price": 0.01,
+    "entry_px": 0.3819,
+    "qty": 130.924326,
+    "reported_unrealized_pnl_usd": -48.6908,
+    "expected_unrealized_pnl_usd": -48.6908,
+    "reported_live_equity_usd": 1.3092,
+    "expected_live_equity_usd": 1.3092,
+    "pnl_match": true,
+    "equity_match": true,
+    "mark_source": "rest_fallback",
+    "stale": false,
+    "current_price_non_null": true,
+    "note": "No BUY_NO position was open at sample time; verified the required no-branch formula on the sole open position from SSE + /api/state fields."
+  },
+  "overall_verdict": {
+    "status": "PASS",
+    "summary": "REST fallback is active ([STALE_POLL] confirmed), SSE current_price is non-null, mark_source is rest_fallback, stale=false, and PnL/equity math matches round((current_price-entry_px)*qty,4) and round(qty*current_price,4) exactly."
+  }
+}

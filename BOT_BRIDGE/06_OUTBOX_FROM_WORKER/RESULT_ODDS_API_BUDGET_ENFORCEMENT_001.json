@@ -1,0 +1,47 @@
+{
+  "task_id": "ODDS_API_BUDGET_ENFORCEMENT_001",
+  "status": "done",
+  "final_outcome": "budget_enforcement_extended",
+  "files_inspected": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\sports\\mlb\\sharp_odds.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\odds_budget.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\sports\\mlb\\sharp_odds.py"
+  ],
+  "current_usage_location": "Odds API is used in sports_bot_v2/sports/mlb/sharp_odds.py for verification/cross-book sharp-odds input, not in the realtime dashboard SSE path.",
+  "tracking_and_existing_enforcement": {
+    "budget_file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\odds_budget.json",
+    "daily_tracking": true,
+    "daily_hard_cap_already_real": true,
+    "evidence": "Live log evidence showed odds_budget: daily limit 600 reached, and .env sets MAX_ODDS_CALLS_PER_DAY=600."
+  },
+  "new_budget_logic": {
+    "daily_hard_cap": 600,
+    "monthly_soft_target": 18000,
+    "monthly_hard_awareness": 20000,
+    "budget_state_fields": ["date", "count", "month", "month_count", "mode"],
+    "modes": {
+      "normal": "Calls allowed subject to daily cap",
+      "soft_throttle": "After 18000/month target, skip non-essential fetches using ODDS_SOFT_THROTTLE_MOD",
+      "hard_stop": "At 20000/month, stop non-essential fetches entirely"
+    }
+  },
+  "what_happens_when_cap_is_hit": {
+    "daily_600": "Odds fetch returns False / skips non-essential fetch for rest of day",
+    "monthly_soft": "Odds fetch is throttled automatically by modulus-based skip policy",
+    "monthly_hard": "Odds fetch is denied with hard-stop warning"
+  },
+  "dashboard_dependency_check": {
+    "odds_api_streaming_used": false,
+    "live_dashboard_depends_on_odds_freshness": false,
+    "dashboard_budget_health_visibility": "Not added in this step; runtime budget file and logs provide health visibility."
+  },
+  "notes": [
+    "No strategy redesign was introduced.",
+    "Odds API remains verification-only and non-streaming.",
+    "Live dashboard motion remains driven by local/live state, not Odds API refresh."
+  ]
+}

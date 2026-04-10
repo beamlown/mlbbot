@@ -1,0 +1,37 @@
+{
+  "task_id": "EXIT_PARAMS_TIGHTEN_001",
+  "decision": "implemented",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env"
+  ],
+  "old_values": {
+    "AUTO_TAKE_PROFIT_PCT": "0.85",
+    "AUTO_STOP_LOSS_PCT": "0.20",
+    "NEAR_RESOLUTION_PRICE": "0.92",
+    "TRAILING_STOP_ACTIVATE_PCT": "0.15",
+    "TRAILING_STOP_DRAWDOWN_PCT": "0.20"
+  },
+  "new_values": {
+    "AUTO_TAKE_PROFIT_PCT": "0.40",
+    "AUTO_STOP_LOSS_PCT": "0.12",
+    "NEAR_RESOLUTION_PRICE": "0.97",
+    "TRAILING_STOP_ACTIVATE_PCT": "0.10",
+    "TRAILING_STOP_DRAWDOWN_PCT": "0.12"
+  },
+  "restart_required": true,
+  "verification": {
+    "only_env_changed": true,
+    "env_value_checks": {
+      "AUTO_TAKE_PROFIT_PCT": "0.40",
+      "AUTO_STOP_LOSS_PCT": "0.12",
+      "NEAR_RESOLUTION_PRICE": "0.97",
+      "TRAILING_STOP_ACTIVATE_PCT": "0.10",
+      "TRAILING_STOP_DRAWDOWN_PCT": "0.12"
+    },
+    "runtime_restart_or_log_check": "not performed in this worker task; requires operator-coordinated bot restart"
+  },
+  "notes": [
+    "No code files were edited.",
+    "MAX_CONCURRENT_TRADES and confidence thresholds were left unchanged."
+  ]
+}

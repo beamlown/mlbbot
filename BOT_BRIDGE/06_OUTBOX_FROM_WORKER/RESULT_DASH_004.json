@@ -1,0 +1,24 @@
+{
+  "task_id": "DASH_004",
+  "status": "done",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "summary": [
+    "Merged the old HUD strip and header into a single sticky command bar.",
+    "Added a bridge badge placeholder driven by state.bridge_enabled and moved quick stats (open, pnl, loop) into the unified bar."
+  ],
+  "commands_run": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2",
+    "python dashboard_server.py"
+  ],
+  "result": [
+    "Dashboard server started successfully after the command-bar merge.",
+    "Top of page now uses one sticky cmdbar instead of separate HUD and header sections."
+  ],
+  "risks": [
+    "HANDOFF_DASH_004.md was missing, so implementation followed TASK_DASH_004.json only.",
+    "bridge_enabled display assumes /api/state provides that field as noted in the task prerequisite; if absent, badge defaults to BRIDGE OFF."
+  ],
+  "next_recommended_task": "DASH_005"
+}

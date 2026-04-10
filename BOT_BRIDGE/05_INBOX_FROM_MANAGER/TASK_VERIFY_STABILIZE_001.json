@@ -1,0 +1,47 @@
+{
+  "task_id": "VERIFY_STABILIZE_001",
+  "title": "Fix stale shadow ghost positions — add resolution_watcher to launcher + dashboard date guard",
+  "objective": "Two problems cause the dashboard to show 12 stale shadow positions from yesterday's completed games as if they are still live: (1) resolution_watcher is not running so shadow recs never get marked resolved, and (2) dashboard has no date guard so stale recs from any past day stay visible forever. Fix both.",
+  "allowed_files": [
+    "launch_all.py",
+    "dashboard_server.py"
+  ],
+  "do_not_touch": [
+    "dashboard.html",
+    "bot_core.py",
+    "core/",
+    "mlb_model/integration/recommendation_api.py",
+    "mlb_model/integration/resolution_watcher.py"
+  ],
+  "context": {
+    "current_symptom": "Dashboard unified positions panel shows 12 SHADOW cards from 2026-04-04 games, all showing resolved=False and status=OPEN. These games ended hours ago.",
+    "root_cause_1": "resolution_watcher (mlb_model/integration/resolution_watcher.py) is not running. It was killed during the 2026-04-05 process cleanup and never added to launch_all.py. Without it, shadow_recommendations.jsonl entries never get their resolved field set to True.",
+    "root_cause_2": "dashboard_server.py _read_mlb_shadow() passes all shadow recs including old ones to the frontend with no date filter. The frontend renderUnifiedPositions() then shows any rec where !r.resolved, regardless of how old it is.",
+    "evidence": "12 shadow recs all from 2026-04-04 slugs, all resolved=False, ages 28000-38000+ seconds per bridge logs. resolution_watcher not in running process list."
+  },
+  "deliverables": [
+    {
+      "file": "launch_all.py",
+      "change": "Add resolution_watcher as a 4th entry in the PROCESSES list. MLB_MODEL_DIR is already defined. Entry: name='resolution_watcher', command=[sys.executable, '-m', 'integration.resolution_watcher'], cwd=str(MLB_MODEL_DIR), log_file=str(LOG_DIR / 'resolution_watcher.log')"
+    },
+    {
+      "file": "dashboard_server.py",
+      "change": "In _read_mlb_shadow(), after loading recs from shadow_recommendations.jsonl, filter out any rec whose slug date (extracted from the market_slug, format mlb-X-Y-YYYY-MM-DD) is before today's date. Recs from past days that are not yet marked resolved are treated as stale and excluded from the response. Use datetime.date.today() for comparison. If slug date cannot be parsed, include the rec (fail open). Do not change any other logic."
+    }
+  ],
+  "acceptance_criteria": [
+    "After restart, resolution_watcher appears as a child process under launch_all.py",
+    "Running python launch_all.py starts 4 child processes: shadow_engine, bot_core, dashboard, resolution_watcher",
+    "Second launch attempt still prints ERROR: launcher already running",
+    "GET /api/mlb-shadow returns 0 recs for any slug dated before today (2026-04-05)",
+    "Dashboard unified positions panel shows 0 ghost shadow cards from yesterday",
+    "No changes to dashboard.html, bot_core.py, or mlb_model source files"
+  ],
+  "verification": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2 && python launch_all.py",
+    "Confirm output shows 4 LAUNCHER lines: shadow_engine, bot_core, dashboard, resolution_watcher",
+    "python -c \"import requests; recs=requests.get('http://localhost:8900/api/mlb-shadow').json().get('recs',[]); stale=[r for r in recs if '2026-04-04' in r.get('market_slug','')]; print('stale recs:', len(stale))\"",
+    "Expected: stale recs: 0"
+  ],
+  "rollback": "Revert launch_all.py and dashboard_server.py only. Stop processes with Ctrl-C and restart."
+}

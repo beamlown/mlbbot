@@ -1,0 +1,55 @@
+{
+  "task_id": "DASHBOARD_REDESIGN_LIVE_SMOKE_002",
+  "decision": "PARTIAL",
+  "sign_verification": {
+    "status": "PARTIAL",
+    "open_positions_seen": 1,
+    "positions_with_non_null_current_price": 0,
+    "details": [
+      {
+        "market_slug": "mlb-ari-nym-2026-04-09",
+        "side": "BUY_NO",
+        "current_price": null,
+        "entry_px": null,
+        "qty": null,
+        "unrealized_pnl_usd": null,
+        "live_equity_usd": null,
+        "verdict": "Not verifiable from current SSE sample because current_price was null and mark was stale."
+      }
+    ],
+    "note": "Task criterion requiring formula verification for BUY_NO positions with non-null current_price could not be fully exercised because the live SSE sample only exposed a stale null mark."
+  },
+  "api_checks": {
+    "root_http_200": true,
+    "api_state_http_200": true,
+    "api_state_fields": {
+      "bankroll": true,
+      "r25_win_rate": true,
+      "bridge_enabled": true
+    },
+    "api_trades_http_200": true,
+    "api_trades_open_position_tp_sl": [
+      {
+        "market_slug": "mlb-ari-nym-2026-04-09",
+        "side": "BUY_NO",
+        "entry_px": 0.61305,
+        "tp_price": 0.01,
+        "sl_price": 0.73566,
+        "tp_sl_side_correct": true
+      }
+    ],
+    "api_stream_state_http_200": true,
+    "api_stream_state_sample": "event: positions_mark with stale=true and current_price=null for the lone open BUY_NO position"
+  },
+  "tab_structure_checks": {
+    "tabs_present": ["LIVE", "POSITIONS", "GAMES", "HISTORY", "SYSTEM"],
+    "all_tabs_present": true,
+    "shadow_absent_from_live_tab": false,
+    "advisory_label_in_games_tab": true,
+    "note": "Root HTML still contains an element with id=shadow-feed, so the shadow removal criterion is not satisfied on this snapshot."
+  },
+  "overall_verdict": {
+    "status": "PARTIAL",
+    "summary": "Dashboard is up and major API/tab checks pass, but full live smoke acceptance did not pass because SSE sign math could not be re-verified from a non-null live mark and shadow-feed is still present in the served HTML."
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "task_id": "RUNTIME_ACTIVATE_REALTIME_STAGE2_001",
+  "status": "done",
+  "final_result": "VERIFIED",
+  "runtime_process_info": {
+    "old_dashboard_pid": 32244,
+    "new_dashboard_pid": 11292,
+    "listener_port": 8900,
+    "process_name": "python.exe",
+    "command_line": "python dashboard_server.py (working dir: C:\\Users\\johnny\\Desktop\\sports_bot_v2)"
+  },
+  "runtime_action": {
+    "code_change_needed": false,
+    "action_taken": "Restarted only the live dashboard server process bound to port 8900"
+  },
+  "verification": {
+    "sse_status_code": 200,
+    "sample_sse_payload": "event: positions_mark\ndata: {\"type\": \"positions_mark\", \"ts\": \"2026-04-08T02:41:05.131321+00:00\", \"source\": \"dashboard_server\", \"stale\": true, \"open_count\": 3, \"live_equity_total\": 0.0, \"positions\": [{\"market_slug\": \"mlb-det-pit-2026-04-08\", \"current_price\": null, \"current_price_stale\": true, \"unrealized_pnl_usd\": null, \"live_equity_usd\": null}, {\"market_slug\": \"mlb-kc-min-2026-04-08\", \"current_price\": null, \"current_price_stale\": true, \"unrealized_pnl_usd\": null, \"live_equity_usd\": null}, {\"market_slug\": \"mlb-sea-hou-2026-04-08\", \"current_price\": null, \"current_price_stale\": true, \"unrealized_pnl_usd\": null, \"live_equity_usd\": null}]}",
+    "polling_fallback": {
+      "/api/state": 200,
+      "/api/trades": 200
+    }
+  },
+  "conclusion": "The Stage 2 SSE route is now active in the live runtime. The route returns 200 and emits real positions_mark events. Polling fallback remains intact."
+}

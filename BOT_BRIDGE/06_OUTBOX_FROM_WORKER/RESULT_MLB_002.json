@@ -1,0 +1,29 @@
+{
+  "task_id": "MLB_002",
+  "status": "done",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py"
+  ],
+  "summary": [
+    "Added local registry alias normalization for Polymarket/Kalshi abbreviations CWS->CHW and OAK->ATH before ESPN registry matching.",
+    "Kept the patch scoped to recommendation_api.py only and preserved existing discovery, model, and execution behavior.",
+    "Verification showed HOU@OAK now surfaces as a candidate mapped to HOU vs ATH instead of dropping as no_registry_match."
+  ],
+  "commands_run": [
+    "cd C:\\Users\\johnny\\Desktop\\mlb_model",
+    "python -m integration.recommendation_api"
+  ],
+  "tests_run": [
+    "Ran the shadow loop once and inspected discovery logs for registry-match behavior and duplicate_event_market count."
+  ],
+  "result": [
+    "Healthy candidate log appeared for event=mlb-hou-oak-2026-04-04 as HOU vs ATH.",
+    "duplicate_event_market remained 0 in the discovery summary.",
+    "TOR@CWS did not appear as a same-day live candidate in this run because the available tor-cws event was dated 2026-04-05 and matched a FINAL/non-live registry game, so no same-day healthy candidate line was available to observe during verification."
+  ],
+  "risks": [
+    "Alias normalization is currently local to recommendation_api.py by task restriction; if future registry matching happens elsewhere, the same alias map may need to be applied in another allowed task.",
+    "TOR@CWS acceptance could not be fully observed live in this specific verification window because no same-day live tor-cws event was present in the returned discovery set."
+  ],
+  "next_recommended_task": "MLB_003"
+}

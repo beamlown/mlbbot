@@ -1,0 +1,117 @@
+{
+  "task_id": "SYSTEM_BUG_AUDIT_001",
+  "status": "completed",
+  "mode": "read_only_audit",
+  "timestamp_local": "2026-04-06 10:xx CDT",
+  "summary": {
+    "fundamentally_stable": true,
+    "still_shaky": true,
+    "topology_clean": true,
+    "api_reachable": true,
+    "api_truth_aligned_on_open_count": true,
+    "duplicate_entry_protection_present": true,
+    "dashboard_ux_still_problematic": true,
+    "shadow_feed_currently_stale": true,
+    "workflow_hygiene_needs_update": true
+  },
+  "CURRENTLY_HEALTHY": [
+    {
+      "item": "Canonical launcher-managed runtime stack is clean with one launcher tree and one each of recommendation_api, bot_core, dashboard_server, and resolution_watcher.",
+      "evidence": "WMIC process snapshot showed launch_all.py parent chain 41368 -> 36780 with child PIDs 19664, 35328, 32244, 35584 and no duplicate service copies."
+    },
+    {
+      "item": "Dashboard APIs are reachable and broadly coherent.",
+      "evidence": "/api/state, /api/trades, /api/games, and /api/mlb-shadow all returned successfully during audit."
+    },
+    {
+      "item": "Open-position truth is aligned at zero open positions.",
+      "evidence": "/api/state bankroll.open_trade_count=0, /api/state open_positions empty, /api/trades returned no open rows in live DB helper, DB OPEN_ROWS=[], DB DUPES=[] ."
+    },
+    {
+      "item": "Duplicate-entry DB protection is still intact.",
+      "evidence": "Live DB index present: idx_trades_one_open_per_slug UNIQUE ON trades(market_slug) WHERE status='open'."
+    },
+    {
+      "item": "Current bankroll arithmetic is internally consistent for the current zero-open state.",
+      "evidence": "/api/state bankroll current=136.0, net_pnl=-364.0, available_cash=136.0, capital_committed=0.0, open_trade_count=0."
+    }
+  ],
+  "CRITICAL_BUGS": [
+    {
+      "item": "Shared workflow memory is stale/incomplete relative to recent work.",
+      "evidence": "BOT_BRIDGE\\08_SHARED_CONTEXT files show last updates around 2026-04-05 21:23 and do not reflect newer Loveable-task confusion or this audit before update.",
+      "impact": "Claude return/handoff quality is currently unreliable unless shared context is refreshed."
+    }
+  ],
+  "IMPORTANT_BUGS": [
+    {
+      "item": "Shadow/advisory layer is effectively stale right now.",
+      "evidence": "/api/mlb-shadow log_age_sec=46809.1 with recs=[] and unresolved count still 6871, indicating the shadow summary is historically accumulated and not currently useful as live diagnostics.",
+      "impact": "Dashboard diagnostics can look confusing or misleading because counts are historical while current rec list is empty."
+    },
+    {
+      "item": "Dashboard/live monitor quality remains weak from a usability standpoint even if truth is mostly preserved.",
+      "evidence": "Current production and V2 were already rejected by user; code/brief review shows accounting/HUD strips and generic dashboard framing still overpower baseball-state density and live-monitor feel.",
+      "impact": "System is operationally usable but operator-facing monitoring remains misleading/underwhelming."
+    },
+    {
+      "item": "Historical duplicate trade artifacts remain visible in closed trade history.",
+      "evidence": "/api/trades still shows ids 103 and 104 as identical closed SEA-LAA entries and id 102 as duplicate_remediation_void.",
+      "impact": "No current execution break, but audit/history readability remains messy and can confuse later analysis."
+    },
+    {
+      "item": "Dashboard log shows recurring ESPN/network fetch failures over time.",
+      "evidence": "dashboard_err.log contains repeated getaddrinfo failures; dashboard.log also shows TLS/internal-error refresh failures.",
+      "impact": "Live games feed can degrade or go stale during network/DNS issues."
+    }
+  ],
+  "COSMETIC_OR_LATER_ISSUES": [
+    {
+      "item": "Dashboard server logs contain noisy aborted-connection traces from client disconnects.",
+      "evidence": "dashboard.log shows ConnectionAbortedError stack trace in BaseHTTPRequestHandler write path.",
+      "impact": "Low severity, but noisy logs make real failures harder to spot."
+    },
+    {
+      "item": "Pitcher names are often blank for scheduled games until detail fetch is available.",
+      "evidence": "/api/games scheduled entries currently return home_pitcher='' and away_pitcher=''.",
+      "impact": "Monitor richness degrades pregame or when ESPN detail fetch is unavailable."
+    },
+    {
+      "item": "Loveable prep files were not present in shared context at audit time.",
+      "evidence": "BOT_BRIDGE\\08_SHARED_CONTEXT listing showed no LOVEABLE_* files.",
+      "impact": "Documentation gap, not runtime risk."
+    }
+  ],
+  "LIKELY_ROOT_CAUSES": [
+    "Dashboard UX problems come from repeated iterative layering on top of an originally admin/log-oriented structure rather than a clean baseball-monitor design foundation.",
+    "Shadow staleness/confusion comes from using a large cumulative jsonl log with historical counters rather than a clean current-session/live-window diagnostic summary.",
+    "Workflow hygiene drift comes from many rapid task pivots and incomplete shared-context backfill after those pivots.",
+    "Network-related live game fragility comes from reliance on ESPN fetches without resilient cached/health-state surfacing."
+  ],
+  "EXACT_FILES_OR_SUBSYSTEMS_INVOLVED": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_v2.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\dashboard.log",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\dashboard_err.log",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\logs\\shadow_recommendations.jsonl",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\SESSION_JOURNAL.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\STATE_OF_SYSTEM.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_CATCHUP_BRIEF.md"
+  ],
+  "WHAT_SHOULD_BE_FIXED_FIRST": [
+    "Fix/clarify the shadow diagnostics layer so current live diagnostic truth is not represented by stale historical counters.",
+    "Refresh BOT_BRIDGE shared-context/catch-up files so handoff state matches actual current work and audit findings.",
+    "After docs are clean, redesign the operator-facing dashboard from a baseball-monitor-first brief instead of further patching the current UI."
+  ],
+  "WHAT_MUST_NOT_REGRESS": [
+    "Unique open-slug DB protection index must remain present.",
+    "Canonical single launcher tree must remain free of duplicate writer/service stacks.",
+    "Main live positions must continue to come from real paper trades only.",
+    "Shadow must remain diagnostics only.",
+    "Available cash / committed capital / live equity arithmetic must remain truthful.",
+    "Trade log must not retake ownership of the page once UI work resumes."
+  ]
+}

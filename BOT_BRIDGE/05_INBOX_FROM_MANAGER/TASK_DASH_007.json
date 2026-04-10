@@ -1,0 +1,40 @@
+{
+  "task_id": "DASH_007",
+  "title": "Simplify drawer — remove Markets and Signals tabs",
+  "objective": "The details drawer has 6 tabs: Trade Log, Shadow, Candidates, Markets, Signals, Manual. Markets and Signals are rarely useful at a glance and add visual noise. Remove them to simplify to 4 essential tabs.",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "do_not_touch": [
+    "dashboard_server.py",
+    "bot_core.py",
+    "core/"
+  ],
+  "prerequisite": "DASH_004 must be complete (same file — no concurrent edits)",
+  "inputs": [
+    "dashboard.html — drawer tab-nav around line 420-426: 6 tab buttons",
+    "dashboard.html — tab panels: tab-trades, tab-shadow, tab-candidates, tab-markets, tab-signals, tab-manual",
+    "dashboard.html — switchTab() JS function",
+    "dashboard.html — JS that populates markets-list and signals-list"
+  ],
+  "deliverables": [
+    "Remove tab button for Markets: <button class='tab-btn' onclick=\"switchTab('markets',this)\">Markets</button>",
+    "Remove tab button for Signals: <button class='tab-btn' onclick=\"switchTab('signals',this)\">Signals</button>",
+    "Remove <div id='tab-markets' class='tab-panel'> and its contents",
+    "Remove <div id='tab-signals' class='tab-panel'> and its contents",
+    "Remove JS render calls for markets and signals (renderMarkets(), renderSignals() or equivalent)",
+    "Remove fetch calls for /api/markets and /api/signals if they exist in the polling loop",
+    "Keep: Trade Log, Shadow, Candidates, Manual tabs intact and functional"
+  ],
+  "acceptance_criteria": [
+    "Drawer shows exactly 4 tabs: Trade Log, Shadow, Candidates, Manual",
+    "No Markets or Signals tab visible",
+    "Trade Log, Shadow, Candidates, Manual tabs all render their content correctly",
+    "No JS errors in browser console from missing markets/signals render targets"
+  ],
+  "verification": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2 && python dashboard_server.py",
+    "Open http://localhost:5000, open drawer (hamburger menu) — exactly 4 tabs visible"
+  ],
+  "rollback": "Revert dashboard.html only."
+}

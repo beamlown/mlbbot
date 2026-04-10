@@ -1,0 +1,19 @@
+{
+  "task_id": "DASH_009",
+  "status": "done",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "summary": [
+    "Resolved paper trade cards now fall back from unrealized_pnl_dollars to pnl_usd for PnL display.",
+    "Current stat box now falls back from current_price to exit_px for resolved trades.",
+    "Added market slug parser so resolved paper trades without shadow context render team display and matchup as abbreviations like SEA @ LAA instead of mangled slug text."
+  ],
+  "notes": [
+    "Kept scope to dashboard.html only.",
+    "No server-side files were touched."
+  ]
+}

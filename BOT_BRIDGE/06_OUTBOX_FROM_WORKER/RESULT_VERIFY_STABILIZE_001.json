@@ -1,0 +1,29 @@
+{
+  "task_id": "VERIFY_STABILIZE_001",
+  "status": "partial_blocked",
+  "allowed_files": [
+    "launch_all.py",
+    "dashboard_server.py"
+  ],
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py"
+  ],
+  "summary": [
+    "Added resolution_watcher as a 4th managed process in launch_all.py.",
+    "Added a date guard in dashboard_server.py _read_mlb_shadow() to exclude recs whose market_slug date is before today, failing open on parse issues."
+  ],
+  "verification": {
+    "launcher_second_start": "ERROR: launcher already running at PID 42348. Stop it first.",
+    "running_processes_observed": [
+      "launch_all.py pid 30764",
+      "launch_all.py pid 42348",
+      "integration.recommendation_api pid 31200",
+      "bot_core.py pid 39216",
+      "dashboard_server.py pid 39104"
+    ],
+    "api_mlb_shadow_current_result": "stale 2026-04-04 recs still present in live response; active dashboard process has not been restarted yet"
+  },
+  "blocked_reason": "Runtime verification is blocked by an already-running launcher/dashboard process that predates the code changes. Under current task scope I edited only allowed files and did not stop/restart processes. Manager should re-evaluate if restart authority or an ops handoff is needed.",
+  "do_not_touch_respected": true
+}

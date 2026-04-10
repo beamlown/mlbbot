@@ -1,0 +1,26 @@
+{
+  "task_id": "PAPER_RESET_AND_CLEAN_START_001",
+  "mode": "paper_only",
+  "scope": "narrow_state_cleanup",
+  "rules": [
+    "do_not_redesign_anything",
+    "do_not_widen_scope",
+    "do_not_touch_model_logic",
+    "do_not_touch_live_market_stream_code",
+    "do_not_delete_trade_history",
+    "do_not_wipe_db",
+    "do_not_remove_audit_trail",
+    "do_not_force_fake_reset_baseline"
+  ],
+  "required_outcome": {
+    "close_all_currently_open_paper_trades": true,
+    "preserve_full_trade_history": true,
+    "preserve_historical_bankroll_truth": true,
+    "target_state": {
+      "open_positions": 0,
+      "capital_committed": 0.0,
+      "available_cash_fully_uncommitted": true
+    }
+  },
+  "runtime_target": "http://localhost:8900"
+}

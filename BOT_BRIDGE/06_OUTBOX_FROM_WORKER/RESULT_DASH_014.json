@@ -1,0 +1,16 @@
+{
+  "task_id": "DASH_014",
+  "status": "completed",
+  "blocked": false,
+  "edited_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py"
+  ],
+  "summary": {
+    "env_added": [
+      "AUTO_TAKE_PROFIT_PCT = float(os.getenv(\"AUTO_TAKE_PROFIT_PCT\", \"0.85\"))",
+      "AUTO_STOP_LOSS_PCT   = float(os.getenv(\"AUTO_STOP_LOSS_PCT\", \"0.20\"))"
+    ],
+    "fetch_trades_tp_sl": "Replaced hardcoded TP/SL with side-aware BUY_NO and BUY_YES formulas using AUTO_TAKE_PROFIT_PCT and AUTO_STOP_LOSS_PCT.",
+    "state_r25": "Attached state['r25'] from last 25 closed trades with keys: win_rate, wins, losses, expectancy, sample_size."
+  }
+}

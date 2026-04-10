@@ -1,0 +1,31 @@
+{
+  "task_id": "MLB_001",
+  "title": "Diagnose live market discovery mismatch",
+  "objective": "Log exact reasons same-day MLB event slugs are excluded before candidate generation.",
+  "allowed_files": [
+    "integration/recommendation_api.py"
+  ],
+  "do_not_touch": [
+    "models/",
+    "training pipeline",
+    "execution logic"
+  ],
+  "inputs": [
+    "latest shadow loop logs",
+    "current discovery function"
+  ],
+  "deliverables": [
+    "minimal diagnostics patch",
+    "root cause",
+    "rerun command",
+    "expected healthy logs"
+  ],
+  "acceptance_criteria": [
+    "same-day MLB event exclusions are logged with exact reason",
+    "no unrelated files are modified"
+  ],
+  "verification": [
+    "python -m integration.recommendation_api"
+  ],
+  "rollback": "Revert recommendation_api.py only."
+}

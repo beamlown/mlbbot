@@ -1,0 +1,46 @@
+{
+  "task_id": "LIVE_SESSION_VERIFY_001",
+  "result": "PARTIAL",
+  "mode": "verification_only",
+  "production_code_changed": false,
+  "runtime_base_url": "http://localhost:8900",
+  "queried_endpoints": [
+    "http://localhost:8900/api/state",
+    "http://localhost:8900/api/games",
+    "http://localhost:8900/api/trades?limit=60",
+    "http://localhost:8900/api/stream/state"
+  ],
+  "retry_timestamp_utc": "2026-04-08T15:59:21Z",
+  "endpoint_results": {
+    "state": {
+      "http_status": 200,
+      "snippet_proof": "{\"engine\": \"sports_paper_baseball\", \"build\": \"sports_bot_v2.baseball.2026-03-29\", \"sport\": \"baseball\"",
+      "coherent": true
+    },
+    "games": {
+      "http_status": 200,
+      "snippet_proof": "{\"games\": [{\"espn_id\": \"401814862\", \"home\": \"Pittsburgh Pirates\", \"away\": \"San Diego Padres\"",
+      "coherent": true
+    },
+    "trades": {
+      "http_status": 200,
+      "snippet_proof": "{\"trades\": [{\"id\": 155, \"ts_open\": \"2026-04-08T03:55:40.019167+00:00\", \"ts_close\": null",
+      "coherent": true
+    },
+    "stream": {
+      "http_status": 200,
+      "snippet_proof": "event: positions_mark",
+      "coherent": true
+    }
+  },
+  "live_card_behavior_summary": "Runtime endpoints and SSE-style stream are live and coherent on localhost:8900, but the retry window still did not prove actual in-progress MLB live-card progression.",
+  "mismatches": [],
+  "success_criteria_met": {
+    "runtime_target_queried_correctly": true,
+    "state_endpoint_live": true,
+    "games_endpoint_live": true,
+    "trades_endpoint_live": true,
+    "stream_endpoint_live": true,
+    "live_game_card_behavior_proven": false
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "task_id": "DISCOVERY_TOKEN_IDS_001",
+  "title": "Persist token IDs into discovery cache for realtime market-stream mapping",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "discovery_cache_fix",
+  "allowed_files": ["core/discovery.py", "core/types.py"],
+  "objective": "Preserve yes_token_id and no_token_id in runtime/last_discovery.json so tracked open-position assets can be mapped to Polymarket market-stream subscriptions.",
+  "acceptance_criteria": [
+    "yes_token_id and no_token_id appear in runtime/last_discovery.json after refresh",
+    "cache format remains otherwise stable",
+    "no unrelated discovery behavior changes",
+    "result explains before/after cache shape"
+  ],
+  "rollback": "Revert the narrow serializer change in core/discovery.py."
+}

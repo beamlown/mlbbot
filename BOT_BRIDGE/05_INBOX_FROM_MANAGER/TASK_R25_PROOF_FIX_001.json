@@ -1,0 +1,31 @@
+{
+  "task_id": "R25_PROOF_FIX_001",
+  "title": "Prove and minimally correct r25 empty/error behavior",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "dashboard_server",
+  "allowed_files": ["dashboard_server.py"],
+  "do_not_touch": ["dashboard.html", "launch_all.py", "bot_core.py", "core/", "mlb_model/"],
+  "objective": "Compare the intended r25 spec from DASH_014 against the current _read_state() implementation, then apply the smallest correct fix if current behavior is wrong.",
+  "deliverables": [
+    {
+      "label": "Prove current behavior versus intended spec",
+      "file": "dashboard_server.py",
+      "where": "_read_state() r25 block",
+      "change": "Verify whether empty/error cases return null-safe values or ambiguous zeroed fallbacks."
+    },
+    {
+      "label": "Minimal fix if needed",
+      "file": "dashboard_server.py",
+      "where": "_read_state() r25 block",
+      "change": "If current behavior is wrong, return win_rate/expectancy as null when no closed trades exist, and make DB-error fallback explicit rather than pretending a real zero-performance sample."
+    }
+  ],
+  "acceptance_criteria": [
+    "r25 behavior is clearly proven or corrected",
+    "empty/error cases behave intentionally, not ambiguously",
+    "no unrelated dashboard/server logic changes",
+    "result explains exactly what changed or what was proven"
+  ],
+  "rollback": "Revert dashboard_server.py only."
+}

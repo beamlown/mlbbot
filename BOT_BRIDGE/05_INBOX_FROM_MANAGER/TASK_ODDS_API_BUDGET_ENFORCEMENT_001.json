@@ -1,0 +1,18 @@
+{
+  "task_id": "ODDS_API_BUDGET_ENFORCEMENT_001",
+  "title": "Enforce daily and monthly Odds API budget policy without live-stream dependence",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "odds_api_budgeting",
+  "allowed_files": ["bot_core.py", "dashboard_server.py", "runtime/odds_budget.json", "odds budgeting/throttling files"],
+  "objective": "Verify current Odds API budgeting behavior and add the smallest safe monthly pacing/hard-cap enforcement while keeping Odds API verification-only and non-streaming.",
+  "acceptance_criteria": [
+    "Odds API explicitly remains non-streaming",
+    "daily hard cap of 600 is enforced",
+    "monthly usage pacing is visible and safely buffered",
+    "live dashboard remains independent of Odds API streaming",
+    "no truth regression",
+    "no strategy redesign"
+  ],
+  "rollback": "Revert the narrow budget-enforcement change in sports/mlb/sharp_odds.py if needed."
+}

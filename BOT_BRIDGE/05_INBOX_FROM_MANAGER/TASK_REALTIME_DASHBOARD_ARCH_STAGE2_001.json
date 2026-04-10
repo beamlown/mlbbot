@@ -1,0 +1,17 @@
+{
+  "task_id": "REALTIME_DASHBOARD_ARCH_STAGE2_001",
+  "title": "Add minimal SSE live metric slice with polling fallback intact",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "realtime_dashboard_arch",
+  "allowed_files": ["dashboard_server.py", "dashboard.html"],
+  "objective": "Implement the smallest additive realtime slice: one SSE route pushing held-side current price and directly derived live equity/unrealized PnL while keeping current polling fallback untouched.",
+  "acceptance_criteria": [
+    "dashboard no longer depends only on polling for at least one live metric path",
+    "one pushed metric path is visibly working",
+    "polling fallback still works untouched",
+    "freshness/staleness is visible",
+    "rollout is reversible"
+  ],
+  "rollback": "Remove /api/stream/state route and EventSource hookup; polling remains intact."
+}

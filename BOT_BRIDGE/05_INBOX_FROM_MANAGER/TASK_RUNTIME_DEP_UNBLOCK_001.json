@@ -1,0 +1,16 @@
+{
+  "task_id": "RUNTIME_DEP_UNBLOCK_001",
+  "title": "Unblock realtime market stream stage by installing websocket-client into runtime Python",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "runtime_dependency",
+  "objective": "Install and verify exactly one websocket client library (websocket-client) into the same Python runtime used by launch_all.py and dashboard_server.py, then stop.",
+  "acceptance_criteria": [
+    "same runtime interpreter identified",
+    "websocket-client installed",
+    "import works",
+    "version reported",
+    "no further implementation performed"
+  ],
+  "rollback": "Uninstall websocket-client from the same interpreter if needed."
+}
