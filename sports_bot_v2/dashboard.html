@@ -139,6 +139,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--font); font-si
 .pos-team       { font-size:22px; font-weight:900; line-height:1.05; letter-spacing:-.6px; }
 .pos-subrow     { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:5px; }
 .pos-source-chip{ font-size:10px; color:var(--text2); background:var(--bg4); border:1px solid var(--border); border-radius:999px; padding:3px 8px; font-family:var(--mono); }
+.pos-source-chip.pending { color:var(--gold); border-color:rgba(255,214,102,.45); background:rgba(255,214,102,.08); }
 .pos-stale-note { font-size:10px; color:var(--gold); font-family:var(--mono); }
 .pos-badge-col  { display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex-shrink:0; }
 
@@ -680,7 +681,7 @@ function renderState(s) {
   $('kpi-winrate').textContent = wr != null ? (wr*100).toFixed(0)+'%' : '—';
   $('cmd-winrate').textContent = s?.r25?.win_rate != null ? (s.r25.win_rate * 100).toFixed(0) + '%' : '—';
   $('kpi-winrate').className = 'kpi-val ' + (wr == null ? '' : wr >= .5 ? 'green' : 'red');
-  $('kpi-trades').textContent = (s.total_closed ?? 0) + ' trades';
+  $('kpi-trades').textContent = (s.r25?.sample_size ?? 0) + ' trades';
   const positions = Array.isArray(s.open_positions)
     ? s.open_positions.filter(p => p && typeof p === 'object')
     : [];
@@ -920,6 +921,11 @@ function buildUnifiedPositionCards(items) {
     const fadedText = r.faded_team ? `${r.faded_team} faded` : r.market_slug;
     const timeOpen = fmtDuration(r.ts_open);
     const currentPriceLabel = 'Current held price';
+    const markSource = (r.mark_source || '').toLowerCase();
+    const markSourceLabel = markSource === 'rest_fallback' ? 'mark REST' : markSource === 'poll_fallback' ? 'mark POLL' : '';
+    const markSourceClass = markSource === 'rest_fallback' || markSource === 'poll_fallback'
+      ? 'pos-source-chip pos-mark-source pending'
+      : 'pos-source-chip pos-mark-source';
 
     return `<div class="pos-card action-${isYes ? 'yes' : 'no'} live" data-slug="${r.market_slug}">
       <div class="pos-top">
@@ -930,6 +936,7 @@ function buildUnifiedPositionCards(items) {
             <span class="pos-source-chip">${fadedText}</span>
             <span class="pos-source-chip">${isYes ? 'YES contract' : 'NO contract'}</span>
             <span class="pos-source-chip">open ${timeOpen}</span>
+            <span class="${markSourceClass}" ${markSourceLabel ? '' : 'style="display:none"'}>${markSourceLabel || 'mark stream'}</span>
             ${staleBadge}
           </div>
         </div>
@@ -983,6 +990,7 @@ function _applyMarkToCard(node, trade) {
   const gameFreshEl = node.querySelector('.pos-game-freshness');
   const marketFreshEl = node.querySelector('.pos-market-freshness');
   const staleBadge = node.querySelector('.status-badge.pending');
+  const markSourceEl = node.querySelector('.pos-mark-source');
   if (priceEl) {
     priceEl.textContent = fmtPx(currentHeldPrice);
     priceEl.className = `stat-val ${trade.current_price_stale ? 'gold pos-current-price stale-price' : 'gold pos-current-price'}`;
@@ -1001,6 +1009,18 @@ function _applyMarkToCard(node, trade) {
   if (outsEl) outsEl.textContent = trade.outs != null ? trade.outs : '—';
   if (gameFreshEl) gameFreshEl.textContent = trade.game_source_ts ? humanAge(trade.game_source_ts) : 'Game age unavailable';
   if (marketFreshEl) marketFreshEl.textContent = trade.source_ts ? humanAge(trade.source_ts) : 'Feed age unavailable';
+  if (markSourceEl) {
+    const markSource = (trade.mark_source || '').toLowerCase();
+    if (markSource === 'rest_fallback' || markSource === 'poll_fallback') {
+      markSourceEl.style.display = '';
+      markSourceEl.className = 'pos-source-chip pos-mark-source pending';
+      markSourceEl.textContent = markSource === 'rest_fallback' ? 'mark REST' : 'mark POLL';
+    } else {
+      markSourceEl.style.display = 'none';
+      markSourceEl.className = 'pos-source-chip pos-mark-source';
+      markSourceEl.textContent = 'mark stream';
+    }
+  }
   if (staleBadge) staleBadge.style.display = trade.current_price_stale ? '' : 'none';
 }
 
@@ -1342,12 +1362,12 @@ function renderHistoryTab(trades) {
 function renderPositionsTab(openPositions, trades, state) {
   const open = openPositions || [];
   const closed = (trades || []).filter(t => t.status === 'closed').slice(0, 10);
-  const todayRealized = closed.reduce((sum, t) => sum + Number(t.pnl_usd || 0), 0);
+  const realizedPnl = Number(state?.pnl?.realized ?? state?.bankroll?.net_pnl ?? 0);
   const totalOpenEquity = open.reduce((sum, p) => sum + Number(p.live_equity_usd || 0), 0);
   $('positions-open-count').textContent = `${open.length} open`;
   $('positions-summary').innerHTML = `
     <div class="cash-box"><div class="cash-label">Open equity</div><div class="cash-val ${clr(totalOpenEquity)}">${fmtUsd(totalOpenEquity)}</div></div>
-    <div class="cash-box"><div class="cash-label">Realized P&L</div><div class="cash-val ${clr(todayRealized)}">${fmtUsd(todayRealized)}</div></div>
+    <div class="cash-box"><div class="cash-label">Realized P&L</div><div class="cash-val ${clr(realizedPnl)}">${fmtUsd(realizedPnl)}</div></div>
     <div class="cash-box"><div class="cash-label">Open count</div><div class="cash-val">${open.length}</div></div>
     <div class="cash-box"><div class="cash-label">Bankroll</div><div class="cash-val">${fmtUsd(state?.bankroll?.current)}</div></div>
   `;

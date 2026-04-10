@@ -1,0 +1,60 @@
+{
+  "task_id": "DASHBOARD_TRUTH_FIXES_001",
+  "status": "DONE",
+  "timestamp_ct": "2026-04-10 15:31 CDT",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "summary": [
+    "FIX-1: Positions tab Realized P&L now reads authoritative value from state pnl.realized (fallback state.bankroll.net_pnl), instead of summing sliced closed trades.",
+    "FIX-2: Added compact mark_source indicator on position cards for fallback marks: 'mark REST' and 'mark POLL' chips; stream remains hidden/subtle.",
+    "FIX-3: R25 tile sublabel now uses s.r25.sample_size instead of missing s.total_closed."
+  ],
+  "exact_lines_changed": {
+    "fix_1": [1365, 1370],
+    "fix_2": [142, 924, 925, 926, 927, 928, 939, 993, 1012, 1013, 1014, 1015, 1016, 1017, 1019, 1020, 1021],
+    "fix_3": [684]
+  },
+  "before_after": {
+    "positions_realized_pnl": {
+      "before": "Computed from closed.slice(0,10) sum in renderPositionsTab (observed +$43.62 in reverify report)",
+      "after": "Computed from Number(state?.pnl?.realized ?? state?.bankroll?.net_pnl ?? 0) (authoritative; aligns with /api/state and /api/bankroll)"
+    },
+    "mark_source_display": {
+      "before": "mark_source field existed on objects but was not rendered on cards",
+      "after": "Fallback mark sources render compact chip: mark REST (rest_fallback) / mark POLL (poll_fallback); stream hidden"
+    },
+    "r25_sublabel": {
+      "before": "kpi-trades read s.total_closed ?? 0, showing 0 trades",
+      "after": "kpi-trades reads s.r25?.sample_size ?? 0"
+    }
+  },
+  "verification": {
+    "commands_run": [
+      "Invoke-RestMethod http://localhost:8900/api/bankroll",
+      "Invoke-RestMethod http://localhost:8900/api/state",
+      "Select-String sports_bot_v2/dashboard_server.py mark_source",
+      "Select-String sports_bot_v2/dashboard.html (changed-symbol checks)"
+    ],
+    "observed": {
+      "api_bankroll_net_pnl": 405.89,
+      "api_state_pnl_realized": 405.8899,
+      "api_state_r25_sample_size": 25,
+      "sse_mark_source_backend_present": true
+    },
+    "regression_check": {
+      "open_positions_panel_logic_unchanged": true,
+      "bankroll_strip_logic_unchanged": true,
+      "r25_win_rate_logic_unchanged": true,
+      "game_feed_logic_unchanged": true
+    }
+  },
+  "artifacts": {
+    "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_DASHBOARD_TRUTH_FIXES_001.json",
+    "review_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\07_REVIEWS\\REVIEW_DASHBOARD_TRUTH_FIXES_001.md"
+  },
+  "approval_recommendation": {
+    "approve": true,
+    "reason": "All three scoped dashboard.html defects fixed with narrow changes; authoritative P&L source adopted; fallback mark_source visibility added; R25 sublabel now uses valid field."
+  }
+}
