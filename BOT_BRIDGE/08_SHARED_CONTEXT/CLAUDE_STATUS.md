@@ -1,5 +1,5 @@
 # CLAUDE_STATUS.md — Manager Status Snapshot
-## Last reconciled: 2026-04-10 — Board reconciliation updated. PROCESS_CLEANUP_VERIFY_001 + LIVE_CARD_BASEBALL_SEMANTICS_001 added to DONE. DASHBOARD_LIVE_ATBAT_POLISH_001 unblocked → ACTIVE. Restart complete.
+## Last reconciled: 2026-04-10 — Live trades now active. Confidence audit (CONFIDENCE_HISTORY_AUDIT_001) has live trade data available for sampling.
 
 ---
 
@@ -10,11 +10,11 @@
 - 4 children managed: `shadow_engine`, `bot_core`, `dashboard` (port 8900), `resolution_watcher`
 
 ### sports_bot_v2 (paper bot)
-- Mode: NEUTRAL (awaiting today's signals)
+- Mode: **LIVE TRADES ACTIVE** (as of 2026-04-10 session)
 - Bridge: ENABLED (`ENABLE_MODEL_BRIDGE = True`)
-- **PnL: +$405.89 realized** (verified against /api/state at time of DASHBOARD_TRUTH_FIXES_001)
+- **PnL: +$405.89 realized** (verified against /api/state at time of DASHBOARD_TRUTH_FIXES_001; will shift as live trades settle)
 - Authority model: BRIDGE-ONLY (local origination removed by AUTHORITY_SEPARATION_CLEANUP_001)
-- **Restart pending** — picks up: risk pack patches (SESSION_EXPOSURE_CAP_USD, drawdown-aware sizing) + authority separation cleanup
+- Restart: COMPLETE — all risk patches live
 
 ### Dashboard
 - Running on port 8900

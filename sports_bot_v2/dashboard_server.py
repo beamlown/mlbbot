@@ -123,6 +123,8 @@ def _build_games_from_raw(raw: dict) -> list[dict]:
             "on_first": bool(sb_sit.get("onFirst")),
             "on_second": bool(sb_sit.get("onSecond")),
             "on_third": bool(sb_sit.get("onThird")),
+            "current_batter": (sb_sit.get("batter") or {}).get("displayName", ""),
+            "current_pitcher": (sb_sit.get("pitcher") or {}).get("displayName", ""),
             "home_pitcher": "",
             "away_pitcher": "",
             "home_hits": int(home.get("hits") or 0),

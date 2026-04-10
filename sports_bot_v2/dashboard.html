@@ -105,9 +105,36 @@ body { background:var(--bg); color:var(--text); font-family:var(--font); font-si
 .monitor-trade-box { background:rgba(23,32,53,.9); border:1px solid var(--border); border-radius:14px; padding:12px; }
 .monitor-trade-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-top:10px; }
 .baseball-state .diamond-svg { width:72px; height:72px; }
-.live-game-state { display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:center; }
+.live-game-state { display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:start; }
 .live-state-stack { display:flex; flex-direction:column; gap:8px; }
 .live-state-pill { display:inline-flex; align-items:center; gap:6px; padding:4px 9px; border-radius:999px; background:var(--bg4); border:1px solid var(--border); font-size:11px; font-family:var(--mono); color:var(--text2); font-weight:700; }
+/* Count chip display */
+.count-row { display:flex; align-items:center; gap:4px; margin:8px 0 4px; flex-wrap:wrap; }
+.count-group { display:flex; gap:3px; }
+.count-lbl { font-size:9px; color:var(--text4); text-transform:uppercase; letter-spacing:.5px; font-family:var(--mono); align-self:center; min-width:8px; }
+.count-lbl + .count-group { margin-right:8px; }
+.cdot { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:6px; font-size:10px; font-weight:900; }
+.cdot.ball   { background:rgba(0,140,255,.20); color:#5bc8ff; border:1px solid rgba(0,140,255,.40); }
+.cdot.ball.empty   { background:rgba(0,140,255,.05); color:rgba(91,200,255,.25); border-color:rgba(0,140,255,.15); }
+.cdot.strike { background:rgba(255,170,0,.22); color:var(--gold); border:1px solid rgba(255,170,0,.40); }
+.cdot.strike.empty { background:rgba(255,170,0,.05); color:rgba(255,214,102,.25); border-color:rgba(255,170,0,.15); }
+.cdot.out    { background:rgba(255,255,255,.14); color:var(--text1); border:1px solid rgba(255,255,255,.22); }
+.cdot.out.empty    { background:rgba(255,255,255,.03); color:rgba(255,255,255,.18); border-color:rgba(255,255,255,.10); }
+/* Score block */
+.gm-score-block { margin-bottom:10px; }
+.gm-score-row { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+.gm-team-name { font-size:12px; font-weight:700; color:var(--text3); font-family:var(--mono); letter-spacing:.3px; }
+.gm-runs { font-size:38px; font-weight:900; line-height:1; letter-spacing:-1.5px; color:var(--text2); font-variant-numeric:tabular-nums; }
+.gm-runs.leader { color:var(--green); }
+.gm-sep { font-size:20px; font-weight:300; color:var(--text4); line-height:1; padding:0 2px; }
+/* At-bat info */
+.batter-line  { font-size:13px; font-weight:800; font-family:var(--mono); color:var(--text1); margin:6px 0 1px; line-height:1.2; }
+.batter-sub   { font-size:9px; color:var(--text4); text-transform:uppercase; letter-spacing:.5px; font-family:var(--mono); }
+.pitcher-line { font-size:11px; color:var(--gold); font-family:var(--mono); font-weight:700; margin-top:5px; }
+/* Last play */
+.last-play-box { background:rgba(12,20,32,.7); border:1px solid var(--border); border-radius:8px; padding:7px 10px; margin-top:10px; }
+.last-play-lbl { font-size:8px; color:var(--text4); text-transform:uppercase; letter-spacing:.6px; font-family:var(--mono); margin-bottom:3px; }
+.last-play-txt { font-size:11px; color:var(--text2); font-family:var(--mono); line-height:1.4; }
 .section   { padding:18px 18px; }
 .section + .section { border-top:1px solid var(--border); }
 .section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
@@ -764,6 +791,18 @@ function buildDiamond(f1, f2, f3) {
     <polygon points="19,34 16,31 16,28 22,28 22,31" fill="#172035"/>
   </svg>`;
 }
+function buildCountChips(balls, strikes, outs) {
+  const b = balls ?? 0, s = strikes ?? 0, o = outs ?? 0;
+  const dots = (cls, filled, total) =>
+    Array.from({length: total}, (_, i) =>
+      `<span class="cdot ${cls}${i >= filled ? ' empty' : ''}">&#9679;</span>`
+    ).join('');
+  return `<div class="count-row">
+    <span class="count-lbl">B</span><div class="count-group">${dots('ball', b, 4)}</div>
+    <span class="count-lbl">S</span><div class="count-group">${dots('strike', s, 3)}</div>
+    <span class="count-lbl">O</span><div class="count-group">${dots('out', o, 3)}</div>
+  </div>`;
+}
 function renderGames(games, fetchedAt) {
   const live = games.filter(g => { const s=(g.status||'').toLowerCase(); return !s.includes('final')&&!s.includes('scheduled')&&!s.includes('pre')&&!s.includes('warmup'); });
   $('kpi-games').textContent = live.length;
@@ -957,13 +996,11 @@ function buildUnifiedPositionCards(items) {
       </div>
 
       <div class="pos-stats">
-        <div class="stat-box"><div class="stat-label">Game status</div><div class="stat-val">${r.game_status || statusChip}</div></div>
-        <div class="stat-box"><div class="stat-label">Inning</div><div class="stat-val pos-inning">${r.inning_half ? `${r.inning_half} ${ordinal(r.inning || 0)}` : '—'}</div></div>
-        <div class="stat-box"><div class="stat-label">Score</div><div class="stat-val pos-score">${r.away_score != null && r.home_score != null ? `${r.away_score} - ${r.home_score}` : '—'}</div></div>
-        <div class="stat-box"><div class="stat-label">Outs</div><div class="stat-val pos-outs">${r.outs != null ? r.outs : '—'}</div></div>
+        <div class="stat-box"><div class="stat-label">Inning</div><div class="stat-val pos-inning">${r.inning_half ? `${r.inning_half === 'top' ? 'TOP' : 'BOT'} ${ordinal(r.inning || 0)}` : '—'}</div></div>
+        <div class="stat-box"><div class="stat-label">Score</div><div class="stat-val pos-score">${r.away_score != null && r.home_score != null ? `${r.away_score} – ${r.home_score}` : '—'}</div></div>
         <div class="stat-box"><div class="stat-label">Game freshness</div><div class="stat-val pos-game-freshness">${gameFreshnessVal}</div></div>
-        <div class="stat-box"><div class="stat-label">Market freshness</div><div class="stat-val pos-market-freshness">${marketFreshnessVal}</div></div>
       </div>
+      <div style="padding:2px 0 6px">${buildCountChips(r.balls, r.strikes, r.outs)}</div>
     </div>`;
   }).join('');
 }
@@ -1052,6 +1089,8 @@ function applyStreamPositionsMark(payload) {
       inning: mark.inning,
       inning_half: mark.inning_half,
       outs: mark.outs,
+      balls: mark.balls,
+      strikes: mark.strikes,
       home_score: mark.home_score,
       away_score: mark.away_score,
       game_source_ts: mark.game_source_ts,
@@ -1515,53 +1554,66 @@ function renderLiveGamesFocus(games, openPaperPositions) {
       const parts = slugToGameParts(p.market_slug || '');
       const away = game ? shortTeam(game.away) : (parts?.away || '?');
       const home = game ? shortTeam(game.home) : (parts?.home || '?');
-      const side = (p.side || '').includes('YES') ? 'WIN' : 'LOSE';
+      const isYes = (p.side || '').includes('YES');
+      const side = isYes ? 'WIN' : 'LOSE';
       const currentPx = p.current_price;
-      const committed = (p.qty != null && p.entry_px != null) ? (p.qty * p.entry_px) : null;
-      const equity = (p.qty != null && currentPx != null) ? (p.qty * currentPx) : null;
       const pnl = p.unrealized_pnl_usd ?? null;
-      return `<div class="game-monitor-card action-${(p.side||'').includes('YES') ? 'yes' : 'no'}">
+      const awayRuns = game ? game.away_score : '—';
+      const homeRuns = game ? game.home_score : '—';
+      const awayLeads = game && game.away_score > game.home_score;
+      const homeLeads = game && game.home_score > game.away_score;
+      const runners = [game?.on_first?'1B':null, game?.on_second?'2B':null, game?.on_third?'3B':null].filter(Boolean).join(' · ') || 'bases empty';
+      const pitcher = game?.current_pitcher || (isYes ? game?.home_pitcher : game?.away_pitcher) || '';
+      const batter  = game?.current_batter || '';
+      const lastPlay = game?.last_play || '';
+      const inningStr = game?.inning_half && game?.inning
+        ? `${game.inning_half === 'top' ? 'TOP' : 'BOT'} ${ordinal(game.inning)}`
+        : (game?.inning ? `${ordinal(game.inning)}` : '—');
+      return `<div class="game-monitor-card action-${isYes ? 'yes' : 'no'}">
         <div class="game-monitor-top">
-          <div>
-            <div class="section-title">Live baseball monitor</div>
-            <div class="game-monitor-score">${away} ${game ? game.away_score : '—'} · ${game ? game.home_score : '—'} ${home}</div>
-            <div class="game-monitor-meta">
-              <span class="live-state-pill">${game?.status_display || game?.status || 'Awaiting live game state'}</span>
-              <span class="live-state-pill">${game?.inning_half ? `${game.inning_half} ${ordinal(game.inning || 0)}` : 'inning —'}</span>
-              <span class="live-state-pill">${game?.outs != null ? `${game.outs} outs` : 'outs —'}</span>
-              <span class="live-state-pill">${game?.balls != null && game?.strikes != null ? `${game.balls}-${game.strikes}` : 'count —'}</span>
+          <div style="flex:1">
+            <div class="section-title" style="margin-bottom:8px">Live Baseball Monitor</div>
+            <div class="gm-score-block">
+              <div class="gm-score-row">
+                <span class="gm-team-name">${away}</span>
+                <span class="gm-runs${awayLeads ? ' leader' : ''}">${awayRuns}</span>
+                <span class="gm-sep">·</span>
+                <span class="gm-runs${homeLeads ? ' leader' : ''}">${homeRuns}</span>
+                <span class="gm-team-name">${home}</span>
+              </div>
             </div>
-            ${game?.away_pitcher || game?.home_pitcher ? `<div class="monitor-pitcher">Pitchers: ${game.away_pitcher || '?'} / ${game.home_pitcher || '?'}</div>` : ''}
+            <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:4px">
+              <span class="live-state-pill"><span class="live-dot" style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 5px var(--green);display:inline-block;flex-shrink:0;margin-right:3px;animation:pulse 2s infinite"></span>${inningStr}</span>
+              <span class="live-state-pill">${game?.status_display || game?.status || 'LIVE'}</span>
+            </div>
           </div>
           <div class="pos-badge-col">
-            <span class="status-badge live">${game?.status || 'LIVE'}</span>
-            <span class="action-pill ${(p.side||'').includes('YES') ? 'yes' : 'no'}">${side}</span>
+            <span class="status-badge live">LIVE</span>
+            <span class="action-pill ${isYes ? 'yes' : 'no'}">${p.backed_team || away} ${side}</span>
           </div>
         </div>
         <div class="game-monitor-row">
           <div class="baseball-state">
             <div class="live-game-state">
               ${buildDiamond(!!game?.on_first, !!game?.on_second, !!game?.on_third)}
-              <div class="live-state-stack">
-                <div class="baseball-line">
-                  <span>Matchup: <b>${away} @ ${home}</b></span>
-                  <span>Held: <b>${side}</b></span>
-                </div>
-                <div class="baseball-line">
-                  <span>Source: <b>${p.source || 'bot'}</b></span>
-                  <span>Runners: <b>${[game?.on_first?'1B':null, game?.on_second?'2B':null, game?.on_third?'3B':null].filter(Boolean).join(' / ') || 'bases empty'}</b></span>
-                </div>
+              <div>
+                ${buildCountChips(game?.balls, game?.strikes, game?.outs)}
+                ${batter ? `<div class="batter-line">${batter}</div><div class="batter-sub">at bat</div>` : ''}
+                ${pitcher ? `<div class="pitcher-line">P: ${pitcher}</div>` : ''}
+                <div class="baseball-line" style="margin-top:6px"><span>Runners: <b>${runners}</b></span></div>
               </div>
             </div>
+            ${lastPlay ? `<div class="last-play-box"><div class="last-play-lbl">Last play</div><div class="last-play-txt">${lastPlay}</div></div>` : ''}
           </div>
           <div class="monitor-trade-box">
+            <div class="section-title" style="margin-bottom:8px;font-size:9px">Position</div>
             <div class="monitor-trade-grid">
               <div class="stat-box"><div class="stat-label">Entry</div><div class="stat-val blue">${fmtPx(p.entry_px)}</div></div>
               <div class="stat-box"><div class="stat-label">Current</div><div class="stat-val gold">${fmtPx(currentPx)}</div></div>
-              <div class="stat-box"><div class="stat-label">Committed</div><div class="stat-val">${fmtUsd(committed)}</div></div>
-              <div class="stat-box"><div class="stat-label">Live Equity</div><div class="stat-val">${fmtUsd(equity)}</div></div>
               <div class="stat-box"><div class="stat-label">Unrealized</div><div class="stat-val ${clr(pnl)}">${fmtUsd(pnl)}</div></div>
-              <div class="stat-box"><div class="stat-label">TP / SL</div><div class="stat-val">${fmtPx(p.tp_price)} / ${fmtPx(p.sl_price)}</div></div>
+              <div class="stat-box"><div class="stat-label">Equity</div><div class="stat-val">${fmtUsd(p.live_equity_usd)}</div></div>
+              <div class="stat-box"><div class="stat-label">TP</div><div class="stat-val green">${fmtPx(p.tp_price)}</div></div>
+              <div class="stat-box"><div class="stat-label">SL</div><div class="stat-val red">${fmtPx(p.sl_price)}</div></div>
             </div>
           </div>
         </div>
@@ -1571,19 +1623,50 @@ function renderLiveGamesFocus(games, openPaperPositions) {
   }
 
   if (liveGames.length) {
-    $('live-games-focus').innerHTML = liveGames.slice(0, 3).map(g => `
-      <div class="game-monitor-card">
+    $('live-games-focus').innerHTML = liveGames.slice(0, 3).map(g => {
+      const away = shortTeam(g.away || '?');
+      const home = shortTeam(g.home || '?');
+      const awayLeads = g.away_score > g.home_score;
+      const homeLeads = g.home_score > g.away_score;
+      const inningStr = g.inning_half && g.inning
+        ? `${g.inning_half === 'top' ? 'TOP' : 'BOT'} ${ordinal(g.inning)}`
+        : (g.inning ? `${ordinal(g.inning)}` : '');
+      const runners = [g.on_first?'1B':null, g.on_second?'2B':null, g.on_third?'3B':null].filter(Boolean).join(' · ') || 'bases empty';
+      const pitcher = g.current_pitcher || g.away_pitcher || g.home_pitcher || '';
+      const batter  = g.current_batter || '';
+      const lastPlay = g.last_play || '';
+      return `<div class="game-monitor-card">
         <div class="game-monitor-top">
-          <div>
-            <div class="section-title">Live baseball monitor</div>
-            <div class="game-monitor-score">${shortTeam(g.away||'?')} ${g.away_score} · ${g.home_score} ${shortTeam(g.home||'?')}</div>
-            <div class="game-monitor-meta"><span>${g.status_display || g.status || 'LIVE'}</span><span>${g.inning_half ? `${g.inning_half} ${ordinal(g.inning || 0)}` : ''}</span><span>${g.outs != null ? `${g.outs} outs` : ''}</span><span>${g.balls != null && g.strikes != null ? `${g.balls}-${g.strikes}` : ''}</span></div>
-            ${g.away_pitcher || g.home_pitcher ? `<div class="monitor-pitcher">Pitchers: ${g.away_pitcher || '?'} / ${g.home_pitcher || '?'}</div>` : ''}
+          <div style="flex:1">
+            <div class="section-title" style="margin-bottom:8px">Live Baseball Monitor</div>
+            <div class="gm-score-block">
+              <div class="gm-score-row">
+                <span class="gm-team-name">${away}</span>
+                <span class="gm-runs${awayLeads ? ' leader' : ''}">${g.away_score}</span>
+                <span class="gm-sep">·</span>
+                <span class="gm-runs${homeLeads ? ' leader' : ''}">${g.home_score}</span>
+                <span class="gm-team-name">${home}</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:4px">
+              ${inningStr ? `<span class="live-state-pill">${inningStr}</span>` : ''}
+              <span class="live-state-pill">${g.status_display || g.status || 'LIVE'}</span>
+            </div>
           </div>
-          <span class="status-badge live">${g.status || 'LIVE'}</span>
+          <span class="status-badge live">LIVE</span>
         </div>
-        <div class="baseball-state">${buildDiamond(!!g.on_first, !!g.on_second, !!g.on_third)}</div>
-      </div>`).join('');
+        <div class="live-game-state" style="margin-top:10px">
+          ${buildDiamond(!!g.on_first, !!g.on_second, !!g.on_third)}
+          <div>
+            ${buildCountChips(g.balls, g.strikes, g.outs)}
+            ${batter ? `<div class="batter-line">${batter}</div><div class="batter-sub">at bat</div>` : ''}
+            ${pitcher ? `<div class="pitcher-line">P: ${pitcher}</div>` : ''}
+            <div class="baseball-line" style="margin-top:6px"><span>Runners: <b>${runners}</b></span></div>
+          </div>
+        </div>
+        ${lastPlay ? `<div class="last-play-box"><div class="last-play-lbl">Last play</div><div class="last-play-txt">${lastPlay}</div></div>` : ''}
+      </div>`;
+    }).join('');
     return;
   }
 
