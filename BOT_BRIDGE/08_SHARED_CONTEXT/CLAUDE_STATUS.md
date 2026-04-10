@@ -1,5 +1,5 @@
 # CLAUDE_STATUS.md — Manager Status Snapshot
-## Last reconciled: 2026-04-10 — Full board reconciliation. All tasks through DASHBOARD_TRUTH_FIXES_001 reflected. Restart required.
+## Last reconciled: 2026-04-10 — Board reconciliation updated. PROCESS_CLEANUP_VERIFY_001 + LIVE_CARD_BASEBALL_SEMANTICS_001 added to DONE. DASHBOARD_LIVE_ATBAT_POLISH_001 unblocked → ACTIVE. Restart complete.
 
 ---
 
@@ -46,7 +46,7 @@
 |------|----------|-------|
 | BUY_YES/BUY_NO sign semantics re-check | MEDIUM | Manual spot-check after first open position tonight. No open positions at time of reverify audit. |
 | ESPN/external data intermittent failures | LOW | Dashboard still runs. DNS/TLS errors in dashboard.log. Not blocking trading. |
-| Session P&L not on dashboard | LOW | Operator cannot separate today's vs lifetime PnL at a glance. Not a correctness issue. |
+| ~~Session P&L not on dashboard~~ | RESOLVED | SESSION_PNL_DASHBOARD_001 APPROVED — session_start_ts written to state.json, session_pnl computed from DB. |
 
 ---
 
@@ -55,7 +55,7 @@
 | Item | What's needed |
 |------|--------------|
 | Polymarket user/fill stream | Add apiKey, secret, passphrase to .env |
-| ~~Bot restart~~ | ✅ DONE — restarted 2026-04-10, all patches now live |
+| ~~Bot restart~~ | ✅ DONE — restarted 2026-04-10, all patches live. Confirmed by PROCESS_CLEANUP_VERIFY_001. |
 
 ---
 

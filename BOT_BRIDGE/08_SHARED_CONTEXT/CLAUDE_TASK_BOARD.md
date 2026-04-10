@@ -1,5 +1,5 @@
 # CLAUDE_TASK_BOARD.md — Manager Task Board
-## Last updated: 2026-04-10 — ALL 4 RISK/SIZING TASKS DONE + APPROVED. Restart required to pick up all changes. Board idle.
+## Last updated: 2026-04-10 — CONFIDENCE_HISTORY_AUDIT_001 opened. 2 ACTIVE tasks. No file conflicts (audit is read-only).
 
 ---
 
@@ -15,7 +15,10 @@
 
 ## ACTIVE
 
-_None — board idle. All 4 tasks complete. Restart required._
+| task_id | title | priority | subsystem | allowed_files | status |
+|---------|-------|----------|-----------|---------------|--------|
+| DASHBOARD_LIVE_ATBAT_POLISH_001 | Upgrade live game cards with at-bat state, next-three-up, baseball-first hierarchy | MEDIUM | dashboard | `dashboard.html`, `dashboard_server.py` (only if strictly needed) | ACTIVE — dependency DASHBOARD_TRUTH_REVERIFY_001 is resolved; brief already in 05_INBOX |
+| CONFIDENCE_HISTORY_AUDIT_001 | Historical confidence audit — recent recommendations/trades vs new 0.60 hard floor | HIGH | read-only audit | logs, trades_sports.db (SELECT only), 1–2 code files max to locate field | ACTIVE — read-only, no file locks required |
 
 ---
 
@@ -38,6 +41,8 @@ _None._
 
 | task_id | title | outcome | allowed_files |
 |---------|-------|---------|---------------|
+| LIVE_CARD_BASEBALL_SEMANTICS_001 | LIVE card phrasing → baseball semantics (backed/faded vs WIN/LOSE) | APPROVED (ratified) 2026-04-10 — dashboard.html only. Self-directed change by worker without brief; content correct, process violation noted in review. | `dashboard.html` |
+| PROCESS_CLEANUP_VERIFY_001 | Verify process topology is clean after restart | APPROVED 2026-04-10 — 6/6 criteria PASS. System clean at task start. No kills required. PIDs confirmed: bot_core 24800, dashboard_server 29620, resolution_watcher 47560, recommendation_api 44152. | read-only / process inspect only |
 | MIN_ENTRY_CONFIDENCE_001 | Hard confidence floor gate (0.60) — first gate in check_entry_gates() waterfall | APPROVED 2026-04-10 — blocks low-edge signals before OB/DB work | `core/risk.py`, `.env` |
 | SESSION_EXPOSURE_CAP_001 | MAX_TOTAL_COMMITTED_USD=150 dollar ceiling on total open exposure | APPROVED 2026-04-10 — gate added after per-market gate in risk.py | `core/risk.py`, `.env` |
 | SESSION_PNL_DASHBOARD_001 | Session P&L in /api/state bankroll block | APPROVED 2026-04-10 — session_start_ts written to state.json, session_pnl computed from DB | `bot_core.py`, `dashboard_server.py` |
@@ -166,7 +171,10 @@ _None._
 
 | File | Locked by |
 |------|-----------|
-| All files | **UNLOCKED** — no active tasks |
+| `dashboard.html` | DASHBOARD_LIVE_ATBAT_POLISH_001 |
+| `dashboard_server.py` | DASHBOARD_LIVE_ATBAT_POLISH_001 (conditional — only if needed) |
+| logs, DB (SELECT only) | CONFIDENCE_HISTORY_AUDIT_001 (read-only, no exclusive lock) |
+| All other files | UNLOCKED |
 
 ---
 
@@ -174,9 +182,9 @@ _None._
 
 - **Realized PnL: $405.89** (updated from DASHBOARD_TRUTH_FIXES_001 verified API value)
 - **Dashboard truth: FIXED** — Realized P&L authoritative, mark_source chip live, R25 sublabel corrected (DASHBOARD_TRUTH_FIXES_001 APPROVED)
-- **Authority separation: CODE COMPLETE** — local origination removed from bot_core.py, execution_guard.py deleted (AUTHORITY_SEPARATION_CLEANUP_001 PROVISIONAL PASS). Restart required.
+- **Authority separation: CODE COMPLETE** — local origination removed from bot_core.py, execution_guard.py deleted (AUTHORITY_SEPARATION_CLEANUP_001 PROVISIONAL PASS). Restart complete.
 - **Risk pack: VERIFIED** — 12/12 checks pass. SESSION_EXPOSURE_CAP_USD + drawdown-aware sizing patched in bot_core.py + core/paper_exec.py + .env
-- **Restart pending**: picks up risk pack patches + authority separation cleanup
+- **Restart: COMPLETE** — all risk pack patches + authority separation live. PIDs confirmed by PROCESS_CLEANUP_VERIFY_001.
 - **BUY_YES/BUY_NO position card sign semantics: UNVERIFIED** — no open positions at time of last audit (DASHBOARD_TRUTH_REVERIFY_001). Needs manual spot-check after next open position.
 - **Dual-process incident**: RESOLVED
 - **Realtime polymarket market stream**: VERIFIED — Stage 1

@@ -2,20 +2,20 @@
   "engine": "sports_paper_baseball",
   "build": "sports_bot_v2.baseball.2026-03-29",
   "sport": "baseball",
-  "now": "2026-04-10T22:30:08.389211+00:00",
-  "loop_count": 1,
+  "now": "2026-04-10T22:46:28.830701+00:00",
+  "loop_count": 15,
   "config_hash": "2f0dd9e0ef8a",
   "pnl": {
     "realized": 405.8899,
-    "unrealized": 0.0,
-    "net": 405.8899,
+    "unrealized": -1.7668,
+    "net": 404.1231,
     "session_start_ts": 1775860139
   },
   "slots": {
-    "open": 0,
+    "open": 1,
     "max": 3
   },
-  "total_trades": 176,
+  "total_trades": 177,
   "rolling": {
     "r25": {
       "n": 25,
@@ -73,7 +73,20 @@
   "last_invalid_market_details": {},
   "exit_reason_counts": {},
   "market_cooldowns_active": 0,
-  "open_positions": [],
+  "open_positions": [
+    {
+      "id": 223,
+      "market_slug": "mlb-ari-phi-2026-04-10",
+      "market_id": "1860407",
+      "side": "BUY_YES",
+      "entry_px": 0.39195,
+      "qty": 127.567292,
+      "confidence": 0.3353,
+      "pnl_usd": -1.7668,
+      "ts_open": "2026-04-10T22:44:07.039312+00:00",
+      "source": "model_bridge"
+    }
+  ],
   "recent_closed": [
     {
       "id": 222,
@@ -166,5 +179,5 @@
       "exit_px": 0.98
     }
   ],
-  "status_line": "loop=1 sport=baseball mode=neutral open=0 guard_block=75"
+  "status_line": "loop=15 sport=baseball mode=neutral open=1 guard_block=75"
 }
