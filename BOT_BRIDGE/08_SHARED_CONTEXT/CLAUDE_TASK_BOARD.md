@@ -1,5 +1,5 @@
 # CLAUDE_TASK_BOARD.md — Manager Task Board
-## Last updated: 2026-04-10 — 4 risk/sizing tasks open. BANKROLL_AWARE_SIZING_001 + SESSION_PNL_DASHBOARD_001 active (no conflict). SESSION_EXPOSURE_CAP_001 + MIN_ENTRY_CONFIDENCE_001 queued behind .env and risk.py locks.
+## Last updated: 2026-04-10 — ALL 4 RISK/SIZING TASKS DONE + APPROVED. Restart required to pick up all changes. Board idle.
 
 ---
 
@@ -15,19 +15,13 @@
 
 ## ACTIVE
 
-| task_id | title | priority | subsystem | allowed_files | status |
-|---------|-------|----------|-----------|---------------|--------|
-| BANKROLL_AWARE_SIZING_001 | Bankroll-aware sizing — lower max to $50, replace fixed base with bankroll % (3%) | HIGH | position-sizing | `core/paper_exec.py`, `.env` | OPEN — ready for worker pickup |
-| SESSION_PNL_DASHBOARD_001 | Expose session P&L on dashboard — today's performance separate from lifetime | MEDIUM | dashboard-accounting | `bot_core.py`, `dashboard_server.py` | OPEN — ready for worker pickup (no file conflict with SIZING_001) |
+_None — board idle. All 4 tasks complete. Restart required._
 
 ---
 
 ## QUEUED
 
-| task_id | title | priority | blocked_by |
-|---------|-------|----------|-----------|
-| SESSION_EXPOSURE_CAP_001 | Add MAX_TOTAL_COMMITTED_USD dollar ceiling on open exposure | HIGH | BANKROLL_AWARE_SIZING_001 (.env conflict) |
-| MIN_ENTRY_CONFIDENCE_001 | Add minimum entry confidence gate (floor = 0.60) | MEDIUM | SESSION_EXPOSURE_CAP_001 (core/risk.py conflict) + BANKROLL_AWARE_SIZING_001 (.env conflict) |
+_None._
 
 ---
 
@@ -44,6 +38,10 @@
 
 | task_id | title | outcome | allowed_files |
 |---------|-------|---------|---------------|
+| MIN_ENTRY_CONFIDENCE_001 | Hard confidence floor gate (0.60) — first gate in check_entry_gates() waterfall | APPROVED 2026-04-10 — blocks low-edge signals before OB/DB work | `core/risk.py`, `.env` |
+| SESSION_EXPOSURE_CAP_001 | MAX_TOTAL_COMMITTED_USD=150 dollar ceiling on total open exposure | APPROVED 2026-04-10 — gate added after per-market gate in risk.py | `core/risk.py`, `.env` |
+| SESSION_PNL_DASHBOARD_001 | Session P&L in /api/state bankroll block | APPROVED 2026-04-10 — session_start_ts written to state.json, session_pnl computed from DB | `bot_core.py`, `dashboard_server.py` |
+| BANKROLL_AWARE_SIZING_001 | Bankroll-aware sizing (3% of bankroll, $50 max, $10 floor) | APPROVED 2026-04-10 — replaces fixed $50 base with bankroll * 0.03; MAX_POSITION_SIZE_USD lowered to $50 | `core/paper_exec.py`, `.env` |
 | DASHBOARD_TRUTH_FIXES_001 | Fix 3 dashboard.html truth defects found by REVERIFY audit | APPROVED 2026-04-10 — Realized P&L now reads authoritative state.pnl.realized ($405.89); mark_source chip added to position cards; R25 sublabel uses r25.sample_size. dashboard.html only. | `dashboard.html` |
 | DASHBOARD_TRUTH_REVERIFY_001 | Re-verify dashboard display truth end-to-end against live endpoints | CHANGES_REQUESTED 2026-04-10 — 3 failures found (Realized P&L mis-sourced, mark_source not displayed, R25 sublabel zero). Resolved by DASHBOARD_TRUTH_FIXES_001. BUY_YES/BUY_NO sign semantics unverified (no open positions at audit time — needs spot-check after restart). | read-only |
 | AUTHORITY_SEPARATION_CLEANUP_001 | Remove local MLB origination from sports_bot_v2; decouple execution gating from mlb_model | PROVISIONAL PASS 2026-04-10 — All acceptance criteria met. Code removals verified (grep confirms zero residual symbols). execution_guard.py deleted. VCS caveat: mlb_model/signal_base paths untracked so commit is partial; runtime behavior unaffected. **Restart required.** | `bot_core.py`, `core/signal_base.py`, `mlb_model/integration/recommendation_api.py`, `mlb_model/core/execution_guard.py` |
@@ -168,11 +166,7 @@
 
 | File | Locked by |
 |------|-----------|
-| `core/paper_exec.py` | BANKROLL_AWARE_SIZING_001 |
-| `.env` | BANKROLL_AWARE_SIZING_001 |
-| `bot_core.py` | SESSION_PNL_DASHBOARD_001 |
-| `dashboard_server.py` | SESSION_PNL_DASHBOARD_001 |
-| `core/risk.py` | free — SESSION_EXPOSURE_CAP_001 queued (not yet active) |
+| All files | **UNLOCKED** — no active tasks |
 
 ---
 

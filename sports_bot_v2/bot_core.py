@@ -184,6 +184,7 @@ def _write_state(status_line: str = "", mode_ctx=None):
                 "realized": round(realized, 4),
                 "unrealized": round(unrealized, 4),
                 "net": round(realized + unrealized, 4),
+                "session_start_ts": _session_start_ts,
             },
             "slots": {
                 "open": len(open_trades),

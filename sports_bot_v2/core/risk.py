@@ -37,6 +37,8 @@ SL_COOLDOWN_LOOPS = int(os.getenv("SL_COOLDOWN_LOOPS", "5"))
 ENTRY_EVENT_MAX_AGE_MINUTES = int(os.getenv("ENTRY_EVENT_MAX_AGE_MINUTES", "300"))
 ENTRY_FAIL_CLOSED_ON_MISSING_METADATA = os.getenv("ENTRY_FAIL_CLOSED_ON_MISSING_METADATA", "true").lower() == "true"
 MAX_ENTRY_PRICE = float(os.getenv("MAX_ENTRY_PRICE", "0.99"))
+MIN_ENTRY_CONFIDENCE = float(os.getenv("MIN_ENTRY_CONFIDENCE", "0.60"))
+MAX_TOTAL_COMMITTED_USD = float(os.getenv("MAX_TOTAL_COMMITTED_USD", "150"))
 
 _sl_cluster: list[float] = []
 _sl_cooldown_until_loop: int = 0
@@ -154,6 +156,13 @@ def check_entry_gates(
 ) -> tuple[bool, list[str]]:
     """Waterfall guard stack. Returns (all_ok, [reasons]). Stops at first block."""
     import time as _t
+
+    # Hard confidence floor — checked first, before any DB or OB work
+    if MIN_ENTRY_CONFIDENCE > 0.0:
+        signal_confidence = getattr(sig, "confidence", None)
+        if signal_confidence is None or signal_confidence < MIN_ENTRY_CONFIDENCE:
+            return False, [f"confidence_too_low:{signal_confidence}:{MIN_ENTRY_CONFIDENCE:.3f}"]
+
     mults = mode_ctx.profile_multipliers
     eff_max_spread = MAX_SPREAD * mults.get("max_spread", 1.0)
     eff_min_depth = MIN_TOUCH_DEPTH_USD * mults.get("min_depth_usd", 1.0)
@@ -204,6 +213,21 @@ def check_entry_gates(
     market_open = open_per_market.get(market_id, 0)
     if market_open >= MAX_TRADES_PER_MARKET:
         return False, [f"max_per_market:{market_open}>={MAX_TRADES_PER_MARKET}"]
+
+    if MAX_TOTAL_COMMITTED_USD > 0:
+        try:
+            import sqlite3 as _sqlite3
+            _db_path = os.getenv("DB_PATH", "trades_sports.db")
+            with _sqlite3.connect(_db_path, timeout=2.0) as _conn:
+                _row = _conn.execute(
+                    "SELECT COALESCE(SUM(entry_px * qty), 0) FROM trades WHERE status='open'"
+                ).fetchone()
+            _committed = float(_row[0] or 0)
+            _max_new = float(os.getenv("MAX_POSITION_SIZE_USD", "50"))
+            if _committed + _max_new > MAX_TOTAL_COMMITTED_USD:
+                return False, [f"exposure_cap_exceeded:committed={_committed:.2f}+{_max_new:.2f}>{MAX_TOTAL_COMMITTED_USD:.2f}"]
+        except Exception as _e:
+            logger.warning("exposure_cap check failed: %s", _e)
 
     if _sl_cooldown_until_loop > _current_loop:
         remaining = _sl_cooldown_until_loop - _current_loop

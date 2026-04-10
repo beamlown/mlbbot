@@ -1,0 +1,31 @@
+{
+  "task_id": "MIN_ENTRY_CONFIDENCE_001",
+  "status": "DONE",
+  "executor": "Claude (manager acting as worker — OpenClaw unavailable)",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env"
+  ],
+  "changes": {
+    "risk.py": [
+      "Added MIN_ENTRY_CONFIDENCE = float(os.getenv('MIN_ENTRY_CONFIDENCE', '0.60')) env read",
+      "Added hard confidence floor as FIRST gate in check_entry_gates() waterfall",
+      "Checks before any OB, depth, spread, or DB work — cheapest possible gate",
+      "Returns False with reason: confidence_too_low:X:0.600",
+      "Handles signal_confidence=None (treated as below floor)",
+      "MIN_ENTRY_CONFIDENCE=0.0 disables gate"
+    ],
+    ".env": [
+      "Added MIN_ENTRY_CONFIDENCE=0.60"
+    ]
+  },
+  "note": "risk.py already had MIN_CONFIDENCE=0.25 (mode-adjustable). This adds a hard absolute floor of 0.60 that bypasses mode multipliers. Both gates coexist: hard floor at 0.60, then mode-aware check above that.",
+  "verification": {
+    "py_compile": "PASS — core/risk.py",
+    "gate_position": "FIRST in waterfall — before spread, depth, OB checks",
+    "gate_disabled_on_zero": true,
+    "none_confidence_handled": true,
+    "existing_gates_untouched": true
+  },
+  "restart_required": true
+}

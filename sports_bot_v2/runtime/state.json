@@ -2,13 +2,14 @@
   "engine": "sports_paper_baseball",
   "build": "sports_bot_v2.baseball.2026-03-29",
   "sport": "baseball",
-  "now": "2026-04-10T22:22:30.964972+00:00",
-  "loop_count": 29,
+  "now": "2026-04-10T22:30:08.389211+00:00",
+  "loop_count": 1,
   "config_hash": "2f0dd9e0ef8a",
   "pnl": {
     "realized": 405.8899,
     "unrealized": 0.0,
-    "net": 405.8899
+    "net": 405.8899,
+    "session_start_ts": 1775860139
   },
   "slots": {
     "open": 0,
@@ -165,5 +166,5 @@
       "exit_px": 0.98
     }
   ],
-  "status_line": "loop=29 sport=baseball mode=neutral open=0 guard_block=77"
+  "status_line": "loop=1 sport=baseball mode=neutral open=0 guard_block=75"
 }

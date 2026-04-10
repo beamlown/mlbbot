@@ -516,12 +516,24 @@ def _read_state() -> dict:
         current = STARTING_BANKROLL + net_pnl
         pct = (current - STARTING_BANKROLL) / STARTING_BANKROLL * 100 if STARTING_BANKROLL else 0
         acct = _compute_open_trade_accounting()
+        session_start_ts = int((state.get("pnl") or {}).get("session_start_ts", 0) or 0)
+        try:
+            with _db() as conn:
+                _row = conn.execute(
+                    "SELECT COALESCE(SUM(pnl_usd), 0) FROM trades WHERE status='closed' AND ts_close >= ?",
+                    (session_start_ts,)
+                ).fetchone()
+            session_pnl = round(float(_row[0] or 0), 4)
+        except Exception:
+            session_pnl = 0.0
         state["bankroll"] = {
             "start": STARTING_BANKROLL, "current": round(current, 2),
             "pct_gain": round(pct, 2), "net_pnl": round(net_pnl, 2),
             "capital_committed": acct["capital_committed"],
             "available_cash": round(max(0.0, current - acct["capital_committed"]), 2),
             "open_trade_count": acct["open_count"],
+            "session_pnl": session_pnl,
+            "session_start_ts": session_start_ts,
         }
         state["stale"] = age > BOT_STALE_SEC
         state["file_age_sec"] = round(age, 1)

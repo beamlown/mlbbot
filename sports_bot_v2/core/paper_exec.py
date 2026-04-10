@@ -21,7 +21,10 @@ CONF_TIER_HIGH = float(os.getenv("CONF_TIER_HIGH", "0.70"))
 CONF_TIER_VHIGH = float(os.getenv("CONF_TIER_VHIGH", "0.80"))
 CONF_SIZE_MID_MULT = float(os.getenv("CONF_SIZE_MID_MULT", "1.25"))
 CONF_SIZE_HIGH_MULT = float(os.getenv("CONF_SIZE_HIGH_MULT", "1.50"))
-MAX_POSITION_SIZE_USD = float(os.getenv("MAX_POSITION_SIZE_USD", "100"))
+MAX_POSITION_SIZE_USD = float(os.getenv("MAX_POSITION_SIZE_USD", "50"))
+RISK_PCT_PER_TRADE = float(os.getenv("RISK_PCT_PER_TRADE", "0.03"))
+MIN_POSITION_USD = float(os.getenv("MIN_POSITION_USD", "10.0"))
+_PAPER_STARTING_BANKROLL = float(os.getenv("STARTING_BANKROLL", "500"))
 
 
 def _confidence_size(base_usd: float, confidence: float, drawdown_mult: float = 1.0) -> float:
@@ -78,7 +81,19 @@ def open_position(
         except Exception:
             size_usd = _confidence_size(PAPER_POSITION_SIZE_USD, signal.confidence, drawdown_mult)
     else:
-        size_usd = _confidence_size(PAPER_POSITION_SIZE_USD, signal.confidence, drawdown_mult)
+        try:
+            from core.db import total_realized_pnl as _total_pnl
+            _current_bankroll = _PAPER_STARTING_BANKROLL + _total_pnl()
+            _bankroll_base = max(MIN_POSITION_USD, _current_bankroll * RISK_PCT_PER_TRADE)
+        except Exception:
+            logger.warning("SIZING bankroll read failed — falling back to PAPER_POSITION_SIZE_USD")
+            _current_bankroll = _PAPER_STARTING_BANKROLL
+            _bankroll_base = PAPER_POSITION_SIZE_USD
+        size_usd = _confidence_size(_bankroll_base, signal.confidence, drawdown_mult)
+        logger.info(
+            "SIZING bankroll=%.2f base=%.2f size_usd=%.2f",
+            _current_bankroll, _bankroll_base, size_usd,
+        )
     qty = size_usd / fill_px if fill_px > 0 else 0.0
     fees_usd = qty * fill_px * PAPER_FEE_PCT
 
