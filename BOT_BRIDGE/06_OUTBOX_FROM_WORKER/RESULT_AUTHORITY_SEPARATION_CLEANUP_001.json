@@ -1,0 +1,59 @@
+{
+  "task_id": "AUTHORITY_SEPARATION_CLEANUP_001",
+  "status": "REVISION_COMMIT_CREATED",},{
+  "restart_required": true,
+  "restart_note": "Full stack restart required after review/approval.",
+  "scope_followed": true,
+  "allowed_files_touched": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\signal_base.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\core\\execution_guard.py"
+  ],
+  "do_not_touch_confirmation": {
+    "sports_bot_v2/core/model_bridge.py": "untouched",
+    "sports_bot_v2/bot_core.py bridge path": "local-origination block removed; bridge block remains and is still the active entry path"
+  },
+  "changes": [
+    {
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+      "before_target": "line 113 and lines 441-478 (per manager task)",
+      "after": "ALLOW_LOCAL_MLB_ORIGINATION removed; local MLB origination/date-gate/signal+entry pipeline removed; bridge section now starts at line ~441"
+    },
+    {
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\signal_base.py",
+      "before_target": "lines 106-269 (per manager task)",
+      "after": "generate_signal local decision engine removed; shared helper constants/utilities retained"
+    },
+    {
+      "file": "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+      "before_target": "line 40, lines 122-125, line 105, lines 187-212",
+      "after": "ROLLBACK_DISABLE removed; rollback early-return removed; execution_guard import removed; check_all_gates call path removed; size/confidence now computed locally without execution_guard module"
+    },
+    {
+      "file": "C:\\Users\\johnny\\Desktop\\mlb_model\\core\\execution_guard.py",
+      "before_target": "lines 1-141",
+      "after": "deleted"
+    }
+  ],
+  "verification": {
+    "sports_bot_allow_local_grep": "zero hits for ALLOW_LOCAL_MLB_ORIGINATION in *.py",
+    "mlb_model_execution_guard_grep": "zero hits for execution_guard/check_all_gates/check_size_tier/compute_confidence/ROLLBACK_DISABLE in *.py",
+    "signal_base_usage_check": "zero usages of generate_signal( in sports_bot_v2 *.py after bot_core cleanup",
+    "syntax_check": "python -m py_compile passed for bot_core.py, signal_base.py, recommendation_api.py"
+  },
+  "residual_risks": [
+    "Repository remains heavily pre-dirty with many unrelated files, but commit was isolated via partial staging to task-scope bot_core cleanup and task artifacts.",
+    "mlb_model and signal_base paths referenced by task are currently untracked in this repository, so this commit can only capture tracked in-scope changes plus bridge artifacts."
+  ],
+  "commit": {
+    "created": true,
+    "hash": null,
+    "reason": "Task-scope commit created with selective staging to avoid unrelated pre-existing diffs."
+  }
+  "artifacts": {
+    "result": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_AUTHORITY_SEPARATION_CLEANUP_001.json",
+    "review": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\07_REVIEWS\\REVIEW_AUTHORITY_SEPARATION_CLEANUP_001.md"
+  },
+  "recommendation": "NEEDS_REVISION_FOR_VCS_HYGIENE"
+}

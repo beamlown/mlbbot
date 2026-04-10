@@ -11,7 +11,7 @@ import os
 import sys
 import time
 from collections import defaultdict
-from datetime import date as _date, datetime, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 from core.utils import load_env, atomic_write_json, config_hash, now_iso, append_jsonl, parse_utc_dt
@@ -90,7 +90,6 @@ from core.mode import update_mode, record_closed_trade, get_mode_ctx
 from core.orderbook import get_orderbook_snapshot
 from core.paper_exec import open_position, close_position, mark_to_market_value
 from core.risk import check_entry_gates, check_exit, set_current_loop, NEAR_RESOLUTION_PRICE
-from core.signal_base import generate_signal
 from core.types import Market, Trade, Signal
 from core.model_bridge import get_approved_intents
 
@@ -110,7 +109,6 @@ _session_start_ts = int(time.time())
 _session_peak_bankroll: float = SESSION_STARTING_BANKROLL_USD
 
 AUDIT_CANDIDATES_LOG = f"logs/audit_candidates_{SPORT}.jsonl"
-ALLOW_LOCAL_MLB_ORIGINATION = os.getenv("ALLOW_LOCAL_MLB_ORIGINATION", "0") == "1"
 
 
 def _load_resolved_markets() -> dict:
@@ -436,122 +434,6 @@ def main():
                         loop_guard_reasons.append(f"{market.slug[:20]}:micro_{ob.micro_reason}")
                         _guard_block_count += 1
                         continue
-
-                    # Generate signal using sport-injected functions
-                    if not ALLOW_LOCAL_MLB_ORIGINATION:
-                        logger.debug(
-                            "LOCAL MLB ORIGINATION DISABLED slug=%s reason=model_authority_enforced",
-                            market.slug,
-                        )
-                        continue
-
-                    # Date gate: only bet on today's games (same check as model_bridge.py line 127)
-                    try:
-                        _slug_parts = market.slug.split('-')
-                        _slug_date = _date.fromisoformat('-'.join(_slug_parts[-3:]))
-                    except Exception:
-                        _slug_date = None
-                    if _slug_date != _date.today():
-                        logger.debug('LOCAL DATE GATE REJECT slug=%s slug_date=%s today=%s', market.slug, _slug_date, _date.today())
-                        continue
-
-                    sig = generate_signal(
-                        market=market,
-                        ob=ob,
-                        extract_teams_fn=extract_teams_from_question,
-                        get_game_state_fn=get_game_state,
-                        game_signal_fn=game_signal,
-                    )
-                    t2e = _time_to_end(market)
-
-                    if loss_cap_hit or exposure_cap_hit:
-                        continue
-
-                    gates_ok, gate_reasons = check_entry_gates(
-                        ob=ob, sig=sig, mode_ctx=mode_ctx,
-                        open_count=open_count,
-                        open_per_market=open_per_market,
-                        market_id=market.market_id,
-                        time_to_end_seconds=t2e,
-                        market=market,
-                        market_cooldown=_market_cooldown,
-                    )
-
-                    # A5 — decision quality telemetry
-                    _gc = sig.components.get("game_context", {})
-                    _audit_rec = {
-                        "ts": now_iso(),
-                        "loop": LOOP_COUNT,
-                        "sport": SPORT,
-                        "market_id": market.market_id,
-                        "market_type": market.market_type,
-                        "slug": market.slug,
-                        "event": market.question[:60],
-                        "side": sig.side,
-                        "confidence": round(sig.confidence, 4),
-                        "eligible": gates_ok,
-                        "reject_reason": gate_reasons[0] if not gates_ok and gate_reasons else "",
-                        "ob_snapshot": {
-                            "bid_yes": ob.bid_yes,
-                            "ask_yes": ob.ask_yes,
-                            "spread_yes": ob.spread_yes,
-                            "thin_side_depth_usd": ob.depth_top5_usd_yes,
-                            "depth_usd_no": ob.depth_top5_usd_no,
-                            "imbalance": ob.imbalance,
-                        },
-                        "signal": {
-                            "raw_score": sig.components.get("raw_score"),
-                            "game_score": _gc.get("score"),
-                            "game_reason": _gc.get("reason"),
-                            "sharp_edge": _gc.get("sharp_edge"),
-                            "sharp_score": _gc.get("sharp_score"),
-                            "game_inning": _gc.get("inning"),
-                            "game_outs": _gc.get("outs"),
-                            "game_score_state": _gc.get("score"),
-                            "weights": sig.components.get("weights"),
-                        },
-                    }
-                    try:
-                        append_jsonl(AUDIT_CANDIDATES_LOG, _audit_rec)
-                    except Exception:
-                        pass
-
-                    if not gates_ok:
-                        reason_str = gate_reasons[0] if gate_reasons else "unknown"
-                        loop_guard_reasons.append(f"{market.slug[:20]}:{reason_str}")
-                        _guard_block_count += 1
-                        if reason_str.startswith("guard_market_"):
-                            _guard_market_blocks[reason_str] += 1
-                            _last_invalid_market_details = {
-                                "ts": now_iso(),
-                                "slug": market.slug,
-                                "market_id": market.market_id,
-                                "reason": reason_str,
-                                "active": market.active,
-                                "closed": market.closed,
-                                "resolved": market.resolved,
-                                "end_iso": market.end_iso,
-                                "start_iso": market.start_iso,
-                                "time_to_end_sec": t2e,
-                            }
-                        logger.debug("Guard block [%s]: %s", market.slug[:30], reason_str)
-                        continue
-
-                    _guard_pass_count += 1
-
-                    trade = open_position(market, sig, ob, mode=mode_ctx.mode, drawdown_mult=drawdown_mult)
-                    trade_id = insert_open_trade(trade, sport=SPORT)
-                    if trade_id is None:
-                        logger.info("OPEN SKIPPED (duplicate slug) slug=%s", market.slug)
-                        continue
-                    trade.id = trade_id
-                    open_count += 1
-                    open_per_market[market.market_id] = open_per_market.get(market.market_id, 0) + 1
-
-                    logger.info(
-                        "OPEN trade=%d %s %s @ %.4f conf=%.3f",
-                        trade_id, market.slug[:30], sig.side, trade.entry_px, sig.confidence,
-                    )
 
                 except Exception as e:
                     logger.warning("Market %s error: %s", market.market_id[:12], e)

@@ -1,5 +1,5 @@
 # CLAUDE_TASK_BOARD.md — Manager Task Board
-## Last updated: 2026-04-10 — RISK PACK COMPLETE + 2 HIGH GAPS CLOSED. All 7 phases DONE. System verdict: VERIFIED. SESSION_EXPOSURE_CAP_USD and drawdown-aware sizing patched directly by manager 2026-04-10 (bot_core.py + core/paper_exec.py + .env). Board idle. Pending restart to pick up changes.
+## Last updated: 2026-04-10 — 4 risk/sizing tasks open. BANKROLL_AWARE_SIZING_001 + SESSION_PNL_DASHBOARD_001 active (no conflict). SESSION_EXPOSURE_CAP_001 + MIN_ENTRY_CONFIDENCE_001 queued behind .env and risk.py locks.
 
 ---
 
@@ -15,13 +15,19 @@
 
 ## ACTIVE
 
-_None — risk pack complete. Board idle._
+| task_id | title | priority | subsystem | allowed_files | status |
+|---------|-------|----------|-----------|---------------|--------|
+| BANKROLL_AWARE_SIZING_001 | Bankroll-aware sizing — lower max to $50, replace fixed base with bankroll % (3%) | HIGH | position-sizing | `core/paper_exec.py`, `.env` | OPEN — ready for worker pickup |
+| SESSION_PNL_DASHBOARD_001 | Expose session P&L on dashboard — today's performance separate from lifetime | MEDIUM | dashboard-accounting | `bot_core.py`, `dashboard_server.py` | OPEN — ready for worker pickup (no file conflict with SIZING_001) |
 
 ---
 
 ## QUEUED
 
-_None._
+| task_id | title | priority | blocked_by |
+|---------|-------|----------|-----------|
+| SESSION_EXPOSURE_CAP_001 | Add MAX_TOTAL_COMMITTED_USD dollar ceiling on open exposure | HIGH | BANKROLL_AWARE_SIZING_001 (.env conflict) |
+| MIN_ENTRY_CONFIDENCE_001 | Add minimum entry confidence gate (floor = 0.60) | MEDIUM | SESSION_EXPOSURE_CAP_001 (core/risk.py conflict) + BANKROLL_AWARE_SIZING_001 (.env conflict) |
 
 ---
 
@@ -29,8 +35,8 @@ _None._
 
 | task_id | title | reason | unblocked_by |
 |---------|-------|--------|--------------|
-| EXIT_GAME_AWARE_001 | Game-aware exit gate (HOLD_TO_RESOLUTION) | SUPERSEDED — original gate caused 3 stuck trades. Re-scoped as EXIT_GAME_AWARE_002, which is now ACTIVE. | EXIT_GAME_AWARE_002 ACTIVE |
-| RUNTIME_USER_STREAM_AUTH_UNBLOCK_001 | Unblock Polymarket user/fill stream auth | Missing apiKey, secret, passphrase in .env — user must supply credentials | User action required |
+| EXIT_GAME_AWARE_001 | Game-aware exit gate (HOLD_TO_RESOLUTION) | SUPERSEDED — original gate caused 3 stuck trades. Re-scoped as EXIT_GAME_AWARE_002, which is now DONE. | N/A — superseded |
+| RUNTIME_USER_STREAM_AUTH_UNBLOCK_001 | Unblock Polymarket user/fill stream auth | Missing apiKey, secret, passphrase in .env — user must supply credentials. No worker can unblock this. | User action required |
 
 ---
 
@@ -38,44 +44,48 @@ _None._
 
 | task_id | title | outcome | allowed_files |
 |---------|-------|---------|---------------|
-| RISK_AND_TP_AUDIT_001 | Final risk system audit document | APPROVED — RISK_MANAGEMENT_FINAL_AUDIT_001.md written. 12/12 checks PASS. 6 gaps documented (2 HIGH open). 2026-04-10 | `08_SHARED_CONTEXT/` only |
-| RISK_AND_TP_VERIFY_001 | End-to-end verification: TP/SL, sizing, held-side pricing, bankroll all agree | APPROVED — 12/12 PASS. DB↔dashboard exact match $351.91. SYSTEM VERIFIED. 2026-04-10 | read-only |
+| DASHBOARD_TRUTH_FIXES_001 | Fix 3 dashboard.html truth defects found by REVERIFY audit | APPROVED 2026-04-10 — Realized P&L now reads authoritative state.pnl.realized ($405.89); mark_source chip added to position cards; R25 sublabel uses r25.sample_size. dashboard.html only. | `dashboard.html` |
+| DASHBOARD_TRUTH_REVERIFY_001 | Re-verify dashboard display truth end-to-end against live endpoints | CHANGES_REQUESTED 2026-04-10 — 3 failures found (Realized P&L mis-sourced, mark_source not displayed, R25 sublabel zero). Resolved by DASHBOARD_TRUTH_FIXES_001. BUY_YES/BUY_NO sign semantics unverified (no open positions at audit time — needs spot-check after restart). | read-only |
+| AUTHORITY_SEPARATION_CLEANUP_001 | Remove local MLB origination from sports_bot_v2; decouple execution gating from mlb_model | PROVISIONAL PASS 2026-04-10 — All acceptance criteria met. Code removals verified (grep confirms zero residual symbols). execution_guard.py deleted. VCS caveat: mlb_model/signal_base paths untracked so commit is partial; runtime behavior unaffected. **Restart required.** | `bot_core.py`, `core/signal_base.py`, `mlb_model/integration/recommendation_api.py`, `mlb_model/core/execution_guard.py` |
+| AUTHORITY_SEPARATION_AUDIT_001 | Audit authority separation violations across 5 files | APPROVED 2026-04-10 — 8 violations found (4 in sports_bot_v2 gated/inactive, 4 in mlb_model active). model_bridge.py and bot_core.py bridge path confirmed clean. Cleanup scope authorized. | read-only |
+| RISK_AND_TP_AUDIT_001 | Final risk system audit document | APPROVED 2026-04-10 — RISK_MANAGEMENT_FINAL_AUDIT_001.md written. 12/12 checks PASS. 6 gaps documented (2 HIGH open). | `08_SHARED_CONTEXT/` only |
+| RISK_AND_TP_VERIFY_001 | End-to-end verification: TP/SL, sizing, held-side pricing, bankroll all agree | APPROVED — 12/12 PASS. DB↔dashboard exact match $351.91 at time of audit. SYSTEM VERIFIED. 2026-04-10 | read-only |
 | BANKROLL_SESSION_RULES_001 | Enforce correct bankroll/session/available-cash accounting | APPROVED — available_cash clamped to 0 + WARNING; /api/bankroll lifetime PnL fix. BANKROLL_ACCOUNTING_SPEC_001.md written. 2026-04-10 | `dashboard_server.py`, `core/paper_exec.py` |
-| EXECUTION_RISK_MONITOR_001 | Harden exit loop: empty-OB warnings, dummy-market warnings, error logging | APPROVED — 4 exit loop hardening fixes: empty_ob WARNING, stale OB WARNING, dummy market WARNING, exit error→ERROR+exc_info. 2026-04-10 | `bot_core.py` |
+| EXECUTION_RISK_MONITOR_001 | Harden exit loop: empty-OB warnings, dummy-market warnings, error logging | APPROVED — 4 exit loop hardening fixes. 2026-04-10 | `bot_core.py` |
 | POSITION_SIZING_RULES_001 | Define and enforce per-trade sizing: formula, caps, confidence tiers, liquidity gate | APPROVED — docs only, 4/6 invariants confirmed, 2 HIGH gaps deferred to BANKROLL_SESSION_RULES_001. SIZING_RULES_SPEC_001.md written. 2026-04-10 | `core/paper_exec.py`, `core/risk.py` |
 | SESSION_LOSS_CAP_001 | Add per-session and daily max-loss kill switches to block new entries | APPROVED — SESSION_MAX_LOSS_USD + DAILY_MAX_LOSS_USD env-gated, default 0 (disabled). bot_core.py only. 2026-04-10 | `bot_core.py` |
 | TP_SL_SCHEMA_NORMALIZATION_001 | Normalize TP/SL/committed/max_loss to canonical functions in core/risk.py | APPROVED — conservative schema cleanup, no threshold changes. 2026-04-10 | `core/risk.py`, `core/paper_exec.py`, `core/types.py` |
-| MARKET_RESOLVED_DB_FIELDS_001 | Fix market_resolved close path — add reason_close and ts_close to DB payload | APPROVED — commit d8fc4bf. Broken invariant from audit closed. 2026-04-10 | `bot_core.py` |
-| RISK_PIPELINE_AUDIT_001 | Audit full risk pipeline end-to-end | APPROVED — 5 gaps found, 1 broken invariant. Report at RISK_PIPELINE_AUDIT_REPORT_001.md. Follow-up tasks written. 2026-04-10 | read-only |
-| EXIT_GAME_AWARE_002 | Hold-to-resolution gate — suppress near_resolution exit until watcher confirms settlement | APPROVED — gate live 2026-04-10. Holds for 1.0 payout; safe fallback to near_resolution if watcher empty. | `bot_core.py` |
-| RESOLUTION_WATCHER_INTEGRATE_001 | Wire resolved_markets.json into bot_core exit loop — force-close on resolution | APPROVED — _load_resolved_markets() cached, force-close wired before check_exit(), no cooldown on resolved exits. 2026-04-10 | `bot_core.py` |
-| RESOLUTION_WATCHER_BUILD_001 | Build integration/resolution_watcher.py — poll Polymarket for market resolution | APPROVED — integration/ package created, polls Gamma API, writes runtime/resolved_markets.json. 2026-04-10 | `integration/__init__.py`, `integration/resolution_watcher.py` |
-| SL_COOLDOWN_001 | Market cooldown after stop_loss and gap_stop exits | APPROVED — stop_loss 1800s + gap_stop 3600s live as of PID 46404 restart 2026-04-10 | `bot_core.py` |
-| EXIT_PARAMS_TIGHTEN_001 | Tighten exit thresholds — TP 0.40, SL 0.12, NRP 0.97, trailing 0.10/0.12 | APPROVED — .env verified, live as of PID 22180 restart 2026-04-10 | `.env` |
-| BOT_DATE_GATE_DEFENSE_001 | Date gate: reject non-today slugs in local MLB origination path | APPROVED — REVIEW on file, date gate confirmed in bot_core.py | `bot_core.py` |
+| MARKET_RESOLVED_DB_FIELDS_001 | Fix market_resolved close path — add reason_close and ts_close to DB payload | APPROVED — commit d8fc4bf. 2026-04-10 | `bot_core.py` |
+| RISK_PIPELINE_AUDIT_001 | Audit full risk pipeline end-to-end | APPROVED — 5 gaps found, 1 broken invariant. RISK_PIPELINE_AUDIT_REPORT_001.md. 2026-04-10 | read-only |
+| EXIT_GAME_AWARE_002 | Hold-to-resolution gate — suppress near_resolution exit until watcher confirms settlement | APPROVED — gate live 2026-04-10. | `bot_core.py` |
+| RESOLUTION_WATCHER_INTEGRATE_001 | Wire resolved_markets.json into bot_core exit loop — force-close on resolution | APPROVED — force-close wired before check_exit(). 2026-04-10 | `bot_core.py` |
+| RESOLUTION_WATCHER_BUILD_001 | Build integration/resolution_watcher.py — poll Polymarket for market resolution | APPROVED — integration/ package created, polls Gamma API. 2026-04-10 | `integration/__init__.py`, `integration/resolution_watcher.py` |
+| SL_COOLDOWN_001 | Market cooldown after stop_loss and gap_stop exits | APPROVED — stop_loss 1800s + gap_stop 3600s live. 2026-04-10 | `bot_core.py` |
+| EXIT_PARAMS_TIGHTEN_001 | Tighten exit thresholds — TP 0.40, SL 0.12, NRP 0.97, trailing 0.10/0.12 | APPROVED — .env verified. 2026-04-10 | `.env` |
+| BOT_DATE_GATE_DEFENSE_001 | Date gate: reject non-today slugs in local MLB origination path | APPROVED | `bot_core.py` |
 | DASHBOARD_LIVE_STRIP_FIXES_001 | Dashboard live strip fixes — committed tile id, bankroll MTM, feed status wording | APPROVED — commit 7b33f18 | `dashboard.html` |
-| STALE_MARK_REST_FALLBACK_001 | REST polling fallback for stale marks in dashboard_server.py | APPROVED + RUNTIME VERIFIED — commit b31b548, PID 39940. mlb-cws-kc-2026-04-11 confirmed mark_source=rest_fallback on live SSE. | `dashboard_server.py` |
-| DASHBOARD_REDESIGN_LIVE_SMOKE_003 | Dashboard redesign — live smoke (round 3) | CHANGES_REQUESTED → REST fallback since verified directly. Sign regression CLOSED. Smoke series DONE. | _(none — read only)_ |
-| LIVE_CARD_PNL_SIGN_REGRESSION_001 | BUY_NO unrealized P&L sign fix — process restart | APPROVED — PID 35892→43288, sign verified PASS for all 3 open positions | _(none — runtime only)_ |
-| DASHBOARD_REDESIGN_LIVE_SMOKE_002 | Dashboard redesign — live smoke test (round 2) | CHANGES_REQUESTED — null current_price (stale mark); shadow-feed check was false negative (criterion met). Re-smoke as SMOKE_003 after REST fallback deployed. | _(none — read only)_ |
+| STALE_MARK_REST_FALLBACK_001 | REST polling fallback for stale marks in dashboard_server.py | APPROVED + RUNTIME VERIFIED — commit b31b548. mark_source=rest_fallback confirmed live. | `dashboard_server.py` |
+| DASHBOARD_REDESIGN_LIVE_SMOKE_003 | Dashboard redesign — live smoke (round 3) | APPROVED — REST fallback verified directly. Smoke series DONE. | _(none — read only)_ |
+| LIVE_CARD_PNL_SIGN_REGRESSION_001 | BUY_NO unrealized P&L sign fix | APPROVED — sign verified PASS for all 3 open positions at time of test | _(none — runtime only)_ |
+| DASHBOARD_REDESIGN_LIVE_SMOKE_002 | Dashboard redesign — live smoke test (round 2) | CHANGES_REQUESTED → resolved by SMOKE_003 + REST fallback. | _(none — read only)_ |
 | DASHBOARD_REDESIGN_LIVE_SMOKE_001 | Dashboard redesign — live smoke test | FAIL (sign regression) → resolved by LIVE_CARD_PNL_SIGN_REGRESSION_001. | _(none — read only)_ |
-| DASHBOARD_REDESIGN_AUDIT_001 | Dashboard redesign — audit against spec, incident closure | APPROVED — DASHBOARD_REDESIGN_AUDIT_REPORT_001.md written | _(none)_ |
-| DASHBOARD_REDESIGN_VERIFY_001 | Dashboard redesign — truth preservation and usability verification | APPROVED (PASS) — RESULT_DASHBOARD_REDESIGN_VERIFY_001.json | _(none)_ |
+| DASHBOARD_REDESIGN_AUDIT_001 | Dashboard redesign — audit against spec | APPROVED | _(none)_ |
+| DASHBOARD_REDESIGN_VERIFY_001 | Dashboard redesign — truth preservation and usability verification | APPROVED (PASS) | _(none)_ |
 | DASHBOARD_PERFORMANCE_POLISH_001 | Dashboard redesign — performance, flicker elimination, visual polish | APPROVED — commit a19f421 | `dashboard.html` |
-| DASHBOARD_POSITIONS_HISTORY_SYSTEM_001 | Dashboard redesign — secondary tabs: POSITIONS, GAMES, HISTORY, SYSTEM | APPROVED — commits fa12342 + f9d7f25 | `dashboard.html` |
-| DASHBOARD_LIVE_COMMAND_CENTER_001 | Dashboard redesign — LIVE tab: game monitor, position cards, account strip | APPROVED — commit 2e7bfcc | `dashboard.html` |
-| DASHBOARD_REDESIGN_SHELL_001 | Dashboard redesign — shell, layout, 5-tab nav, default LIVE view | APPROVED — commit 552686f | `dashboard.html` |
-| DASHBOARD_REDESIGN_ARCH_001 | Dashboard redesign — architecture spec and payload mapping (spec only) | APPROVED — DASHBOARD_REDESIGN_SPEC_001.md written | _(none)_ |
-| EXECUTION_HELD_SIDE_SEMANTICS_001 | Normalize execution-side held-contract semantics — _held_bid(), current_held_price in risk.py and paper_exec.py | APPROVED — commit 2dbb3fc | `core/risk.py`, `core/paper_exec.py` |
-| BASEBALL_POSITION_SEMANTICS_INCIDENT_001 | Fix BUY_NO dashboard math — unified held-contract SSE/display | APPROVED | `dashboard_server.py`, `dashboard.html` |
+| DASHBOARD_POSITIONS_HISTORY_SYSTEM_001 | Dashboard redesign — secondary tabs | APPROVED — commits fa12342 + f9d7f25 | `dashboard.html` |
+| DASHBOARD_LIVE_COMMAND_CENTER_001 | Dashboard redesign — LIVE tab | APPROVED — commit 2e7bfcc | `dashboard.html` |
+| DASHBOARD_REDESIGN_SHELL_001 | Dashboard redesign — shell, layout, 5-tab nav | APPROVED — commit 552686f | `dashboard.html` |
+| DASHBOARD_REDESIGN_ARCH_001 | Dashboard redesign — architecture spec and payload mapping | APPROVED — DASHBOARD_REDESIGN_SPEC_001.md written | _(none)_ |
+| EXECUTION_HELD_SIDE_SEMANTICS_001 | Normalize execution-side held-contract semantics | APPROVED — commit 2dbb3fc | `core/risk.py`, `core/paper_exec.py` |
+| BASEBALL_POSITION_SEMANTICS_INCIDENT_001 | Fix BUY_NO dashboard math | APPROVED | `dashboard_server.py`, `dashboard.html` |
 | PRICE_SOURCE_SINGLE_AUTHORITY_001 | Single price-source authority audit | APPROVED | read-only audit |
 | LIVE_MODEL_REACTION_REVERIFY_001 | Re-verify live model reaction cadence | PARTIAL (needs richer live window) | read-only |
 | LIVE_MODEL_CADENCE_TUNING_001 | Live model reaction cadence tuning | APPROVED | `mlb_model/` |
 | LIVE_MODEL_REACTION_AUDIT_001 | Live model reaction audit | APPROVED | read-only audit |
 | LIVE_SESSION_VERIFY_002 | Live session end-to-end verify (round 2) | APPROVED | read-only |
 | PAPER_RESET_AND_CLEAN_START_001 | Reset open paper trades, clean session start | APPROVED | DB ops only |
-| LIVE_SESSION_VERIFY_001 | Live session end-to-end verify | APPROVED | read-only |
-| LIVE_FEED_STATUS_POLISH_001 | Live feed status UI polish | APPROVED | `dashboard.html` |
+| LIVE_SESSION_VERIFY_001 | Live session end-to-end verify | SUPERSEDED (wrong target 127.0.0.1:8000) | read-only |
+| LIVE_FEED_STATUS_POLISH_001 | Live feed status UI polish | CLAIMED (artifacts misplaced in wrong root) | `dashboard.html` |
 | REALTIME_GAME_STATE_PUSH_001 | Push live game state to dashboard | APPROVED | `dashboard_server.py`, `dashboard.html` |
 | VERIFY_REALTIME_MARKET_STREAM_STAGE1_FINAL | Verify polymarket realtime stream Stage 1 final | APPROVED | read-only |
 | MARKET_STREAM_LIST_MESSAGE_FIX_001 | Fix market stream parser crash on list-shaped messages | APPROVED | `core/polymarket_stream.py` |
@@ -158,20 +168,25 @@ _None._
 
 | File | Locked by |
 |------|-----------|
-| All files | **UNLOCKED** — no active tasks |
+| `core/paper_exec.py` | BANKROLL_AWARE_SIZING_001 |
+| `.env` | BANKROLL_AWARE_SIZING_001 |
+| `bot_core.py` | SESSION_PNL_DASHBOARD_001 |
+| `dashboard_server.py` | SESSION_PNL_DASHBOARD_001 |
+| `core/risk.py` | free — SESSION_EXPOSURE_CAP_001 queued (not yet active) |
 
 ---
 
-## System state (2026-04-09)
+## System state (2026-04-10 — reconciled)
 
-- Dual-process incident: RESOLVED
-- Paper state: 1 open position (ARI/NYM BUY_NO — OAK/NYY and CIN/MIA closed)
-- Realtime polymarket market stream: Stage 1 VERIFIED — tracking 1 asset (ARI/NYM NO token)
-- Realtime game-state push: IN
-- User/fill stream: BLOCKED — requires apiKey, secret, passphrase in .env
-- Dashboard SSE held-contract math: **FIXED — LIVE_CARD_PNL_SIGN_REGRESSION_001 APPROVED. PID 43288 running correct formula.**
-- **Execution-side held-contract semantics: RESOLVED — commit 2dbb3fc**
-- Model authority: ENFORCED
-- Live model cadence: IMPROVED
-- **Stale mark REST fallback: LIVE — commit b31b548, PID 39940. Verified: mlb-cws-kc-2026-04-11 received mark_source=rest_fallback, stale=false on first SSE tick after restart.**
-- **Dashboard redesign: COMPLETE — sign regression closed, REST fallback live. Smoke series done.**
+- **Realized PnL: $405.89** (updated from DASHBOARD_TRUTH_FIXES_001 verified API value)
+- **Dashboard truth: FIXED** — Realized P&L authoritative, mark_source chip live, R25 sublabel corrected (DASHBOARD_TRUTH_FIXES_001 APPROVED)
+- **Authority separation: CODE COMPLETE** — local origination removed from bot_core.py, execution_guard.py deleted (AUTHORITY_SEPARATION_CLEANUP_001 PROVISIONAL PASS). Restart required.
+- **Risk pack: VERIFIED** — 12/12 checks pass. SESSION_EXPOSURE_CAP_USD + drawdown-aware sizing patched in bot_core.py + core/paper_exec.py + .env
+- **Restart pending**: picks up risk pack patches + authority separation cleanup
+- **BUY_YES/BUY_NO position card sign semantics: UNVERIFIED** — no open positions at time of last audit (DASHBOARD_TRUTH_REVERIFY_001). Needs manual spot-check after next open position.
+- **Dual-process incident**: RESOLVED
+- **Realtime polymarket market stream**: VERIFIED — Stage 1
+- **Realtime game-state push**: PARTIAL (architecture present, end-to-end not re-traced)
+- **User/fill stream**: BLOCKED — requires apiKey, secret, passphrase in .env (user action)
+- **Stale mark REST fallback**: LIVE — commit b31b548
+- **Dashboard redesign**: COMPLETE

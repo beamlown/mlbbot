@@ -1,82 +1,70 @@
 # CLAUDE_STATUS.md — Manager Status Snapshot
-## Last full resync: 2026-04-05 ~11:30 UTC
+## Last reconciled: 2026-04-10 — Full board reconciliation. All tasks through DASHBOARD_TRUTH_FIXES_001 reflected. Restart required.
 
 ---
 
 ## System State
 
 ### Launcher
-- `launch_all.py` PID 29228 — singleton guard active
-- 4 children running since 09:11 UTC:
-  - `shadow_engine` PID 26064
-  - `bot_core` PID 42956
-  - `dashboard` PID 42808 (port 8900)
-  - `resolution_watcher` PID 10516
+- `launch_all.py` — singleton guard active
+- 4 children managed: `shadow_engine`, `bot_core`, `dashboard` (port 8900), `resolution_watcher`
 
 ### sports_bot_v2 (paper bot)
-- Loop: 167+ (as of ~11:23 UTC screenshot)
-- Mode: NEUTRAL
+- Mode: NEUTRAL (awaiting today's signals)
 - Bridge: ENABLED (`ENABLE_MODEL_BRIDGE = True`)
-- **PnL: +$30.79 realized** (fresh slate since April 5 restart)
-- Open positions: 1 — LAD@WSN, BUY_NO, entry 41.3¢, confidence 64%, source=model_bridge
-- DB: 2 closed trades (IDs 47–48, both mlb-sea-laa-2026-04-04, net +$30.79)
-- Archive: `trades_sports_archive_20260404.db` (46 pre-incident trades)
-
-### mlb_model shadow engine
-- Running, loop 167+ alongside bot_core
-- Producing today's recs (date guard filters out pre-04-05 slugs)
-- resolution_watcher running — marking resolved=True on settled markets
-- Discovery: 6-7 live markets per loop
+- **PnL: +$405.89 realized** (verified against /api/state at time of DASHBOARD_TRUTH_FIXES_001)
+- Authority model: BRIDGE-ONLY (local origination removed by AUTHORITY_SEPARATION_CLEANUP_001)
+- **Restart pending** — picks up: risk pack patches (SESSION_EXPOSURE_CAP_USD, drawdown-aware sizing) + authority separation cleanup
 
 ### Dashboard
-- Running on port 8900 (managed by launcher)
-- Accessible at `http://100.82.110.11` (LAN) and `http://localhost:8900`
-- Current state: shows 1 open position (LAD), 2 resolved cards still in panel (DASH_011 in progress)
+- Running on port 8900
+- Accessible at `http://localhost:8900`
+- **Truth status: FIXED** — Realized P&L reads authoritative state.pnl.realized, mark_source chip visible on cards, R25 sublabel correct
+- **Position card sign semantics (BUY_YES/BUY_NO)**: UNVERIFIED — needs spot-check after next open position
+
+### mlb_model
+- Authority: clean (execution_guard.py deleted, ROLLBACK_DISABLE removed)
+- Producing today's recs via recommendation_api.py
+- resolution_watcher running — marking resolved=True on settled markets
 
 ---
 
-## What Changed Since April 4 Snapshot
+## Completed This Session (since last status snapshot)
 
-| Area | Old (April 4) | Current (April 5) |
-|------|--------------|-------------------|
-| PnL | -$6.96 | **+$30.79** |
-| Open positions | 3/3 (stale duplicates) | 1 (LAD@WSN) |
-| Loop count | 5 | 167+ |
-| Launcher children | 3 (no dashboard, no resolution_watcher) | **4** |
-| resolution_watcher | NOT running | ✅ Running |
-| Model bridge | DISABLED (kill switch) | **ENABLED** |
-| Dashboard | Pre-DASH_002 design | Full redesign (DASH_002–010 applied) |
-| DB | 7 stale trades + incident losses | Fresh slate — 2 clean trades |
-| Process hygiene | 8× launchers, 11× dashboard running | Single launcher, PID guard clean |
+| Task | Outcome |
+|------|---------|
+| AUTHORITY_SEPARATION_AUDIT_001 | APPROVED — 8 violations found and scoped for cleanup |
+| AUTHORITY_SEPARATION_CLEANUP_001 | PROVISIONAL PASS — code complete, restart required |
+| DASHBOARD_TRUTH_REVERIFY_001 | CHANGES_REQUESTED → led to FIXES_001 |
+| DASHBOARD_TRUTH_FIXES_001 | APPROVED — 3 dashboard.html defects fixed |
 
 ---
 
-## Active Work Orders
+## Open Items (not tasks — operator awareness only)
 
-| Task | Title | Status |
-|------|-------|--------|
-| DASH_011 | Remove resolved paper trades from Positions panel | ACTIVE |
-| DASH_012 | Fix game status chip — LIVE shown for unstarted games | QUEUED (after DASH_011) |
-
----
-
-## Deferred Issues
-
-| Issue | Notes |
-|-------|-------|
-| `no_registry_match` CWS→CHW, OAK→ATH | Cosmetic — 2 games/day missed. Low priority. |
-| Native signal loop — no per-intent re-fetch protection | Safe with single instance. Hardening is future work. |
+| Item | Severity | Notes |
+|------|----------|-------|
+| BUY_YES/BUY_NO sign semantics re-check | MEDIUM | Manual spot-check after first open position tonight. No open positions at time of reverify audit. |
+| ESPN/external data intermittent failures | LOW | Dashboard still runs. DNS/TLS errors in dashboard.log. Not blocking trading. |
+| Session P&L not on dashboard | LOW | Operator cannot separate today's vs lifetime PnL at a glance. Not a correctness issue. |
 
 ---
 
-## Previously Stale Claims (Now Corrected)
+## Blocked on Johnny (user action required)
 
-| Old claim | Correction |
-|-----------|-----------|
-| PnL: -$6.96 | +$30.79 (fresh slate) |
-| Loop: 5 | 167+ |
-| 3/3 open slots filled | 1 open (LAD) |
-| resolution_watcher active, 5 pending markets | Was NOT running on April 5 until VERIFY_STABILIZE_001 fixed it |
-| Bot dashboard not in launcher | Fixed by LAUNCH_002 |
-| Model bridge disabled | Re-enabled by BRIDGE_ENABLE_001 |
-| Dashboard: old bloated design | Replaced by DASH_002–010 |
+| Item | What's needed |
+|------|--------------|
+| Polymarket user/fill stream | Add apiKey, secret, passphrase to .env |
+| ~~Bot restart~~ | ✅ DONE — restarted 2026-04-10, all patches now live |
+
+---
+
+## Deferred (not tonight-critical)
+
+| Item | Why deferred |
+|------|-------------|
+| Bankroll-aware sizing (RISK_PCT_PER_TRADE) | High value improvement but not a correctness risk tonight |
+| Min entry confidence threshold | Strategy tuning — can wait |
+| Misplaced BOT_BRIDGE artifacts (SAFE_MOVES_ONLY_001) | Cosmetic — 8 files in wrong root, no runtime impact |
+| BOT_BRIDGE naming/closure normalization | Housekeeping |
+| Spread/totals model expansion | Long-term roadmap |

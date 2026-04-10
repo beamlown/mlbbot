@@ -37,7 +37,6 @@ logger = logging.getLogger(__name__)
 
 PHASE = os.getenv("PHASE", "shadow")
 LOOP_SECONDS = int(os.getenv("RECOMMENDATION_LOOP_SECONDS", "15"))
-ROLLBACK_DISABLE = os.getenv("DISABLE_NEW_ENTRIES", "false").lower() == "true"
 
 
 def _now_iso() -> str:
@@ -102,7 +101,6 @@ def generate_recommendation_for_game(
     from sports.mlb.winprob_inference import infer_for_team, is_loaded
     from sports.mlb.market_state_stream import get_market_state, compute_edge
     from sports.mlb.team_normalizer import normalize
-    from core.execution_guard import check_all_gates, check_size_tier, compute_confidence
 
     ts = _now_iso()
 
@@ -118,10 +116,6 @@ def generate_recommendation_for_game(
             tracked_team=normalize(tracked_team),
             feature_timestamp=ts,
         )
-
-    # Check rollback switch
-    if ROLLBACK_DISABLE:
-        return _no_trade("new_entries_disabled")
 
     # Check model loaded
     if not is_loaded():
@@ -167,56 +161,31 @@ def generate_recommendation_for_game(
     if edge_yes > edge_no and edge_yes >= float(os.getenv("MIN_EDGE_THRESHOLD", "0.05")):
         action_candidate = "BUY_YES"
         edge_candidate = edge_yes
-        ask_tracked = market.ask_yes
     elif edge_no > edge_yes and edge_no >= float(os.getenv("MIN_EDGE_THRESHOLD", "0.05")):
         action_candidate = "BUY_NO"
         edge_candidate = edge_no
-        ask_tracked = market.ask_no
     else:
         action_candidate = "NO_TRADE"
         edge_candidate = max(edge_yes, edge_no)
-        ask_tracked = None
 
     if action_candidate == "NO_TRADE":
         # Still build a full recommendation for shadow logging
         size_tier = "none"
         size_mult = 0.0
-        all_ok = False
         gate_reasons = [f"edge_too_small:yes={edge_yes:.4f},no={edge_no:.4f}"]
     else:
-        # Run execution gates
-        near_res = (
-            (market.bid_yes or 0) >= float(os.getenv("NEAR_RESOLUTION_PRICE", "0.92")) or
-            (market.bid_no or 0) >= float(os.getenv("NEAR_RESOLUTION_PRICE", "0.92"))
-        )
-
-        # Live-since: seconds since game TRANSITIONED to live, not since last fetch.
-        # get_live_since returns inf when the process started mid-game (safe default).
-        from sports.mlb.live_game_registry import get_live_since
-        live_since = get_live_since(reg_game.espn_event_id) if reg_game else float("inf")
-
-        all_ok, gate_reasons = check_all_gates(
-            action=action_candidate,
-            edge=edge_candidate,
-            market_type="moneyline",
-            game_is_live=game_is_live_confirmed,
-            game_state_age_sec=snap.age_seconds,
-            book_age_sec=market.age_seconds,
-            live_since_sec=live_since,
-            cooldown_active=False,   # cooldown managed by execution bot
-            ask_tracked=ask_tracked,
-            spread=market.spread,
-            depth_usd=market.thin_side_depth,
-            data_quality=infer_result.data_quality,
-            near_resolution=near_res,
-        )
-
-        if not all_ok:
-            action_candidate = "NO_TRADE"
+        gate_reasons = []
+        strong_edge = float(os.getenv("STRONG_EDGE_THRESHOLD", "0.08"))
+        min_edge = float(os.getenv("MIN_EDGE_THRESHOLD", "0.05"))
+        if edge_candidate >= strong_edge:
+            size_tier = "strong"
+            size_mult = 1.5
+        elif edge_candidate >= min_edge:
+            size_tier = "normal"
+            size_mult = 1.0
+        else:
             size_tier = "none"
             size_mult = 0.0
-        else:
-            size_tier, size_mult = check_size_tier(edge_candidate)
 
     # Build reasons list
     reasons = []
@@ -230,11 +199,12 @@ def generate_recommendation_for_game(
     if gate_reasons:
         reasons.extend(gate_reasons[:3])
 
-    confidence = compute_confidence(
-        edge=edge_candidate,
-        data_quality=infer_result.data_quality,
-        spread=market.spread,
-    )
+    max_spread = float(os.getenv("MAX_SPREAD", "0.035"))
+    spread_quality = 1.0 - (market.spread or 0.0) / max_spread if market.spread is not None else 0.8
+    spread_quality = max(0.0, min(1.0, spread_quality))
+    min_edge = float(os.getenv("MIN_EDGE_THRESHOLD", "0.05"))
+    edge_score = min(1.0, max(0.0, (edge_candidate - min_edge) / 0.10 + 0.5))
+    confidence = round(edge_score * infer_result.data_quality * spread_quality, 4)
 
     is_home = normalize(tracked_team) == normalize(home_team)
 
