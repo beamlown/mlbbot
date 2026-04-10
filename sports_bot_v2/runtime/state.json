@@ -2,19 +2,20 @@
   "engine": "sports_paper_baseball",
   "build": "sports_bot_v2.baseball.2026-03-29",
   "sport": "baseball",
-  "now": "2026-04-10T23:40:53.920177+00:00",
-  "loop_count": 116,
+  "now": "2026-04-10T23:51:25.165652+00:00",
+  "loop_count": 8,
   "config_hash": "2f0dd9e0ef8a",
   "pnl": {
     "realized": 318.0439,
-    "unrealized": -4.0334,
-    "net": 314.0105
+    "unrealized": 1.182,
+    "net": 319.2259,
+    "session_start_ts": 1775864486
   },
   "slots": {
-    "open": 1,
+    "open": 3,
     "max": 3
   },
-  "total_trades": 190,
+  "total_trades": 192,
   "rolling": {
     "r25": {
       "n": 25,
@@ -51,15 +52,15 @@
     }
   },
   "mode": {
-    "mode": "conservative",
+    "mode": "neutral",
     "score": 0.3599,
-    "dwell_trades": 5,
-    "switch_reason": "holding_conservative",
+    "dwell_trades": 0,
+    "switch_reason": "holding_neutral",
     "multipliers": {
-      "min_confidence": 1.1,
-      "max_spread": 0.85,
-      "min_depth_usd": 1.25,
-      "max_concurrent": 1.0
+      "min_confidence": 1.0,
+      "max_spread": 1.0,
+      "min_depth_usd": 1.0,
+      "max_concurrent": 3.0
     }
   },
   "guard_block_rate": 1.0,
@@ -70,14 +71,8 @@
   "market_validity_blocks": {},
   "invalid_market_blocks": 0,
   "last_invalid_market_details": {},
-  "exit_reason_counts": {
-    "stop_loss": 6,
-    "gap_stop": 4,
-    "trailing_stop(peak=28%,now=12%)": 1,
-    "take_profit": 1,
-    "trailing_stop(peak=15%,now=-6%)": 1
-  },
-  "market_cooldowns_active": 3,
+  "exit_reason_counts": {},
+  "market_cooldowns_active": 0,
   "open_positions": [
     {
       "id": 234,
@@ -87,8 +82,32 @@
       "entry_px": 0.4221,
       "qty": 118.455342,
       "confidence": 0.3353,
-      "pnl_usd": -4.0334,
+      "pnl_usd": 1.8597,
       "ts_open": "2026-04-10T23:25:47.691646+00:00",
+      "source": "model_bridge"
+    },
+    {
+      "id": 237,
+      "market_slug": "mlb-wsh-mil-2026-04-10",
+      "market_id": "1860425",
+      "side": "BUY_YES",
+      "entry_px": 0.3618,
+      "qty": 138.197899,
+      "confidence": 0.6429,
+      "pnl_usd": 3.6277,
+      "ts_open": "2026-04-10T23:42:08.687219+00:00",
+      "source": "model_bridge"
+    },
+    {
+      "id": 238,
+      "market_slug": "mlb-cws-kc-2026-04-10",
+      "market_id": "1860423",
+      "side": "BUY_YES",
+      "entry_px": 0.39195,
+      "qty": 127.567292,
+      "confidence": 0.4639,
+      "pnl_usd": -4.3054,
+      "ts_open": "2026-04-10T23:42:09.157982+00:00",
       "source": "model_bridge"
     }
   ],
@@ -184,5 +203,5 @@
       "exit_px": 0.0995
     }
   ],
-  "status_line": "loop=116 sport=baseball mode=conservative open=1 guard_block=104"
+  "status_line": "loop=8 sport=baseball mode=neutral open=3 guard_block=117"
 }
