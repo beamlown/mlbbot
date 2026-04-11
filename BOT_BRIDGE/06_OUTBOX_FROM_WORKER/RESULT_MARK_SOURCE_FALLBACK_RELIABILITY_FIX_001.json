@@ -1,0 +1,34 @@
+{
+  "task_id": "MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001",
+  "status": "DONE",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_TASK_BOARD.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_STATUS.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001.md",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\dashboard.log",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001.json"
+  ],
+  "exact_function_section_changed": [
+    "dashboard_server.py -> _stream_positions_mark() REST fallback polling gate immediately after GLOBAL_STATE_HUB.snapshot(stale_after_sec=15.0)"
+  ],
+  "old_behavior_vs_new_behavior": {
+    "old": "REST fallback polling triggered whenever mark_age exceeded threshold, even if a fresh polymarket_stream mark was already authoritative enough for display decisions.",
+    "new": "REST fallback polling now triggers only when the current mark is missing or stale and there is no fresh non-stale polymarket_stream mark for that market. Fresh stream marks stay authoritative."
+  },
+  "verification_performed": [
+    "Inspected _poll_stale_mark(...) and _stream_positions_mark() interaction in dashboard_server.py",
+    "Confirmed dashboard UI only renders mark_source and is not the source-selection bug",
+    "Checked runtime/log context for active [STALE_POLL] and stream traffic",
+    "python -m py_compile dashboard_server.py passed"
+  ],
+  "state_hub_touched": false,
+  "restart_required": true,
+  "result_file_path": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001.json"
+}

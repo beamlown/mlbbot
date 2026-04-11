@@ -1,0 +1,74 @@
+{
+  "task_id": "MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001",
+  "title": "Reduce inaccurate rest_fallback usage and preserve live stream mark authority",
+  "priority": "HIGH",
+  "type": "surgical code fix",
+  "issued": "2026-04-10",
+  "subsystem": "dashboard / live mark pricing",
+  "status": "ACTIVE",
+  "depends_on": "MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 (PARTIAL PASS)",
+  "context": {
+    "operator_report": "Fallback pricing is inaccurate and appears more often than true live market prices on the dashboard.",
+    "trace_summary": [
+      "dashboard_server.py _poll_stale_mark(...) can call GLOBAL_STATE_HUB.update_mark(..., source='rest_fallback')",
+      "dashboard_server.py _stream_positions_mark() maps mark.get('source') into positions payload field 'mark_source'",
+      "dashboard.html intentionally renders rest_fallback as 'mark REST' and poll_fallback as 'mark POLL'",
+      "Current trace classified mark REST as expected fallback behavior, but fallback appears active often enough to create operator trust issues"
+    ],
+    "problem_statement": "The issue is no longer whether the UI chip is correct. The issue is that fallback marks appear to be too frequent and sometimes inaccurate, making live card pricing feel untrustworthy."
+  },
+  "objective": "Implement the smallest safe fix so live stream marks remain the primary authority whenever they are fresh, and rest_fallback only takes over when the live stream mark is truly missing or stale beyond the intended threshold.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py"
+  ],
+  "conditional_allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\state_hub.py (ONLY if needed to preserve or compare mark timestamps/source authority correctly)"
+  ],
+  "read_only_context_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\dashboard.log",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\polymarket_stream.py unless manager approval is explicitly required by blocking evidence",
+    "Any file not listed above"
+  ],
+  "forbidden_actions": [
+    "Broad repo sweep",
+    "Read every file in the repo",
+    "Refactor unrelated dashboard code",
+    "Edit runtime state files",
+    "Restart processes",
+    "DB writes",
+    "Change dashboard wording unrelated to mark-source reliability"
+  ],
+  "required_work": [
+    "Inspect the exact interaction between _poll_stale_mark(...) and _stream_positions_mark() in dashboard_server.py",
+    "Identify how a fresh stream mark can be overwritten, superseded, or outvoted by a fallback mark",
+    "Patch the logic so stream marks remain authoritative when fresh",
+    "Ensure rest_fallback engages only when stream data is actually missing or stale beyond the intended threshold",
+    "Ensure the chosen mark_source accurately reflects the real source used for the final displayed mark",
+    "Add minimal, non-spammy logging sufficient to verify why fallback was chosen when it happens"
+  ],
+  "acceptance_criteria": [
+    "Fresh stream marks are not replaced by older or lower-authority fallback marks",
+    "rest_fallback is used only when stream marks are missing or stale beyond threshold",
+    "mark_source accurately reflects the source of the displayed mark",
+    "Dashboard cards show stream-driven prices whenever the live stream is healthy for that market",
+    "No files outside allowed scope are modified",
+    "python -m py_compile dashboard_server.py passes",
+    "python -m py_compile core/state_hub.py passes if state_hub.py is modified"
+  ],
+  "verification_required": [
+    "Show the exact code path changed",
+    "Explain the old overwrite/fallback behavior and the new behavior",
+    "Confirm whether state_hub.py was touched or not",
+    "Run py_compile on every changed Python file",
+    "State whether dashboard process restart is required for the fix to take effect"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001.json"
+}

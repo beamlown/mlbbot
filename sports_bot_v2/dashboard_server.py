@@ -435,16 +435,24 @@ def _stream_positions_mark() -> dict:
     GLOBAL_MARKET_STREAM.start()
     _refresh_game_state_hub()
     marks = GLOBAL_STATE_HUB.snapshot(stale_after_sec=15.0)
-    # REST fallback: for any mark stale >30s that hasn't been polled in the last 20s,
-    # fetch current price from Polymarket CLOB REST and inject into state_hub.
+    # REST fallback: only poll when the current mark is missing or stale and not
+    # already backed by a fresh live stream mark. This preserves stream authority.
     _now_ts = time.time()
     _to_poll = []
     with _rest_poll_lock:
         for _slug, _info in tracked.items():
             _mark = marks.get(_slug) or {}
+            _mark_source = str(_mark.get("source") or "")
             _mark_age = _now_ts - float(_mark.get("source_ts") or 0)
+            _has_fresh_stream_mark = (
+                _mark.get("current_price") is not None
+                and _mark_source == "polymarket_stream"
+                and _mark_age <= STALE_REST_POLL_SEC
+                and not bool(_mark.get("stale", True))
+            )
+            _needs_fallback = _mark.get("current_price") is None or bool(_mark.get("stale", True)) or _mark_age > STALE_REST_POLL_SEC
             _last_poll = _rest_poll_ts.get(_slug, 0)
-            if _mark_age > STALE_REST_POLL_SEC and (_now_ts - _last_poll) > STALE_REST_THROTTLE_SEC:
+            if _needs_fallback and not _has_fresh_stream_mark and (_now_ts - _last_poll) > STALE_REST_THROTTLE_SEC:
                 _rest_poll_ts[_slug] = _now_ts
                 _to_poll.append((_slug, _info["market_id"], _info["asset_id"]))
     for _slug, _market_id, _asset_id in _to_poll:
