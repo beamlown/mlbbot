@@ -2,19 +2,19 @@
   "engine": "sports_paper_baseball",
   "build": "sports_bot_v2.baseball.2026-03-29",
   "sport": "baseball",
-  "now": "2026-04-11T01:36:37.737516+00:00",
-  "loop_count": 196,
+  "now": "2026-04-11T01:41:41.353192+00:00",
+  "loop_count": 199,
   "config_hash": "2f0dd9e0ef8a",
   "pnl": {
     "realized": 208.1916,
-    "unrealized": 12.8047,
-    "net": 220.9964
+    "unrealized": 12.6196,
+    "net": 220.8113
   },
   "slots": {
-    "open": 2,
+    "open": 3,
     "max": 3
   },
-  "total_trades": 212,
+  "total_trades": 213,
   "rolling": {
     "r25": {
       "n": 25,
@@ -79,7 +79,7 @@
     "trailing_stop(peak=14%,now=-10%)": 1,
     "near_resolution": 1
   },
-  "market_cooldowns_active": 3,
+  "market_cooldowns_active": 2,
   "open_positions": [
     {
       "id": 254,
@@ -89,7 +89,7 @@
       "entry_px": 0.59295,
       "qty": 84.324142,
       "confidence": 0.4438,
-      "pnl_usd": 14.6049,
+      "pnl_usd": 15.444,
       "ts_open": "2026-04-11T01:26:30.581906+00:00",
       "source": "model_bridge"
     },
@@ -103,6 +103,18 @@
       "confidence": 0.3537,
       "pnl_usd": -1.8002,
       "ts_open": "2026-04-11T01:36:35.873288+00:00",
+      "source": "model_bridge"
+    },
+    {
+      "id": 259,
+      "market_slug": "mlb-nyy-tb-2026-04-10",
+      "market_id": "1860417",
+      "side": "BUY_NO",
+      "entry_px": 0.9447,
+      "qty": 52.926855,
+      "confidence": 0.3781,
+      "pnl_usd": -1.0241,
+      "ts_open": "2026-04-11T01:41:38.467820+00:00",
       "source": "model_bridge"
     }
   ],
@@ -198,5 +210,5 @@
       "exit_px": 0.16915
     }
   ],
-  "status_line": "loop=196 sport=baseball mode=conservative open=1 guard_block=170"
+  "status_line": "loop=199 sport=baseball mode=conservative open=2 guard_block=174"
 }
