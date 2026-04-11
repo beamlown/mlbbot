@@ -1,5 +1,5 @@
 # CLAUDE_TASK_BOARD.md — Manager Task Board
-## Last updated: 2026-04-11 — Reconciliation pass after side-semantics fix approved. 1 ACTIVE task remains. All queued tasks DONE. OPERATOR ACTION REQUIRED: cold restart to activate all bot_core + risk.py patches.
+## Last updated: 2026-04-10 — Board reconciliation: MARK_FALLBACK trace closed (PARTIAL PASS), FIX (APPROVED) and VERIFY (PROVISIONAL PASS) added to DONE. All mark-fallback reliability work complete. 0 ACTIVE tasks. OPERATOR ACTION REQUIRED: cold restart to activate bot_core patches.
 
 ---
 
@@ -23,9 +23,7 @@ Until this is done: confidence gate, cooldown checks, and all `check_entry_gates
 
 ## ACTIVE
 
-| task_id | title | priority | subsystem | allowed_files | status |
-|---------|-------|----------|-----------|---------------|--------|
-| MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 | Trace mark-source fallback frequency and guard-message payload origin | MEDIUM | read-only trace — dashboard_server / stream / runtime state | runtime/state.json, dashboard_server.py, logs/dashboard.log, logs/dashboard_err.log | ACTIVE — read-only, no file conflicts. Brief in 05_INBOX. |
+_No active tasks._
 
 ---
 
@@ -48,6 +46,9 @@ _No queued tasks. All previously queued tasks are DONE._
 
 | task_id | title | outcome | allowed_files |
 |---------|-------|---------|---------------|
+| MARK_SOURCE_FALLBACK_RELIABILITY_VERIFY_001 | Verify live stream mark authority after fallback reliability fix | PROVISIONAL PASS 2026-04-10 — 5 live SSE frames sampled; fresh stream marks confirmed primary, REST fallback not observed overriding stream marks. Fallback-only-when-stale confirmed by code review, not live-fired in short window. Review: REVIEW_MARK_SOURCE_FALLBACK_RELIABILITY_VERIFY_001.md | `dashboard_server.py`, logs (read-only) |
+| MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001 | Reduce inaccurate rest_fallback usage — preserve live stream mark authority | APPROVED 2026-04-10 — dashboard_server.py `_stream_positions_mark()` patched: `_has_fresh_stream_mark` guard added at line 455 prevents REST fallback when stream mark is fresh, non-null, non-stale. py_compile PASS. Dashboard restart completed. | `dashboard_server.py` |
+| MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 | Trace mark-source fallback frequency and guard-message payload origin | PARTIAL PASS 2026-04-10 — Full mark-source chain documented. "max down" text not hardcoded. Guard payload null at audit time. REST fallback active in-session; classified as upstream freshness issue → follow-on fix task opened. Review: REVIEW_MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001.md | `runtime/state.json`, `dashboard_server.py`, `dashboard.html`, logs (read-only) |
 | POSITION_SIDE_SEMANTICS_MERGE_FIX_001 | Fix stale client-side merge overwriting backed-team and side semantics | APPROVED 2026-04-11 — dashboard.html renderUnifiedPositions() full-spread replaced with field-specific merge. renderGamesTab() slug-key mismatch fixed. Browser hard refresh required. | `dashboard.html` |
 | POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001 | Read-only audit: trace backed-team / held-side mismatch on live dashboard | APPROVED 2026-04-11 — Root cause confirmed: renderUnifiedPositions() full-object spread at line 1139 overwrites trade identity fields with stale cached mark data. renderGamesTab() openBySlug slug-key mismatch confirmed as secondary bug. Fix task authorized. | read-only |
 | SESSION_PNL_TRUE_START_FIX_001 | Track true session PnL from actual session start, not last restart | APPROVED 2026-04-11 — bot_core.py startup load block restores _session_start_ts from pnl.session_start_ts in prior state.json if within 24h. py_compile PASS. Restart required. | `bot_core.py` |
@@ -191,22 +192,21 @@ _No queued tasks. All previously queued tasks are DONE._
 
 | File | Locked by |
 |------|-----------|
-| `runtime/state.json`, `logs/dashboard.log`, `dashboard_server.py` | MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 (read-only, no exclusive lock) |
-| All other files | UNLOCKED |
+| All files | UNLOCKED — no active tasks |
 
 ---
 
-## System state (2026-04-11 — reconciliation pass after side-semantics fix approved)
+## System state (2026-04-10 — board reconciliation, all mark-fallback work complete)
 
 - **Tonight's session: -$159.54 closed PnL (40 trades).** 31/42 trades sub-0.60 confidence. Gate was not enforcing due to stale pyc.
-- **Confidence gate: PATCHED IN SOURCE — awaiting operator cold restart** — `bot_core.py` lines 504–525 patched (BRIDGE_ENTRY_GATE_WIRING_FIX_001, MIN_ENTRY_PRICE_GATE_001, BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 all DONE). **Pyc must be deleted + cold restart done before gate logic executes.**
-- **Currently open trades: #276 (BUY_YES mlb-tex-lad entry=0.2412), #277 (BUY_YES mlb-hou-sea entry=0.3819)** — both open as of last state.json read.
-- **Market cooldown: PATCHED IN SOURCE — awaiting cold restart** — MARKET_COOLDOWN_PERSIST_001 DONE. Cooldown expiry timestamps now written to state.json and reloaded on startup.
-- **Session PnL: PATCHED IN SOURCE — awaiting cold restart** — SESSION_PNL_TRUE_START_FIX_001 DONE. Session start timestamp now persists across restarts via state.json.
-- **TP math: FIXED** — TP_NEAR_RESOLUTION_CAP_FIX_001 DONE. core/risk.py patched.
-- **Min entry price gate: FIXED** — MIN_ENTRY_PRICE_GATE_001 DONE. core/risk.py patched.
-- **Dashboard side semantics: FIXED** — POSITION_SIDE_SEMANTICS_MERGE_FIX_001 DONE. dashboard.html patched. **Browser hard refresh (Ctrl+Shift+R) required.**
+- **Confidence gate: PATCHED IN SOURCE — awaiting operator cold restart** — `bot_core.py` lines 504–525 patched. **Pyc must be deleted + cold restart done before gate logic executes.**
+- **Market cooldown: PATCHED IN SOURCE — awaiting cold restart** — MARKET_COOLDOWN_PERSIST_001 DONE.
+- **Session PnL: PATCHED IN SOURCE — awaiting cold restart** — SESSION_PNL_TRUE_START_FIX_001 DONE.
+- **TP math: FIXED** — core/risk.py patched.
+- **Min entry price gate: FIXED** — core/risk.py patched.
+- **Dashboard side semantics: FIXED** — POSITION_SIDE_SEMANTICS_MERGE_FIX_001 DONE. **Browser hard refresh (Ctrl+Shift+R) required.**
 - **Dashboard truth: FIXED** — mark_source chip, realized PnL, R25 sublabel, side/backed_team semantics all correct after hard refresh.
-- **Dashboard upstream trace: IN PROGRESS** — MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 ACTIVE (read-only).
+- **Mark fallback reliability: FIXED** — MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001 DONE. dashboard_server.py patched; stream marks now primary when fresh. Dashboard restart done.
 - **User/fill stream: BLOCKED** — requires apiKey, secret, passphrase in .env
 - **Dashboard redesign: COMPLETE**
+- **0 active tasks.** Next new task requires operator cold restart to verify confidence gate behavior.

@@ -1,5 +1,5 @@
 # CLAUDE_STATUS.md — Manager Status Snapshot
-## Last reconciled: 2026-04-11 — Reconciliation pass after POSITION_SIDE_SEMANTICS_MERGE_FIX_001 approved. 1 ACTIVE task. All queued tasks DONE. Two operator actions required.
+## Last reconciled: 2026-04-10 — Board reconciliation: MARK_FALLBACK trace, FIX, and VERIFY all closed. 0 ACTIVE tasks. Mark fallback reliability fix live. Two operator actions still required (pyc + cold restart; browser hard refresh).
 
 ---
 
@@ -28,11 +28,12 @@ POSITION_SIDE_SEMANTICS_MERGE_FIX_001 is live in dashboard.html — no server re
 - **Currently open trades (from last state.json read):**
   - #276: BUY_YES mlb-tex-lad entry=0.2412
   - #277: BUY_YES mlb-hou-sea entry=0.3819
-- **Market cooldown: PATCHED IN SOURCE — awaiting cold restart** — MARKET_COOLDOWN_PERSIST_001 DONE. `_write_state()` now persists cooldown expiry dict; startup reloads non-expired entries.
-- **Session PnL: PATCHED IN SOURCE — awaiting cold restart** — SESSION_PNL_TRUE_START_FIX_001 DONE. Session start timestamp now survives restarts via state.json `pnl.session_start_ts`.
-- **Min entry price gate: PATCHED** — MIN_ENTRY_PRICE_GATE_001 DONE. core/risk.py blocks entries below MIN_ENTRY_PRICE_USD (default 0.15).
-- **TP math: PATCHED** — TP_NEAR_RESOLUTION_CAP_FIX_001 DONE. core/risk.py caps TP at 0.97.
-- **Dupe-slug bypass: PATCHED** — BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 DONE. Bridge loop deduplicated.
+- **Market cooldown: PATCHED IN SOURCE — awaiting cold restart** — MARKET_COOLDOWN_PERSIST_001 DONE.
+- **Session PnL: PATCHED IN SOURCE — awaiting cold restart** — SESSION_PNL_TRUE_START_FIX_001 DONE.
+- **Min entry price gate: PATCHED** — MIN_ENTRY_PRICE_GATE_001 DONE.
+- **TP math: PATCHED** — TP_NEAR_RESOLUTION_CAP_FIX_001 DONE.
+- **Dupe-slug bypass: PATCHED** — BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 DONE.
+- **Mark fallback reliability: LIVE** — MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001 DONE. dashboard_server.py patched. Dashboard restart confirmed.
 
 ### Dashboard
 - Running on port 8900
@@ -40,7 +41,7 @@ POSITION_SIDE_SEMANTICS_MERGE_FIX_001 is live in dashboard.html — no server re
 - **Games-tab position lookup: FIXED** — `renderGamesTab()` slug-key date-suffix mismatch fixed. Open positions now appear in Games tab after hard refresh.
 - Truth status: FIXED — realized PnL authoritative, mark_source chip correct, R25 sublabel correct, side/team semantics correct.
 - At-bat upgrade: LIVE (DASHBOARD_LIVE_ATBAT_POLISH_001 PROVISIONAL PASS)
-- Upstream trace: IN PROGRESS — MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 ACTIVE (read-only)
+- Mark fallback chain: RESOLVED — trace DONE (PARTIAL PASS), fix DONE (APPROVED), verify DONE (PROVISIONAL PASS)
 
 ### mlb_model
 - Authority: clean (execution_guard.py deleted, ROLLBACK_DISABLE removed)
@@ -49,10 +50,13 @@ POSITION_SIDE_SEMANTICS_MERGE_FIX_001 is live in dashboard.html — no server re
 
 ---
 
-## Completed This Session (2026-04-11)
+## Completed This Session (2026-04-10)
 
 | Task | Outcome |
 |------|---------|
+| MARK_SOURCE_FALLBACK_RELIABILITY_VERIFY_001 | PROVISIONAL PASS — stream-mark authority confirmed in healthy case. Fallback path not live-fired in short window. |
+| MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001 | APPROVED — dashboard_server.py `_has_fresh_stream_mark` guard added. Stream marks stay primary. Dashboard restarted. |
+| MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 | PARTIAL PASS — mark-source chain documented. "max down" not found. REST fallback active due to upstream freshness, not UI bug. |
 | POSITION_SIDE_SEMANTICS_MERGE_FIX_001 | APPROVED — dashboard.html renderUnifiedPositions() and renderGamesTab() patched. Browser hard refresh required. |
 | POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001 | APPROVED — root cause confirmed at line 1139, stale full-object spread. |
 | SESSION_PNL_TRUE_START_FIX_001 | APPROVED — bot_core.py patched; session_start_ts persists across restarts. |
@@ -65,9 +69,7 @@ POSITION_SIDE_SEMANTICS_MERGE_FIX_001 is live in dashboard.html — no server re
 
 ## Active Tasks
 
-| Task | Priority | File Lock | Notes |
-|------|----------|-----------|-------|
-| MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 | MEDIUM | read-only | Upstream mark fallback frequency + guard payload origin trace |
+_None._
 
 ## Queued Tasks
 
