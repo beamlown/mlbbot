@@ -3,21 +3,18 @@
 Use this to update `08_SHARED_CONTEXT/CLAUDE_STATUS.md`.
 
 ## Add under Completed This Reconciliation Pass
-| MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001 | APPROVED — fallback gate tightened in `dashboard_server.py`; fresh stream marks should remain primary; restart completed. |
+| CONFIDENCE_GATE_LIVE_REBREAK_001 | APPROVED — fresh live audit confirmed current runtime still opens sub-0.60 trades after restart; issue is not simple config drift but a live gate/open ordering inconsistency or bypass. |
 
 ## Replace the confidence gate paragraph with:
-- **Confidence gate: LIVE REBREAK SUSPECTED** — Current runtime now shows three new open trades below the intended 0.60 floor: trade 241 (0.3863), trade 243 (0.3279), and trade 244 (0.3769). This is newer than the prior postfix verify chain and indicates the live confidence gate is still not reliably protecting entries. `CONFIDENCE_GATE_LIVE_REBREAK_001` is now ACTIVE to identify the current bypass or runtime mismatch.
-
-## Replace the dashboard display issues paragraph with:
-- **Display issues — fallback patched, side-truth regression now under live audit** — `MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001` was approved and restarted, but the operator is now reporting that the dashboard sometimes shows the bot backing the wrong team. `POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001` is ACTIVE to trace one or more current live positions from execution truth through payload mapping to card semantics.
+- **Confidence gate: LIVE REBREAK CONFIRMED** — New runtime evidence now shows fresh open trades below the intended 0.60 floor: trade 241 (0.3863), trade 243 (0.3279), and trade 244 (0.3769). The audit also found 0.600 reject evidence in the same live system, which rules out simple threshold/config drift. `CONFIDENCE_GATE_LIVE_REBREAK_FIX_001` is now ACTIVE to eliminate the current live gate/open inconsistency.
 
 ## Update Open Items section
-Replace the old pyc/restart item with:
-| **Confidence gate live rebreak** | HIGH | New runtime evidence shows trades 241/243/244 opened below 0.60 after restart. `CONFIDENCE_GATE_LIVE_REBREAK_001` ACTIVE. |
+Replace the confidence gate item with:
+| **Confidence gate live rebreak fix** | HIGH | Current live runtime still opens sub-0.60 trades. `CONFIDENCE_GATE_LIVE_REBREAK_FIX_001` ACTIVE. |
 
-Add:
-| **Side-semantics regression** | HIGH | Operator reports dashboard sometimes shows the wrong backed team. `POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001` ACTIVE. |
+Replace the side semantics item with:
+| **Side-semantics regression audit** | MEDIUM | Still needed, but queued behind the confidence-gate live rebreak fix because the gate issue is the higher-risk live trading problem. |
 
 ## Keep unchanged for now
-- `BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001` is still likely needed
+- `BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001` may still be implicated
 - user/fill stream credentials remain blocked on Johnny

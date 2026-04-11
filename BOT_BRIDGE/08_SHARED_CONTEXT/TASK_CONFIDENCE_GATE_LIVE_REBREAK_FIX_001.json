@@ -1,0 +1,71 @@
+{
+  "task_id": "CONFIDENCE_GATE_LIVE_REBREAK_FIX_001",
+  "title": "Fix live confidence gate rebreak so sub-0.60 signals cannot open after gate rejection",
+  "priority": "HIGH",
+  "type": "surgical code fix",
+  "issued": "2026-04-10",
+  "subsystem": "risk / entry-gating / bridge open flow",
+  "status": "ACTIVE",
+  "depends_on": "CONFIDENCE_GATE_LIVE_REBREAK_001 (APPROVED)",
+  "context": {
+    "problem_statement": "A fresh live audit confirmed that the current runtime can both emit confidence_too_low rejects at the 0.600 floor and still open sub-0.60 trades in the same live system. This is a real gate/open ordering inconsistency or bypass, not simple config drift.",
+    "observed_live_examples": [
+      "trade 241 confidence=0.3863",
+      "trade 243 confidence=0.3279",
+      "trade 244 confidence=0.3769"
+    ],
+    "manager_intent": "Apply the smallest safe patch that guarantees a signal rejected by the confidence gate cannot proceed to open_position() through any live bridge path in the current flow."
+  },
+  "objective": "Find and fix the exact current live bridge path inconsistency so sub-0.60 signals cannot open after gate rejection, while preserving valid >=0.60 trade flow.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "conditional_allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py (ONLY if strictly required to eliminate duplicate/ordering issues at the source)",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py (read-only unless a tiny compatibility patch is absolutely required and documented)"
+  ],
+  "read_only_context_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260410.log",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db (SELECT only)"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py",
+    "Any file not listed above"
+  ],
+  "forbidden_actions": [
+    "Broad repo sweep",
+    "Read every file in the repo",
+    "Refactor unrelated bridge logic",
+    "Threshold tuning changes",
+    "Edit .env values",
+    "Restart processes",
+    "DB writes",
+    "Open new tasks"
+  ],
+  "required_work": [
+    "Inspect the exact current gate/open ordering in bot_core.py for the live bridge flow",
+    "Identify how a signal can still reach open_position() after the 0.600 confidence gate should have rejected it",
+    "Patch the smallest safe point in the live bridge flow so a rejected signal cannot fall through to open_position()",
+    "If duplicate slug / repeated intent handling is part of the current live inconsistency, add the minimal per-iteration protection required",
+    "Preserve valid >=0.60 trade flow and existing logging style"
+  ],
+  "acceptance_criteria": [
+    "No live bridge path can call open_position() for a signal rejected by check_entry_gates()",
+    "Sub-0.60 signals cannot open after a confidence_too_low rejection in the same loop/runtime path",
+    "Valid >=0.60 signals still proceed normally",
+    "No files outside allowed scope are modified unless explicitly documented under conditional scope",
+    "python -m py_compile bot_core.py passes",
+    "If model_bridge.py is modified, python -m py_compile core/model_bridge.py passes"
+  ],
+  "verification_required": [
+    "Show exact function/section changed",
+    "Explain old behavior vs new behavior",
+    "State whether duplicate-intent / per-iteration handling was touched",
+    "Run py_compile on each changed Python file",
+    "State whether restart is required for the fix to take effect"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_CONFIDENCE_GATE_LIVE_REBREAK_FIX_001.json"
+}
