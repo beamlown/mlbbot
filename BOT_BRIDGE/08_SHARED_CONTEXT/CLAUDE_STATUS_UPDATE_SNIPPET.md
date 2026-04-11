@@ -2,17 +2,17 @@
 
 Use this to update `08_SHARED_CONTEXT/CLAUDE_STATUS.md`.
 
-## Replace the dashboard display issues paragraph with:
+## Replace the dashboard display/issues paragraph with:
 
-- **Display issues — trace complete, fix opened** — `DASHBOARD_MARK_SOURCE_AND_GUARD_MESSAGE_AUDIT_001` and `MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001` cleared the front-end of being the primary cause. `mark REST` is expected rendering when `mark_source='rest_fallback'`. The remaining issue is upstream: fallback marks appear too frequent/inaccurate for operator trust. `MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001` is now ACTIVE to preserve stream mark authority and reduce fallback dominance.
+- **Display issues — fallback reliability patched, verify pending** — `MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001` was approved after the worker tightened fallback authority in `dashboard_server.py`. Fresh stream marks should now remain primary, with `rest_fallback` limited to truly missing/stale cases. Restart is required. `MARK_SOURCE_FALLBACK_RELIABILITY_VERIFY_001` is now ACTIVE to confirm the fix is live and materially reduces fallback dominance.
 
 ## Add under Completed This Reconciliation Pass
-| MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 | PARTIAL PASS — end-to-end mark_source chain traced; mark REST confirmed as expected fallback chip; no current runtime/dashboard source for hardcoded max-down warning; upstream fallback reliability issue remains. |
+| MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001 | APPROVED — `dashboard_server.py` fallback gate tightened so fresh stream marks are not superseded by fallback marks; `py_compile` PASS; restart required. |
 
 ## Update Open Items section
-Replace the generic dashboard display issues item with:
+Replace the generic dashboard mark-source issue item with:
 
-| **Mark-source fallback reliability** | HIGH | `mark REST` is confirmed fallback behavior, but operator reports fallback is too frequent/inaccurate. `MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001` ACTIVE to keep stream marks primary and harden stale fallback behavior. |
+| **Mark-source fallback verification** | HIGH | Fallback reliability patch is in source, but restart + runtime verification are still required. `MARK_SOURCE_FALLBACK_RELIABILITY_VERIFY_001` ACTIVE. |
 
 ## Keep unchanged for now
 - Confidence gate remains PARTIALLY ACTIVE

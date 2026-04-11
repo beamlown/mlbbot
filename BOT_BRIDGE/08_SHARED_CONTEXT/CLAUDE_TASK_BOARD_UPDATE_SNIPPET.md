@@ -5,26 +5,26 @@ Use this to update `08_SHARED_CONTEXT/CLAUDE_TASK_BOARD.md`.
 ## Header line
 Replace the top header note with:
 
-`## Last updated: 2026-04-10 — MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 reviewed PARTIAL PASS. MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001 opened. 1 ACTIVE task.`
+`## Last updated: 2026-04-10 — MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001 approved. MARK_SOURCE_FALLBACK_RELIABILITY_VERIFY_001 opened. 1 ACTIVE task.`
 
 ## ACTIVE table row
 Replace the current ACTIVE row with:
 
 | task_id | title | priority | subsystem | allowed_files | status |
 |---------|-------|----------|-----------|---------------|--------|
-| MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001 | Reduce inaccurate rest_fallback usage and preserve live stream mark authority | HIGH | dashboard / live mark pricing | `dashboard_server.py`; `core/state_hub.py` only if strictly needed | ACTIVE — worker-ready. Brief in 05_INBOX. |
+| MARK_SOURCE_FALLBACK_RELIABILITY_VERIFY_001 | Verify live stream mark authority after fallback reliability fix | HIGH | read-only runtime verification — dashboard / live mark pricing | `logs/dashboard.log`, `runtime/state.json`, `dashboard_server.py` | ACTIVE — awaiting worker execution after restart. Brief in 05_INBOX. |
 
 ## DONE row to add
 Add this DONE entry near the top of DONE:
 
 | task_id | title | outcome | allowed_files |
 |---------|-------|---------|---------------|
-| MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 | Trace mark-source fallback frequency and guard-message payload origin | PARTIAL PASS 2026-04-10 — mark REST chain traced end-to-end. `rest_fallback` confirmed as expected UI behavior, not a front-end bug. Guard/max-down wording not found in current runtime/dashboard payload. Upstream fallback quality problem remains; follow-on fix opened: MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001. | runtime/state.json, dashboard_server.py, dashboard.html, dashboard.log, bot log (read-only) |
+| MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001 | Reduce inaccurate rest_fallback usage and preserve live stream mark authority | APPROVED 2026-04-10 — fallback gate tightened in `dashboard_server.py` so fresh authoritative stream marks are not superseded by fallback marks. `py_compile` PASS. Restart required. | `dashboard_server.py` |
 
 ## System-state line to replace
-Replace the dashboard display issues line with:
+Replace the dashboard mark-source issue line with:
 
-- **Dashboard mark-source issue: FIX TASK OPEN** — MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 PARTIAL PASS traced the chain. `mark REST` is expected rendering, but fallback appears too frequent/inaccurate for operator trust. `MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001` ACTIVE to restore stream mark authority and harden fallback behavior.
+- **Dashboard mark-source issue: PATCHED, VERIFY PENDING** — `MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001` APPROVED. Fallback gate tightened so stream marks stay primary when fresh and `rest_fallback` is limited to truly missing/stale cases. `MARK_SOURCE_FALLBACK_RELIABILITY_VERIFY_001` ACTIVE after restart.
 
 ## Keep unchanged for now
 - `BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001` is still needed and not yet opened.

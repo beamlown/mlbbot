@@ -1,0 +1,38 @@
+{
+  "task_id": "MARK_SOURCE_FALLBACK_RELIABILITY_VERIFY_001",
+  "title": "Verify live stream mark authority after fallback reliability fix",
+  "priority": "HIGH",
+  "type": "read-only runtime verification",
+  "issued": "2026-04-10",
+  "subsystem": "dashboard / live mark pricing",
+  "status": "ACTIVE",
+  "depends_on": "MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001 (APPROVED) + confirmed dashboard restart",
+  "objective": "Verify that fresh stream marks remain primary after the fallback reliability patch and that rest_fallback appears only when stream marks are truly missing or stale.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\dashboard.log",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py"
+  ],
+  "forbidden_actions": [
+    "Edit any code",
+    "Restart processes",
+    "DB writes",
+    "Open new tasks",
+    "Broad repo sweep"
+  ],
+  "questions": [
+    "1. Was the dashboard process restarted after the fix?",
+    "2. Are healthy stream marks now staying primary for live cards?",
+    "3. Does mark_source now show rest_fallback only when stream data is actually missing or stale?",
+    "4. Has fallback frequency dropped compared with the pre-fix session?",
+    "5. Is the displayed mark_source consistent with the actual source used for the displayed mark?"
+  ],
+  "acceptance_criteria": [
+    "read_only_confirmed: true",
+    "Restart timing established",
+    "Explicit PASS/FAIL on stream-mark authority after restart",
+    "Explicit PASS/FAIL on fallback only appearing for true stale/missing cases",
+    "Overall verdict with fix_is_live value"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MARK_SOURCE_FALLBACK_RELIABILITY_VERIFY_001.json"
+}
