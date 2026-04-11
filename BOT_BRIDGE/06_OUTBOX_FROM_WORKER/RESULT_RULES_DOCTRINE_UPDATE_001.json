@@ -1,0 +1,44 @@
+{
+  "task_id": "RULES_DOCTRINE_UPDATE_001",
+  "status": "DONE",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\00_START_HERE\\README_START_HERE.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\01_RULES\\MANAGER_RULES.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\01_RULES\\WORKER_RULES.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\01_RULES\\REVIEW_RULES.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\OVERNIGHT_ANALYSIS_2026_04_10.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_STATUS.md"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\00_START_HERE\\README_START_HERE.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\01_RULES\\MANAGER_RULES.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\01_RULES\\WORKER_RULES.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\01_RULES\\REVIEW_RULES.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\01_RULES\\BOT_BRIDGE_OPERATING_PRINCIPLES.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_RULES_DOCTRINE_UPDATE_001.json"
+  ],
+  "verification_performed": [
+    "Confirmed changes stayed within the four allowed writable rules/docs files plus the required new doctrine file",
+    "Confirmed the new doctrine file encodes two-track classification, startup proof, runtime-before-trust, evidence framework, read-only-before-patching, loss containment priority, replay-first learning, strict review language, manager discipline, and worker discipline",
+    "Confirmed the existing manager/worker/review files now reference the shared doctrine instead of duplicating the full policy"
+  ],
+  "restart_required": false,
+  "result_file_path": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_RULES_DOCTRINE_UPDATE_001.json",
+  "summary": {
+    "doctrine_changes": [
+      "Added BOT_BRIDGE_OPERATING_PRINCIPLES.md as the top-level operating doctrine",
+      "Encoded Track A vs Track B separation and priority rules",
+      "Added startup proof and runtime-verification-before-trust doctrine",
+      "Added evidence framework: observed / proven / likely / ruled out / next step",
+      "Added read-only-before-speculative-patching rule",
+      "Added loss-containment-before-alpha-expansion principle",
+      "Added replay-first learning rule for new strategy ideas",
+      "Tightened review language requirements around source-only vs runtime proof and unproven items",
+      "Tightened manager discipline against stale assumptions and false confidence from board cleanliness",
+      "Tightened worker discipline against widening from runtime truth into strategy work"
+    ],
+    "conflicting_old_rules_found": [
+      "No hard contradictions found, but the prior rules under-emphasized runtime proof versus source-only completion and did not explicitly separate plumbing/runtime tasks from alpha/strategy tasks."
+    ]
+  }
+}

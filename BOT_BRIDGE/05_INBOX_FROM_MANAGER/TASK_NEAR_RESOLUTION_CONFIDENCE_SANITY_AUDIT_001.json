@@ -1,0 +1,68 @@
+{
+  "task_id": "NEAR_RESOLUTION_CONFIDENCE_SANITY_AUDIT_001",
+  "title": "Audit how model assigns ~55% confidence to a near-resolved (0.01 price) market",
+  "priority": "HIGH",
+  "type": "read-only audit",
+  "issued": "2026-04-10",
+  "subsystem": "model / confidence / game-state context",
+  "status": "QUEUED — can run in parallel with RESTART_CONFIG_HASH_VERIFY_001 (no file conflicts)",
+  "depends_on": "none — read-only, no file conflicts",
+  "context": {
+    "problem": "Tonight trade #310 was opened on mlb-hou-sea-2026-04-10 at entry_px=0.01005 with confidence=0.5507. A market at 0.01 on Polymarket means the outcome is 99% decided — HOU had already lost. The model assigned 55% confidence to a BUY_YES on a near-zero probability event. This is either stale game-state data being fed to the model, a model architecture failure to penalize near-resolution prices, or a missing sanity cap on model output near extremes.",
+    "related_evidence": [
+      "Trade #310: entry_px=0.01005, conf=0.5507, market=mlb-hou-sea-2026-04-10",
+      "Trade #279: entry_px=0.03015, conf=0.5541, gap_stop to 0.01, loss=-$34.75",
+      "Trade #252: entry_px=0.09045, conf=0.6429 (highest confidence tier), loss=-$18.66",
+      "The ENTRY_IMBALANCE_MAX=0.60 gate was supposed to catch extreme order-book imbalance but did not prevent these entries",
+      "LATE_INNING_BLOCK=7 exists in .env but near-resolution markets are a price/probability issue, not inning-count"
+    ],
+    "question": "Is the model using stale game-state data (e.g. fetching inning/score from a poll that lags behind the live market), or does the model architecture not account for market price as a signal, or is there a missing near-resolution confidence suppressor?"
+  },
+  "objective": "Trace the confidence calculation path for a near-resolution market. Identify whether the model receives current market price as an input to confidence, whether game-state data can be stale when confidence is computed, and whether any guard exists to cap model confidence when market price is near 0 or 1.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py"
+  ],
+  "read_only_context_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "Any mlb_model file not listed above",
+    "Any file not listed above"
+  ],
+  "forbidden_actions": [
+    "Edit any code",
+    "Edit .env",
+    "Run the bot or model",
+    "Restart processes",
+    "DB writes",
+    "Broad repo sweep beyond the 3 allowed files"
+  ],
+  "required_work": [
+    "1. Read model_bridge.py. Trace how the model recommendation's confidence field is populated. Does model_bridge use the current market price as an input when generating or adjusting confidence?",
+    "2. Read recommendation_api.py. Find where the model computes its confidence output. Does it incorporate current market price or orderbook state? Does it have game-state staleness checks?",
+    "3. Read the near-resolution handling in risk.py. Is there any gate that suppresses or rejects entries when market price is already near 0 (e.g. below 0.05) based on market state rather than just price floor?",
+    "4. Check .env for LATE_INNING_BLOCK — confirm whether it is wired in the entry path and whether it would catch late-game near-resolved markets.",
+    "5. Classify the root cause into one of: (A) model never sees market price — operates on stale game-state only, (B) model sees price but doesn't penalize extreme values, (C) near-resolution check exists but isn't wired, (D) other."
+  ],
+  "acceptance_criteria": [
+    "Root cause classified as A, B, C, or D with supporting code evidence",
+    "Exact function/line in model_bridge.py or recommendation_api.py where confidence is set or modified",
+    "Statement on whether market current price is an input to confidence calculation",
+    "Statement on whether LATE_INNING_BLOCK is wired in the active entry gate path",
+    "Concrete fix recommendation (not implemented — described only)",
+    "No files modified"
+  ],
+  "verification_required": [
+    "Quote the exact code region where confidence is computed or passed through",
+    "State explicitly: does the model receive current market price (the Polymarket contract price) as an input?",
+    "State whether a near-resolution suppressor exists and if so, where it lives",
+    "Provide a one-paragraph fix recommendation for the manager to review"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_NEAR_RESOLUTION_CONFIDENCE_SANITY_AUDIT_001.json"
+}

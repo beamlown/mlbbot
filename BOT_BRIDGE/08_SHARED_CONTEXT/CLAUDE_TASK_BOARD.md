@@ -1,5 +1,5 @@
 # CLAUDE_TASK_BOARD.md — Manager Task Board
-## Last updated: 2026-04-10 — Board reconciliation: MARK_FALLBACK trace closed (PARTIAL PASS), FIX (APPROVED) and VERIFY (PROVISIONAL PASS) added to DONE. All mark-fallback reliability work complete. 0 ACTIVE tasks. OPERATOR ACTION REQUIRED: cold restart to activate bot_core patches.
+## Last updated: 2026-04-11 — Track A complete. Clean restart verified. Entered SUPERVISOR + ANALYTICAL SPECIALIST MODE. EDGE_PROOF_FRAMEWORK_001 written. EDGE_BASELINE_AND_EXPECTANCY_AUDIT_001 now ACTIVE (Track B).
 
 ---
 
@@ -13,23 +13,52 @@
 
 ---
 
-## ⚠ OPERATOR ACTION REQUIRED FIRST
+## ⚠ OPERATOR ACTION REQUIRED FIRST — TOMORROW MORNING
 
-**Delete `__pycache__/bot_core.cpython-*.pyc` and perform a cold clean restart BEFORE any code fix has value.**
-See: `08_SHARED_CONTEXT/OPERATOR_ACTION_REQUIRED_001.md`
-Until this is done: confidence gate, cooldown checks, and all `check_entry_gates()` logic are NOT running.
+**Do this before running ANY task tomorrow:**
+1. Confirm bot is OFF (no bot_core process running)
+2. Delete `__pycache__\bot_core.cpython-*.pyc`
+3. Relaunch via `launch_all.py` from a clean terminal
+4. Run `RESTART_CONFIG_HASH_VERIFY_001` (first task) — confirm config_hash changed from `2f0dd9e0ef8a`
+5. Do NOT dispatch code fix tasks until step 4 PASSES
+
+**Also required: Browser hard refresh (`Ctrl+Shift+R`) for dashboard side-semantics fix.**
 
 ---
 
 ## ACTIVE
 
-_No active tasks._
+| task_id | title | priority | subsystem | allowed_files | notes |
+|---------|-------|----------|-----------|---------------|-------|
+| EDGE_BASELINE_AND_EXPECTANCY_AUDIT_001 | Compute break-even, net expectancy, segment breakdowns, random baseline from real trade history | HIGH | Track B — edge proof / strategy evaluation | trades_sports.db, runtime/state.json, logs (read-only) | **ACTIVE — read-only, no file lock.** |
 
 ---
 
-## QUEUED (execute in this order)
+## QUEUED (execute in this order after current active task)
 
-_No queued tasks. All previously queued tasks are DONE._
+| task_id | title | priority | subsystem | allowed_files | notes |
+|---------|-------|----------|-----------|---------------|-------|
+| RESTART_CONFIG_HASH_VERIFY_001 | Verify clean restart loaded new .env config | CRITICAL | runtime / entry gates / process topology | runtime/state.json, logs (read-only) | Read-only verify — no file lock. **Activate when operator confirms cold restart.** |
+
+## BACKLOG (after tomorrow's first-wave queue, in this order)
+
+| task_id | title | priority | track | subsystem | allowed_files | notes |
+|---------|-------|----------|-------|-----------|---------------|-------|
+| SINGLE_STACK_LAUNCH_GUARD_001 | Prevent multiple live bot stacks from running at the same time | HIGH | Track A | launcher / process topology / runtime safety | launch_all.py | Isolated to launch_all.py — no file lock conflict with the active Track A series. Can activate in parallel once LATE_INNING is approved. |
+| TRADE_FORENSICS_SNAPSHOT_001 | Persist compact forensic snapshot for every new trade entry | MEDIUM | Track A | trade observability / entry forensics | bot_core.py, core/paper_exec.py, runtime/state.json | Observability gap. Narrow persistence only, no storage redesign. |
+| SESSION_SLUG_LOSS_CAP_001 | Ban slug for rest of session after per-slug dollar loss cap hit | MEDIUM | Track B | entry gates / loss containment / bot_core | bot_core.py, core/risk.py, .env | Containment gap. Queue after first-wave slug count cap work due to overlap. |
+| GAME_STATE_FRESHNESS_AUDIT_001 | Audit whether recommendation-time game-state is stale or insufficient | MEDIUM | Track B | model / game-state freshness / recommendation timing | core/model_bridge.py, mlb_model/integration/recommendation_api.py | Read-only before speculative model fixes. |
+| MARKET_PRICE_SANITY_GATE_001 | Add hard sanity gate for irrational near-zero / near-one entries | MEDIUM | Track B | entry gates / price sanity / risk containment | core/risk.py, bot_core.py, .env | Distinct from broader near-resolution audit. Queue after the audit. |
+| NEAR_RESOLUTION_CONFIDENCE_SUPPRESSOR_001 | Add confidence suppressor for near-zero/near-one market prices in recommendation_api.py | MEDIUM | Track B | model / confidence / near-resolution | mlb_model/integration/recommendation_api.py | Model-side fix. When market price < 0.10 for the entry side, cap confidence at 0.0 and set action NO_TRADE. Follows audit NEAR_RESOLUTION_CONFIDENCE_SANITY_AUDIT_001. |
+| REPLAY_HARNESS_001 | Build replay and counterfactual harness for guardrail evaluation | LOW | Track B | analysis tooling / replay / counterfactual evaluation | tools/replay_harness.py, core/risk.py | Tooling for replay-first learning before wider live trust. |
+
+## BACKLOG / OVERLAP NOTES
+
+- **Completed serial chain:** LATE_INNING_BLOCK_WIRING_FIX_001 (DONE) → CONFIG_HASH_INPUTS_FIX_001 (DONE) → STARTUP_PROOF_BLOCK_001 (DONE). bot_core.py lock now fully released.
+- **SINGLE_STACK_LAUNCH_GUARD_001** is isolated to launch_all.py — no file lock conflict with active tasks. Now ACTIVE.
+- SESSION_MARKET_TRADE_CAP_001, POST_GAP_STOP_SAME_SIDE_SESSION_BAN_001, TRADE_FORENSICS_SNAPSHOT_001, SESSION_SLUG_LOSS_CAP_001, and MARKET_PRICE_SANITY_GATE_001 all overlap bot_core.py and/or core/risk.py. Do not activate overlapping pairs together.
+- GAME_STATE_FRESHNESS_AUDIT_001 is read-only and may run at any time without conflict.
+- SINGLE_STACK_LAUNCH_GUARD_001 is isolated to launch_all.py — safe to run in any window.
 
 ---
 
@@ -46,6 +75,13 @@ _No queued tasks. All previously queued tasks are DONE._
 
 | task_id | title | outcome | allowed_files |
 |---------|-------|---------|---------------|
+| POST_GAP_STOP_SAME_SIDE_SESSION_BAN_001 | Block same-side re-entry after gap_stop for session | APPROVED 2026-04-11 — _session_gap_stop_bans set added to bot_core.py. Ban registered on gap_stop exit, checked in bridge loop pre-gate. In-memory, session-scoped. py_compile PASS. Restart required. Review: REVIEW_POST_GAP_STOP_SAME_SIDE_SESSION_BAN_001.md | bot_core.py |
+| SESSION_MARKET_TRADE_CAP_001 | Per-session trade count cap per market slug | APPROVED 2026-04-11 — Pre-gate check in bot_core.py bridge loop. MAX_SLUG_ENTRIES_SESSION=3. DB query counts open+closed trades for slug today. py_compile PASS. Restart required. Review: REVIEW_SESSION_MARKET_TRADE_CAP_001.md | bot_core.py, .env |
+| SINGLE_STACK_LAUNCH_GUARD_001 | Prevent multiple live bot stacks | APPROVED 2026-04-11 — Post-sweep bot.pid check in launch_all.py main(). Aborts with actionable error if bot_core still live after sweep. py_compile PASS. Review: REVIEW_SINGLE_STACK_LAUNCH_GUARD_001.md | launch_all.py |
+| NEAR_RESOLUTION_CONFIDENCE_SANITY_AUDIT_001 | Audit model confidence on near-resolved markets | APPROVED 2026-04-11 — PARTIAL PASS. Root cause B: edge inflation from near-zero prices. MIN_ENTRY_PRICE is primary gate. Medium-term: NEAR_RESOLUTION_CONFIDENCE_SUPPRESSOR_001 added to backlog. Review: REVIEW_NEAR_RESOLUTION_CONFIDENCE_SANITY_AUDIT_001.md | read-only |
+| STARTUP_PROOF_BLOCK_001 | Emit startup proof block proving runtime identity and loaded gates | APPROVED 2026-04-11 — Single STARTUP_PROOF log line added to main() at line 357, after startup banner, before init_db(). Uses existing CONFIG_HASH constant. All 8 gate vars logged. No new imports needed. py_compile PASS. Restart required. Review: REVIEW_STARTUP_PROOF_BLOCK_001.md | bot_core.py |
+| LATE_INNING_BLOCK_WIRING_FIX_001 | Wire LATE_INNING_BLOCK=7 into active entry path | APPROVED 2026-04-11 — Option A: pre-gate check in bot_core.py before check_entry_gates(). LATE_INNING_BLOCK read at module level via os.getenv. Only bot_core.py modified. py_compile PASS. Restart required. Review: REVIEW_LATE_INNING_BLOCK_WIRING_FIX_001.md | bot_core.py |
+| LATE_INNING_BLOCK_WIRING_VERIFY_001 | Verify whether LATE_INNING_BLOCK is wired into the active recommendation-to-entry path | DONE 2026-04-11 — INERT CONFIG CONFIRMED. LATE_INNING_BLOCK=7 exists in .env. Inning context exists on recommendation object. Block is not read or enforced in recommendation_api.py, model_bridge.py, risk.py, or bot_core.py. Fix task authorized: LATE_INNING_BLOCK_WIRING_FIX_001. | read-only |
 | MARK_SOURCE_FALLBACK_RELIABILITY_VERIFY_001 | Verify live stream mark authority after fallback reliability fix | PROVISIONAL PASS 2026-04-10 — 5 live SSE frames sampled; fresh stream marks confirmed primary, REST fallback not observed overriding stream marks. Fallback-only-when-stale confirmed by code review, not live-fired in short window. Review: REVIEW_MARK_SOURCE_FALLBACK_RELIABILITY_VERIFY_001.md | `dashboard_server.py`, logs (read-only) |
 | MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001 | Reduce inaccurate rest_fallback usage — preserve live stream mark authority | APPROVED 2026-04-10 — dashboard_server.py `_stream_positions_mark()` patched: `_has_fresh_stream_mark` guard added at line 455 prevents REST fallback when stream mark is fresh, non-null, non-stale. py_compile PASS. Dashboard restart completed. | `dashboard_server.py` |
 | MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 | Trace mark-source fallback frequency and guard-message payload origin | PARTIAL PASS 2026-04-10 — Full mark-source chain documented. "max down" text not hardcoded. Guard payload null at audit time. REST fallback active in-session; classified as upstream freshness issue → follow-on fix task opened. Review: REVIEW_MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001.md | `runtime/state.json`, `dashboard_server.py`, `dashboard.html`, logs (read-only) |
@@ -192,21 +228,22 @@ _No queued tasks. All previously queued tasks are DONE._
 
 | File | Locked by |
 |------|-----------|
-| All files | UNLOCKED — no active tasks |
+| bot_core.py | LOCKED — CONFIG_HASH_INPUTS_FIX_001 (ACTIVE). Next: STARTUP_PROOF_BLOCK_001. |
+| core/risk.py | LOCKED — CONFIG_HASH_INPUTS_FIX_001 (ACTIVE, conditional). Next: STARTUP_PROOF_BLOCK_001. |
+| launch_all.py | UNLOCKED — SINGLE_STACK_LAUNCH_GUARD_001 may activate in parallel lane. |
+| All other files | UNLOCKED |
 
 ---
 
-## System state (2026-04-10 — board reconciliation, all mark-fallback work complete)
+## System state (2026-04-10 end of night — BOT IS OFF)
 
-- **Tonight's session: -$159.54 closed PnL (40 trades).** 31/42 trades sub-0.60 confidence. Gate was not enforcing due to stale pyc.
-- **Confidence gate: PATCHED IN SOURCE — awaiting operator cold restart** — `bot_core.py` lines 504–525 patched. **Pyc must be deleted + cold restart done before gate logic executes.**
-- **Market cooldown: PATCHED IN SOURCE — awaiting cold restart** — MARKET_COOLDOWN_PERSIST_001 DONE.
-- **Session PnL: PATCHED IN SOURCE — awaiting cold restart** — SESSION_PNL_TRUE_START_FIX_001 DONE.
-- **TP math: FIXED** — core/risk.py patched.
-- **Min entry price gate: FIXED** — core/risk.py patched.
-- **Dashboard side semantics: FIXED** — POSITION_SIDE_SEMANTICS_MERGE_FIX_001 DONE. **Browser hard refresh (Ctrl+Shift+R) required.**
-- **Dashboard truth: FIXED** — mark_source chip, realized PnL, R25 sublabel, side/backed_team semantics all correct after hard refresh.
-- **Mark fallback reliability: FIXED** — MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001 DONE. dashboard_server.py patched; stream marks now primary when fresh. Dashboard restart done.
+- **Bot is OFF.** No live runtime can be trusted from tonight.
+- **Tonight's final realized PnL: approx -$360.90** — live process ran with stale config; gates not enforcing through all restarts
+- **Root cause confirmed**: config_hash `2f0dd9e0ef8a` unchanged through all restarts tonight — .env edits were never picked up by the live process
+- **.env NOW CORRECT**: MIN_ENTRY_CONFIDENCE=0.65, MIN_ENTRY_PRICE=0.22 set — but not yet live (needs verified restart)
+- **Critical model finding**: Trade #310 opened at entry=0.01, conf=0.5507 on already-decided market. Under investigation: NEAR_RESOLUTION_CONFIDENCE_SANITY_AUDIT_001.
+- **All prior source patches still in place**: gate wiring, TP cap, cooldown persistence, session PnL, dupe-slug fix, dashboard semantics, mark fallback
+- **Dashboard side semantics: FIXED in source** — browser hard refresh required
+- **Mark fallback reliability: FIXED** — dashboard_server.py patched
+- **4 tasks QUEUED** for tomorrow — RESTART_CONFIG_HASH_VERIFY_001 must run first
 - **User/fill stream: BLOCKED** — requires apiKey, secret, passphrase in .env
-- **Dashboard redesign: COMPLETE**
-- **0 active tasks.** Next new task requires operator cold restart to verify confidence gate behavior.

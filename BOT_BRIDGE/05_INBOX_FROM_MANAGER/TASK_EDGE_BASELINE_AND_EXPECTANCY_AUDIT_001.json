@@ -1,0 +1,91 @@
+{
+  "task_id": "EDGE_BASELINE_AND_EXPECTANCY_AUDIT_001",
+  "title": "Compute break-even, net expectancy, segment breakdowns, and random baseline from real trade history",
+  "priority": "HIGH",
+  "type": "read-only audit",
+  "track": "Track B — Alpha / Strategy",
+  "issued": "2026-04-11",
+  "subsystem": "edge proof / strategy evaluation",
+  "status": "ACTIVE",
+  "depends_on": "EDGE_PROOF_FRAMEWORK_001 (complete)",
+
+  "context": {
+    "problem": "277 closed trades show -$91 total PnL. Pre-audit orientation reveals the top 5 trades account for +$1,111 in a -$91 total — meaning the true underlying PnL ex-outliers is approximately -$1,202. Confidence appears to be INVERTED (higher confidence → lower win rate). No clean-gate era has been proven profitable. The full historical record cannot be trusted as an edge signal without segmentation and outlier analysis.",
+    "key_facts_from_orientation": [
+      "Gross break-even win rate: 26.7% (avg_win=$44.94, avg_loss=$16.41)",
+      "Actual win rate: 26.2% — below gross break-even",
+      "fees_usd recorded separately: avg $1.97/trade, total $545 — if pnl_usd is gross, true net PnL is -$636",
+      "Top 3 trades (lad-tor ids 183/184/185): +$708 combined from identical duplicate entries — probable bug",
+      "Trades 310 and 316: +$216 and +$187 from entries at 0.01/0.011 — ungated anomalies, not repeatable under MIN_ENTRY_PRICE=0.22",
+      "BUY_NO: 32.5% win rate, +$5.79 avg. BUY_YES: 23.6% win rate, -$2.90 avg",
+      "Confidence inverted: 0.30-0.40 bucket outperforms 0.60-0.65 bucket significantly",
+      "Post-clean-restart (2026-04-11): 0 trades"
+    ],
+    "why_this_matters": "Before any strategy change, model fix, or threshold adjustment, we need a single authoritative audit of what the current trade history actually says about expectancy. No code should change based on vibes."
+  },
+
+  "objective": "Produce a complete, honest, segment-by-segment analysis of the bot's trade history. Answer every question in the edge proof framework. State pass/fail for each criterion.",
+
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260411.log"
+  ],
+  "read_only_context_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\db.py"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "Any mlb_model file",
+    "Any file not listed above"
+  ],
+  "forbidden_actions": [
+    "Edit any code",
+    "Edit .env",
+    "Restart processes",
+    "Open new tasks",
+    "DB writes of any kind"
+  ],
+
+  "required_work": [
+    "0. Clarify fee accounting: read paper_exec.py to determine whether pnl_usd includes or excludes fees_usd. Compute both gross and net expectancy.",
+    "1. Break-even win rate: compute with and without fees. State the threshold clearly.",
+    "2. Overall expectancy: gross and net, all 277 trades.",
+    "3. Rolling windows: last 25, 50, 100 trades — wins, losses, win%, total pnl, avg pnl (gross and net).",
+    "4. Era breakdown: (a) id≤200 early, (b) id 201-237 pre-gate-wire, (c) id 238-277 post-gate-wire broken runtime, (d) post-clean-restart. Report each era's gross and net expectancy.",
+    "5. Outlier removal: (a) remove lad-tor slug (ids 169-187), (b) remove trades 310 and 316, (c) remove all trades with entry_px < 0.22. Report expectancy after each removal.",
+    "6. Confidence bucket analysis: for n≥10 per bucket, report win rate and avg pnl. State whether confidence is monotonically predictive.",
+    "7. Entry price bucket analysis: use gate-relevant boundaries (<0.05, 0.05-0.10, 0.10-0.15, 0.15-0.22, 0.22-0.30, 0.30-0.40, 0.40-0.50, 0.50-0.70, ≥0.70). State which buckets the current MIN_ENTRY_PRICE=0.22 gates out.",
+    "8. Side breakdown: BUY_YES vs BUY_NO — wins, win%, total pnl, avg pnl. State whether the asymmetry is statistically robust at current sample sizes.",
+    "9. Close reason breakdown: take_profit, stop_loss, gap_stop, near_resolution, trailing_stop — n, win%, total pnl, avg pnl.",
+    "10. Per-slug analysis: for slugs with n≥5, report wins, win%, total pnl. Identify which single slug contributes the most to total positive PnL.",
+    "11. Random-side baseline: for each trade, assume side was random (50/50). Compute expected PnL if side were flipped on all trades. This is the 'random side' baseline.",
+    "12. Gated-universe projection: for trades where confidence≥0.65 AND entry_px≥0.22, report expectancy. If n<10, state the sample is too small to evaluate.",
+    "13. Single-trade dominance: what % of total positive PnL comes from the single best trade? Single best slug?",
+    "14. State pass/fail for E1-E8 as defined in EDGE_PROOF_FRAMEWORK_001.md."
+  ],
+
+  "acceptance_criteria": [
+    "Fee accounting clarified: is pnl_usd gross or net?",
+    "Break-even win rate stated with and without fees",
+    "Rolling window stats reported for last 25/50/100",
+    "Outlier-removed expectancy computed (ex-lad-tor, ex-ungated-entries, ex-entry<0.22)",
+    "Confidence bucket table with win rates — monotonicity stated",
+    "Side asymmetry reported and rough significance assessed",
+    "Random-side baseline computed",
+    "E1-E8 pass/fail stated explicitly",
+    "No files modified"
+  ],
+
+  "verification_required": [
+    "All numbers derived from direct SQLite queries — show the key queries used",
+    "Fee accounting method confirmed by reading paper_exec.py",
+    "E1-E8 verdict stated with evidence for each"
+  ],
+
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_EDGE_BASELINE_AND_EXPECTANCY_AUDIT_001.json"
+}

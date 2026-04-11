@@ -1,0 +1,43 @@
+{
+  "mode_used": "WORKER MODE",
+  "task_selected": "CONFIG_HASH_INPUTS_FIX_001",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_CONFIG_HASH_INPUTS_FIX_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_CONFIG_HASH_INPUTS_FIX_001.md",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "verification_performed": [
+    "Located the active config_hash([...]) call in bot_core.py",
+    "Expanded the hash input list with the requested gate vars and existing session-level anti-repeat/session-risk vars found in source",
+    "Kept the final hash input list sorted",
+    "Ran `python -m py_compile C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py` with PASS (no output)"
+  ],
+  "restart_needed": "Yes",
+  "result_file_written": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_CONFIG_HASH_INPUTS_FIX_001.json",
+  "observed": [
+    "The active runtime hash was defined in a single config_hash([...]) call in bot_core.py.",
+    "The prior list omitted key live gate vars, including MIN_ENTRY_CONFIDENCE, MIN_ENTRY_PRICE, MAX_TRADES_PER_MARKET, and LATE_INNING_BLOCK.",
+    "Session-level related controls already present in source included SESSION_MAX_LOSS_USD and DAILY_MAX_LOSS_USD, and exposure cap MAX_TOTAL_COMMITTED_USD is also part of live entry behavior."
+  ],
+  "proven": [
+    "Modified only bot_core.py, as requested.",
+    "The config hash input list now includes: AUTO_STOP_LOSS_PCT, AUTO_TAKE_PROFIT_PCT, DAILY_MAX_LOSS_USD, LATE_INNING_BLOCK, LOOP_SECONDS, MAX_CONCURRENT_TRADES, MAX_SPREAD, MAX_TOTAL_COMMITTED_USD, MAX_TRADES_PER_MARKET, MIN_CONFIDENCE, MIN_DEPTH_TOP5_USD, MIN_ENTRY_CONFIDENCE, MIN_ENTRY_PRICE, SESSION_MAX_LOSS_USD, SPORT.",
+    "The final list is sorted alphabetically.",
+    "py_compile PASS for bot_core.py."
+  ],
+  "likely": [
+    "After restart, config_hash should now change when the newly included gate/session vars change, making restart verification materially more trustworthy.",
+    "This clears the way for STARTUP_PROOF_BLOCK_001 to emit a meaningfully trustworthy config_hash, subject to manager review."
+  ],
+  "ruled_out": [
+    "Ruled out: any change outside the single active config_hash location in bot_core.py.",
+    "Ruled out: broader runtime or startup-proof modifications in this task."
+  ],
+  "recommended_next_step": "Manager review this single-location hash-input expansion. If approved, STARTUP_PROOF_BLOCK_001 is the next correct worker task, because the emitted startup proof will then expose a config_hash derived from the real live gate set rather than the previously incomplete one.",
+  "queued_next_list": [
+    "STARTUP_PROOF_BLOCK_001"
+  ]
+}

@@ -118,6 +118,22 @@ def main() -> None:
         except ValueError:
             pass
     sweep_stale_processes()
+    # Secondary guard: verify bot_core is not still live after the sweep.
+    # Catches elevated processes that sweep_stale_processes() cannot kill.
+    _bot_pid_file = SPORTS_BOT_DIR / "runtime" / "bot.pid"
+    if _bot_pid_file.exists():
+        try:
+            _bot_old_pid = int(_bot_pid_file.read_text(encoding="utf-8").strip())
+            if _pid_is_running(_bot_old_pid):
+                print(
+                    f"ERROR: bot_core still live at PID {_bot_old_pid} after sweep — "
+                    "likely an elevated process. Kill it manually (elevated terminal: "
+                    f"Stop-Process -Id {_bot_old_pid} -Force) then retry launch.",
+                    flush=True,
+                )
+                sys.exit(1)
+        except ValueError:
+            pass
     LAUNCHER_PID_FILE.parent.mkdir(parents=True, exist_ok=True)
     LAUNCHER_PID_FILE.write_text(str(os.getpid()), encoding="utf-8")
 

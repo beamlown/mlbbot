@@ -1,0 +1,69 @@
+{
+  "task_id": "SINGLE_STACK_LAUNCH_GUARD_001",
+  "title": "Prevent multiple live bot stacks from running at the same time",
+  "priority": "HIGH",
+  "type": "surgical launcher/runtime safety fix",
+  "track": "Track A — plumbing/runtime truth",
+  "issued": "2026-04-11",
+  "subsystem": "launcher / process topology / runtime safety",
+  "status": "BACKLOG — after tomorrow first-wave tasks",
+  "depends_on": "RESTART_CONFIG_HASH_VERIFY_001 (APPROVED)",
+  "objective": "Narrowly prevent dual live stacks so config verification and runtime truth cannot be invalidated by mixed-process confusion.",
+  "context": {
+    "problem": "Tonight showed possible dual/live mixed stack confusion. A second launch or stale process can make logs and state misleading even when the board is clean.",
+    "classification": "runtime/config activation problem",
+    "acceptable_strategies": [
+      "hard refuse second launch if lock already held",
+      "controlled replacement of old stack",
+      "lockfile/PID guard"
+    ]
+  },
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py"
+  ],
+  "read_only_context_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260411.log"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "Any mlb_model file",
+    "Any file not listed above"
+  ],
+  "forbidden_actions": [
+    "Broad launcher redesign",
+    "Bot logic edits",
+    "Dashboard edits",
+    "DB changes"
+  ],
+  "required_work": [
+    "1. Implement one narrow guard in launch_all.py to prevent more than one live stack at a time.",
+    "2. Choose one acceptable strategy and document it clearly in logs.",
+    "3. Make failure mode operationally clear so an operator knows whether launch was refused or old stack replaced.",
+    "4. Keep guard scoped to live stack process topology, not a general process manager rewrite."
+  ],
+  "deliverables": [
+    "Minimal patch",
+    "Chosen strategy with rationale",
+    "Exact operator-visible behavior on second launch",
+    "Restart note"
+  ],
+  "acceptance_criteria": [
+    "Second live launch attempt cannot produce a mixed dual stack",
+    "Behavior on conflict is explicit and deterministic",
+    "Only launch_all.py modified",
+    "python -m py_compile launch_all.py passes"
+  ],
+  "verification": [
+    "Show exact guard path added",
+    "Describe second-launch behavior",
+    "Run py_compile on launch_all.py",
+    "State whether operator procedure changed"
+  ],
+  "rollback": "Revert only launch_all.py for this task.",
+  "restart_required": false,
+  "restart_note": "Applies on the next use of launch_all.py; no separate runtime restart note beyond normal launch cycle.",
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_SINGLE_STACK_LAUNCH_GUARD_001.json"
+}

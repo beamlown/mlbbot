@@ -1,0 +1,62 @@
+{
+  "task_id": "GAME_STATE_FRESHNESS_AUDIT_001",
+  "title": "Audit whether recommendation-time game-state data is stale, missing, lagging, or insufficient",
+  "priority": "MEDIUM",
+  "type": "read-only audit",
+  "track": "Track B — alpha/strategy",
+  "issued": "2026-04-11",
+  "subsystem": "model / game-state freshness / recommendation timing",
+  "status": "BACKLOG — after tomorrow first-wave tasks",
+  "depends_on": "NEAR_RESOLUTION_CONFIDENCE_SANITY_AUDIT_001 (APPROVED)",
+  "objective": "Determine whether score, inning, outs, and base-state data are stale, missing, lagging, or otherwise insufficient when recommendations are produced.",
+  "context": {
+    "problem": "Model/data freshness remains unproven. Near-resolution irrational entries suggest the recommendation path may be acting on stale or incomplete game-state context.",
+    "classification": "model/data-freshness gap"
+  },
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py"
+  ],
+  "read_only_context_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260411.log",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "Any mlb_model file not listed above",
+    "Any file not listed above"
+  ],
+  "forbidden_actions": [
+    "Edit any code",
+    "Broad repo sweep",
+    "Runtime restarts",
+    "DB writes"
+  ],
+  "required_work": [
+    "1. Trace how score, inning, outs, and base-state are fetched and attached to recommendations.",
+    "2. Identify any freshness timestamps, caching layers, or lag windows in the recommendation path.",
+    "3. Determine what happens when some game-state fields are missing or stale.",
+    "4. Classify each field family as fresh, stale-risk, missing-risk, or insufficient for recommendation-time trust."
+  ],
+  "deliverables": [
+    "Read-only audit summary",
+    "Field-by-field freshness classification",
+    "One-paragraph manager recommendation"
+  ],
+  "acceptance_criteria": [
+    "Audit classifies score, inning, outs, and base-state separately",
+    "Caching or lag points are identified if present",
+    "No files modified"
+  ],
+  "verification": [
+    "Quote exact code regions that attach game-state to recommendations",
+    "State whether timestamps/freshness checks exist",
+    "Provide one-paragraph recommendation for the next manager task"
+  ],
+  "rollback": "No rollback needed; read-only audit.",
+  "restart_required": false,
+  "restart_note": "None.",
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_GAME_STATE_FRESHNESS_AUDIT_001.json"
+}

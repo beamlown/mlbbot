@@ -1,0 +1,68 @@
+{
+  "mode_used": "WORKER MODE",
+  "task_selected": "RESTART_CONFIG_HASH_VERIFY_001",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_RESTART_CONFIG_HASH_VERIFY_001.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260411.log"
+  ],
+  "files_changed": [],
+
+  "acceptance_criteria_results": {
+    "config_hash_changed": {
+      "result": "PASS",
+      "old": "2f0dd9e0ef8a",
+      "new": "f87077f219dd",
+      "source": "runtime/state.json line 7"
+    },
+    "startup_shows_correct_gates": {
+      "result": "PASS",
+      "evidence": "STARTUP_PROOF line in log: MIN_ENTRY_CONFIDENCE=0.65, MIN_ENTRY_PRICE=0.22, MIN_CONFIDENCE=0.25, LATE_INNING_BLOCK=7, MAX_CONCURRENT_TRADES=3, MAX_TRADES_PER_MARKET=1, AUTO_STOP_LOSS_PCT=0.12, LOOP_SECONDS=30",
+      "log_line": "2026-04-11 11:01:57,358 [INFO] bot_core: STARTUP_PROOF {\"ts\":\"2026-04-11T16:01:57.358892+00:00\",\"pid\":8808,...,\"config_hash\":\"f87077f219dd\",\"gates\":{\"MIN_ENTRY_CONFIDENCE\":0.65,\"MIN_ENTRY_PRICE\":0.22,...}}"
+    },
+    "confidence_gate_live_fire": {
+      "result": "PENDING — not yet observed, but expected",
+      "explanation": "It is 11 AM local. No live games running. All bridge loop recs are being rejected at rec_age (yesterday's recs 39k-49k seconds old). No fresh recs with confidence values have been produced yet by the shadow engine. The confidence gate code is confirmed in source (BRIDGE_ENTRY_GATE_WIRING_FIX_001 + MIN_ENTRY_CONFIDENCE_001) and the bridge loop is confirmed running (rec_age rejections are firing). Gate will fire once afternoon games go live and fresh recs are produced.",
+      "rec_age_rejections_seen": "mlb-tex-lad-2026-04-11, mlb-col-sd-2026-04-10, mlb-hou-sea-2026-04-10, mlb-bos-stl-2026-04-10, mlb-wsh-mil-2026-04-10 — all stale"
+    },
+    "no_bad_confidence_trade_post_restart": {
+      "result": "PASS",
+      "evidence": "state.json loop_count=4, no trades opened post-restart. All intents rejected at rec_age stage."
+    },
+    "no_bad_entry_price_trade_post_restart": {
+      "result": "PASS",
+      "evidence": "Same — no trades opened post-restart."
+    },
+    "single_bot_core_process": {
+      "result": "PASS",
+      "evidence": "wmic query shows exactly one bot_core.py process: PID 8808",
+      "note": "Two STARTUP_PROOF lines in log (pid=32504 at 10:57, pid=8808 at 11:01). First was killed and relaunched. Only PID 8808 currently running."
+    },
+    "session_start_ts_fresh": {
+      "result": "PASS — correctly restored",
+      "value": 1775883558,
+      "explanation": "SESSION_PNL_TRUE_START_FIX_001 is active — bot restored prior session's start timestamp from state.json. This is correct behavior. The timestamp represents the true session start, not just the last restart time."
+    }
+  },
+
+  "overall_verdict": "PASS with one pending item",
+  "pending_item": "Confidence gate live-fire (criterion 3) cannot be verified until afternoon games go live and fresh recommendations are produced. Monitor for BRIDGE GATE REJECT [check_entry_gates] with confidence_too_low reason when first live rec arrives.",
+
+  "key_proof_points": [
+    "config_hash f87077f219dd confirmed in both state.json and STARTUP_PROOF — different from stale 2f0dd9e0ef8a",
+    "STARTUP_PROOF shows MIN_ENTRY_CONFIDENCE=0.65 and MIN_ENTRY_PRICE=0.22 — these are the values the live process loaded",
+    "Only one bot_core.py process running (PID 8808)",
+    "Bridge loop is running and rejecting stale recs — process is alive and filtering",
+    "No trades opened post-restart — clean state"
+  ],
+
+  "proven": [
+    "Clean restart completed — new config loaded.",
+    "Config hash changed from stale 2f0dd9e0ef8a to f87077f219dd.",
+    "All gate values confirmed loaded at correct thresholds.",
+    "Single bot_core process confirmed.",
+    "No files modified."
+  ],
+
+  "recommended_next_step": "Manager review. Monitor log for first afternoon game rec to confirm confidence gate fires. When BRIDGE GATE REJECT [check_entry_gates] reasons=['confidence_too_low:...'] appears, verification is fully complete."
+}

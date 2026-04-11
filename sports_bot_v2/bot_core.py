@@ -43,8 +43,21 @@ BUILD_TAG = f"sports_bot_v2.{SPORT}.2026-03-29"
 ENGINE_TAG = f"sports_paper_{SPORT}"
 
 CONFIG_HASH = config_hash([
-    "SPORT", "LOOP_SECONDS", "MAX_SPREAD", "MIN_DEPTH_TOP5_USD", "MIN_CONFIDENCE",
-    "AUTO_TAKE_PROFIT_PCT", "AUTO_STOP_LOSS_PCT", "MAX_CONCURRENT_TRADES",
+    "AUTO_STOP_LOSS_PCT",
+    "AUTO_TAKE_PROFIT_PCT",
+    "DAILY_MAX_LOSS_USD",
+    "LATE_INNING_BLOCK",
+    "LOOP_SECONDS",
+    "MAX_CONCURRENT_TRADES",
+    "MAX_SPREAD",
+    "MAX_TOTAL_COMMITTED_USD",
+    "MAX_TRADES_PER_MARKET",
+    "MIN_CONFIDENCE",
+    "MIN_DEPTH_TOP5_USD",
+    "MIN_ENTRY_CONFIDENCE",
+    "MIN_ENTRY_PRICE",
+    "SESSION_MAX_LOSS_USD",
+    "SPORT",
 ])
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
@@ -90,6 +103,9 @@ from core.mode import update_mode, record_closed_trade, get_mode_ctx
 from core.orderbook import get_orderbook_snapshot
 from core.paper_exec import open_position, close_position, mark_to_market_value
 from core.risk import check_entry_gates, check_exit, set_current_loop, NEAR_RESOLUTION_PRICE
+
+LATE_INNING_BLOCK = int(os.getenv("LATE_INNING_BLOCK", "7"))
+MAX_SLUG_ENTRIES_SESSION = int(os.getenv("MAX_SLUG_ENTRIES_SESSION", "3"))
 from core.types import Market, Trade, Signal
 from core.model_bridge import get_approved_intents
 
@@ -102,6 +118,7 @@ _last_guard_reasons: list[str] = []
 _guard_market_blocks: dict[str, int] = defaultdict(int)
 _last_invalid_market_details: dict = {}
 _market_cooldown: dict[str, float] = {}   # market_id → expiry timestamp
+_session_gap_stop_bans: set = set()       # (market_slug, side) → banned for session after gap_stop
 _exit_reason_counts: dict[str, int] = defaultdict(int)  # exit reason → count
 _resolved_markets: dict = {}
 _resolved_markets_mtime: float = 0.0
@@ -337,11 +354,34 @@ def main():
     logger.info("  loop=%ds  max_conc=%d  min_conf=%.2f", LOOP_SECONDS, MAX_CONCURRENT_TRADES, MIN_CONFIDENCE)
     logger.info("=" * 60)
 
+    # Startup proof — emit once per process start for log-based restart verification
+    logger.info(
+        "STARTUP_PROOF %s",
+        json.dumps({
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "pid": os.getpid(),
+            "python": sys.executable,
+            "cwd": os.getcwd(),
+            "env_path": str(_ENV_PATH),
+            "config_hash": CONFIG_HASH,
+            "gates": {
+                "MIN_ENTRY_CONFIDENCE": float(os.getenv("MIN_ENTRY_CONFIDENCE", "0.60")),
+                "MIN_ENTRY_PRICE": float(os.getenv("MIN_ENTRY_PRICE", "0.15")),
+                "MIN_CONFIDENCE": float(os.getenv("MIN_CONFIDENCE", "0.25")),
+                "MAX_CONCURRENT_TRADES": int(os.getenv("MAX_CONCURRENT_TRADES", "3")),
+                "MAX_TRADES_PER_MARKET": int(os.getenv("MAX_TRADES_PER_MARKET", "1")),
+                "LATE_INNING_BLOCK": int(os.getenv("LATE_INNING_BLOCK", "0")),
+                "AUTO_STOP_LOSS_PCT": float(os.getenv("AUTO_STOP_LOSS_PCT", "0.20")),
+                "LOOP_SECONDS": int(os.getenv("LOOP_SECONDS", "30")),
+            },
+        }, separators=(",", ":")),
+    )
+
     init_db()
     _write_pid()
 
     # ── Restore cooldown and session start from prior state ───────────────
-    global _market_cooldown, _session_start_ts
+    global _market_cooldown, _session_start_ts, _session_gap_stop_bans
     try:
         with open(STATE_PATH) as _f:
             _prior = json.load(_f)
@@ -541,6 +581,53 @@ def main():
                         _bridge_open_per_market: dict[str, int] = {}
                         for _t in current_open:
                             _bridge_open_per_market[_t.market_id] = _bridge_open_per_market.get(_t.market_id, 0) + 1
+                        _intent_inning = intent.get("inning")
+                        try:
+                            _intent_inning = int(_intent_inning) if _intent_inning is not None else None
+                        except (TypeError, ValueError):
+                            _intent_inning = None
+                        if _intent_inning is not None and _intent_inning >= LATE_INNING_BLOCK:
+                            logger.info(
+                                "BRIDGE GATE REJECT [late_inning_block] slug=%s reason=inning=%s>=%s",
+                                market.slug,
+                                _intent_inning,
+                                LATE_INNING_BLOCK,
+                            )
+                            _guard_block_count += 1
+                            loop_guard_reasons.append("bridge:late_inning_block")
+                            _bridge_consumed_slugs.add(market.slug)
+                            continue
+                        _intent_side = intent.get("side", "")
+                        if _intent_side and (market.slug, _intent_side) in _session_gap_stop_bans:
+                            logger.info(
+                                "BRIDGE GATE REJECT [check_entry_gates] slug=%s reasons=%s",
+                                market.slug,
+                                [f"post_gap_stop_session_ban:{market.slug}:{_intent_side}"],
+                            )
+                            _guard_block_count += 1
+                            loop_guard_reasons.append("bridge:post_gap_stop_session_ban")
+                            _bridge_consumed_slugs.add(market.slug)
+                            continue
+                        if MAX_SLUG_ENTRIES_SESSION > 0:
+                            try:
+                                import sqlite3 as _sqlite3
+                                with _sqlite3.connect(DB_PATH, timeout=2.0) as _sc:
+                                    _slug_count = _sc.execute(
+                                        "SELECT COUNT(*) FROM trades WHERE market_slug = ? AND date(ts_open) >= date('now', 'localtime')",
+                                        (market.slug,),
+                                    ).fetchone()[0]
+                                if _slug_count >= MAX_SLUG_ENTRIES_SESSION:
+                                    logger.info(
+                                        "BRIDGE GATE REJECT [check_entry_gates] slug=%s reasons=%s",
+                                        market.slug,
+                                        [f"session_slug_cap_exceeded:{_slug_count}>={MAX_SLUG_ENTRIES_SESSION}"],
+                                    )
+                                    _guard_block_count += 1
+                                    loop_guard_reasons.append("bridge:session_slug_cap_exceeded")
+                                    _bridge_consumed_slugs.add(market.slug)
+                                    continue
+                            except Exception as _sce:
+                                logger.warning("session_slug_cap check failed: %s", _sce)
                         _gate_ok, _gate_reasons = check_entry_gates(
                             ob,
                             signal,
@@ -675,6 +762,11 @@ def main():
                         elif reason == "gap_stop":
                             _market_cooldown[trade.market_id] = time.time() + 3600
                             logger.info("Cooldown set for market %s (gap_stop exit, 60m)", trade.market_slug[:30])
+                            _session_gap_stop_bans.add((trade.market_slug, trade.side))
+                            logger.info(
+                                "SESSION BAN [gap_stop] slug=%s side=%s — same-side re-entry blocked for session",
+                                trade.market_slug, trade.side,
+                            )
                         logger.info(
                             "CLOSE trade=%d %s reason=%s pnl=%.4f",
                             trade.id, trade.market_slug[:25], reason, close_data.get("pnl_usd", 0),

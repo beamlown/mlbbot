@@ -1,5 +1,5 @@
 # CLAUDE_STATUS.md — Manager Status Snapshot
-## Last reconciled: 2026-04-10 (end of night) — 0 ACTIVE tasks. .env updated (MIN_ENTRY_CONFIDENCE=0.65, MIN_ENTRY_PRICE=0.22). CRITICAL: live process did not load new config at either restart tonight. Bot opened trades through id=310 at conf=0.43/0.55 and entry=0.01 with gates not enforcing. Must kill bot_core and do verified clean restart before any new trades tomorrow.
+## Last reconciled: 2026-04-11 — POST_GAP_STOP_SAME_SIDE_SESSION_BAN_001 APPROVED. All Track A urgent patches now in source. No active code-change tasks. RESTART_CONFIG_HASH_VERIFY_001 queued pending operator cold restart. CRITICAL: do cold restart (pyc delete + relaunch) to activate all 8 patches.
 
 ---
 
@@ -74,11 +74,13 @@
 
 ## Active Tasks
 
-_None._
+_(none — all patches in source, awaiting cold restart)_
 
-## Queued Tasks
+## Queued Tasks (in order — see CLAUDE_TASK_BOARD.md for full detail)
 
-_None — all previously queued tasks are DONE._
+| task_id | status | unlock condition |
+|---------|--------|-----------------|
+| RESTART_CONFIG_HASH_VERIFY_001 | QUEUED (read-only) | Cold restart confirmed by operator |
 
 ---
 

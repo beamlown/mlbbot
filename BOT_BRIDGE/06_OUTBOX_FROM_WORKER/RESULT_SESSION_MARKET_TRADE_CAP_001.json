@@ -1,0 +1,60 @@
+{
+  "mode_used": "WORKER MODE",
+  "task_selected": "SESSION_MARKET_TRADE_CAP_001",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_SESSION_MARKET_TRADE_CAP_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_SESSION_MARKET_TRADE_CAP_001.md",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\db.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env"
+  ],
+  "code_path_added": {
+    "file": "bot_core.py",
+    "location": "Bridge loop — immediately before check_entry_gates() call, after LATE_INNING_BLOCK pre-gate check",
+    "approach": "Pre-gate check in bot_core.py (same pattern as LATE_INNING_BLOCK). Chose this over adding to risk.py to avoid adding DB coupling to the risk waterfall for a session-level concern.",
+    "module_level_var": "MAX_SLUG_ENTRIES_SESSION = int(os.getenv('MAX_SLUG_ENTRIES_SESSION', '3')) — added at line 108",
+    "gate_logic": "If MAX_SLUG_ENTRIES_SESSION > 0: query trades DB for COUNT(*) WHERE market_slug=? AND date(ts_open) >= date('now', 'localtime'). If count >= cap, emit BRIDGE GATE REJECT and continue.",
+    "db_query": "SELECT COUNT(*) FROM trades WHERE market_slug = ? AND date(ts_open) >= date('now', 'localtime')",
+    "count_includes": "Both open and closed trades for today (no status filter — query counts all rows for slug on today's date)"
+  },
+  "rejection_log_format": "BRIDGE GATE REJECT [check_entry_gates] slug=mlb-cws-kc-2026-04-11 reasons=['session_slug_cap_exceeded:3>=3']",
+  "env_changes": {
+    "MAX_SLUG_ENTRIES_SESSION": "3 — added to .env in Risk / position sizing section alongside MAX_CONCURRENT_TRADES and MAX_TRADES_PER_MARKET"
+  },
+  "verification_performed": [
+    "Confirmed DB column market_slug and ts_open exist in trades table (core/db.py lines 25, 23)",
+    "Confirmed DB_PATH module-level constant used in query (not re-read from env inside check)",
+    "Confirmed guard is additive — does not change MAX_TRADES_PER_MARKET behavior",
+    "Confirmed count includes open + closed trades (no WHERE status filter)",
+    "Confirmed rejection log matches BRIDGE GATE REJECT [check_entry_gates] format as required",
+    "Ran python -m py_compile bot_core.py — PASS"
+  ],
+  "py_compile_results": {
+    "bot_core.py": "PASS",
+    "core/risk.py": "not modified"
+  },
+  "restart_needed": "Yes — MAX_SLUG_ENTRIES_SESSION must be loaded on restart. Also pyc cache must be cleared to pick up all prior patches.",
+  "observed": [
+    "risk.py was not modified — the check is implemented in bot_core.py pre-gate, consistent with LATE_INNING_BLOCK pattern.",
+    "The DB query uses date('now', 'localtime') — matches the intent of 'today's session'. If operator runs sessions across midnight, trades from before midnight will not count toward today's cap, which is correct.",
+    "DB_PATH is defined at module level in bot_core.py and is available at the call site."
+  ],
+  "proven": [
+    "After 3 total entries (open + closed) on a slug today, a 4th entry attempt is rejected with session_slug_cap_exceeded reason.",
+    "MAX_SLUG_ENTRIES_SESSION is configurable via .env (default 3).",
+    "Rejection format matches BRIDGE GATE REJECT [check_entry_gates] pattern.",
+    "Only bot_core.py and .env modified.",
+    "py_compile PASS."
+  ],
+  "ruled_out": [
+    "Ruled out: changes to core/risk.py.",
+    "Ruled out: changes to MAX_TRADES_PER_MARKET behavior.",
+    "Ruled out: any dashboard, stream, or exit logic changes."
+  ],
+  "recommended_next_step": "Manager review. If approved: cold restart with pyc clear activates this gate along with all prior patches."
+}
