@@ -37,6 +37,7 @@ SL_COOLDOWN_LOOPS = int(os.getenv("SL_COOLDOWN_LOOPS", "5"))
 ENTRY_EVENT_MAX_AGE_MINUTES = int(os.getenv("ENTRY_EVENT_MAX_AGE_MINUTES", "300"))
 ENTRY_FAIL_CLOSED_ON_MISSING_METADATA = os.getenv("ENTRY_FAIL_CLOSED_ON_MISSING_METADATA", "true").lower() == "true"
 MAX_ENTRY_PRICE = float(os.getenv("MAX_ENTRY_PRICE", "0.99"))
+MIN_ENTRY_PRICE = float(os.getenv("MIN_ENTRY_PRICE", "0.15"))
 MIN_ENTRY_CONFIDENCE = float(os.getenv("MIN_ENTRY_CONFIDENCE", "0.60"))
 MAX_TOTAL_COMMITTED_USD = float(os.getenv("MAX_TOTAL_COMMITTED_USD", "150"))
 
@@ -187,6 +188,10 @@ def check_entry_gates(
         return False, [f"entry_price_too_high:{ob.ask_yes:.4f}>={MAX_ENTRY_PRICE:.4f}"]
     if sig.side == "BUY_NO" and ob.ask_no is not None and ob.ask_no >= MAX_ENTRY_PRICE:
         return False, [f"entry_price_too_high:{ob.ask_no:.4f}>={MAX_ENTRY_PRICE:.4f}"]
+
+    ask_side = ob.ask_yes if sig.side == "BUY_YES" else ob.ask_no
+    if ask_side is not None and ask_side < MIN_ENTRY_PRICE:
+        return False, [f"entry_price_too_low:{ask_side:.4f}<{MIN_ENTRY_PRICE:.4f}"]
 
     # Block entry if the market is already near resolution — entering here just locks in a loss
     if sig.side == "BUY_YES" and ob.bid_yes is not None and ob.bid_yes >= NEAR_RESOLUTION_PRICE:
