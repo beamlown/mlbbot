@@ -1,13 +1,66 @@
 {
   "task_id": "MARKET_COOLDOWN_PERSIST_001",
-  "type": "code_fix",
-  "priority": "HIGH",
-  "status": "QUEUED",
-  "queued_reason": "bot_core.py conflict with BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 — execute after dupe-slug fix is DONE",
-  "issued": "2026-04-11",
-  "subsystem": "runtime_state / cooldown",
   "title": "Persist market cooldown across restarts",
-  "allowed_files": ["bot_core.py"],
-  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_MARKET_COOLDOWN_PERSIST_001.md",
-  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_MARKET_COOLDOWN_PERSIST_001.json"
+  "priority": "HIGH",
+  "type": "surgical code fix",
+  "issued": "2026-04-10",
+  "subsystem": "risk / market cooldown persistence",
+  "status": "ACTIVE",
+  "depends_on": "BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 (APPROVED)",
+  "context": {
+    "problem_statement": "Tonight's approved audit found that _market_cooldown is written in the close path but stored only in memory. Restarts wipe it, allowing markets to reopen before their intended cooldown expiry.",
+    "manager_intent": "Implement the smallest safe persistence path so market cooldown expiry timestamps survive restart and are reloaded on startup."
+  },
+  "objective": "Write _market_cooldown expiry timestamps into the runtime state path and reload them on startup so cooldown protection survives restart.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "conditional_allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json write/read path only as implemented through existing code in bot_core.py or a tiny directly related state helper if strictly required"
+  ],
+  "read_only_context_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260410.log",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db (SELECT only)",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py",
+    "Any file not listed above"
+  ],
+  "forbidden_actions": [
+    "Broad repo sweep",
+    "Read every file in the repo",
+    "Unrelated bot_core refactors",
+    "Threshold tuning changes",
+    "Restart processes",
+    "Manual edits to runtime/state.json outside the code path",
+    "DB writes",
+    "Open new tasks"
+  ],
+  "required_work": [
+    "Inspect where _market_cooldown is written in the close path",
+    "Inspect the existing state write path and startup load path in bot_core.py",
+    "Add the smallest safe persistence so cooldown expiry timestamps are included in state output and reloaded on startup",
+    "Preserve existing cooldown semantics; only add persistence/reload behavior",
+    "Keep the patch local and minimal"
+  ],
+  "acceptance_criteria": [
+    "_market_cooldown expiry timestamps are persisted through the runtime state path",
+    "Cooldown data is reloaded on startup",
+    "Restart no longer wipes active cooldowns",
+    "No files outside allowed scope are modified unless explicitly documented under conditional scope",
+    "python -m py_compile bot_core.py passes"
+  ],
+  "verification_required": [
+    "Show the exact function/section changed",
+    "Explain old behavior vs new behavior",
+    "Show where cooldown is written and where it is reloaded",
+    "Run py_compile on each changed Python file",
+    "State whether restart is required for the fix to take effect"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MARKET_COOLDOWN_PERSIST_001.json"
 }
