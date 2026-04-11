@@ -1,5 +1,5 @@
 # CLAUDE_STATUS.md — Manager Status Snapshot
-## Last reconciled: 2026-04-10 — Postfix verify PARTIAL PASS. Two gate bypass issues found. Dashboard audit task opened.
+## Last reconciled: 2026-04-10 — DASHBOARD_MARK_SOURCE_AND_GUARD_MESSAGE_AUDIT_001 PARTIAL PASS (dashboard layer cleared). MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 opened for upstream trace.
 
 ---
 
@@ -22,7 +22,7 @@
 - At-bat upgrade live: dominant score hierarchy, count chips, batter/pitcher identity, last-play text (DASHBOARD_LIVE_ATBAT_POLISH_001 PROVISIONAL PASS)
 - **Note:** dashboard_server.py was modified by ATBAT task — if not in Flask debug mode, dashboard_server.py process restart needed for current_batter/pitcher fields to appear
 - **Truth status: FIXED** — Realized P&L authoritative, mark_source chip visible, R25 sublabel correct
-- **Display issues under audit** — DASHBOARD_MARK_SOURCE_AND_GUARD_MESSAGE_AUDIT_001 ACTIVE. Operator reported: (1) position cards showing `mark REST` chip (REST fallback pricing) instead of live stream marks; (2) "max down" style warning message when runtime guard reasons are `micro_depth_too_low` and `micro_spread_too_wide`. Worker audit pending.
+- **Display issues — upstream trace in progress** — DASHBOARD_MARK_SOURCE_AND_GUARD_MESSAGE_AUDIT_001 PARTIAL PASS: dashboard layer cleared (mark REST chip is expected rest_fallback behavior; "max down" text not hardcoded in dashboard). Upstream payload origin and fallback frequency unresolved. MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 ACTIVE — tracing mark_source production chain, fallback frequency, and guard payload write path.
 
 ### mlb_model
 - Authority: clean (execution_guard.py deleted, ROLLBACK_DISABLE removed)
@@ -40,6 +40,7 @@
 | BRIDGE_ENTRY_GATE_WIRING_FIX_001 | APPROVED — patch applied to bot_core.py; py_compile PASS |
 | DASHBOARD_LIVE_ATBAT_POLISH_001 | PROVISIONAL PASS — at-bat UI upgraded; next_three_up deferred (data unavailable in ESPN path) |
 | CONFIDENCE_GATE_POSTFIX_VERIFY_001 | PARTIAL PASS — gate confirmed at restart 1 (3 rejections); 2 bypass paths found (duplicate intent, stale pyc). Fix tasks required. |
+| DASHBOARD_MARK_SOURCE_AND_GUARD_MESSAGE_AUDIT_001 | PARTIAL PASS — dashboard layer cleared; upstream payload origin unresolved. Follow-on: MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001. |
 
 ---
 

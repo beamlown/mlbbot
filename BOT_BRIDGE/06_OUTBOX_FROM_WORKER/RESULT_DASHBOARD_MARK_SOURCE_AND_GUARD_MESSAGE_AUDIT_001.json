@@ -1,0 +1,42 @@
+{
+  "task_id": "DASHBOARD_MARK_SOURCE_AND_GUARD_MESSAGE_AUDIT_001",
+  "status": "COMPLETE",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_DASHBOARD_MARK_SOURCE_AND_GUARD_MESSAGE_AUDIT_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_DASHBOARD_MARK_SOURCE_AND_GUARD_MESSAGE_AUDIT_001.md",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\dashboard.log"
+  ],
+  "files_changed": [],
+  "exact_lines_areas_changed": [],
+  "summary": {
+    "mark_rest_reason": "Expected fallback behavior, not by itself a bug. dashboard_server.py emits mark_source='rest_fallback' when stale REST polling refreshes a mark, and dashboard.html intentionally renders this as a compact 'mark REST' chip.",
+    "guard_message_reason": "No current runtime evidence of a real max-down style guard reason in runtime/state.json. The dashboard guard UI renders generic key/value badges from state.last_guard_result or state.guard; any 'max down' style wording would have to come from upstream runtime payload/history, not from a hardcoded dashboard binding in the audited files.",
+    "fault_domain": {
+      "dashboard_html_binding": "Mark source display is intentional and correctly bound to mark_source values. Guard display is generic and does not synthesize a specific max-down reason.",
+      "dashboard_server_payload_mapping": "Mark source mapping is correct: positions payload includes mark_source from state hub marks. REST fallback log lines confirm rest_fallback is actively being produced.",
+      "underlying_runtime_feed_state": "Current runtime/feed state is using REST fallback for at least one live card, which explains 'mark REST'. Any unexpected guard wording likely originates upstream in bot/runtime state, not from the dashboard layer audited here."
+    }
+  },
+  "verification_evidence": [
+    "dashboard_server.py emits '[STALE_POLL]' log lines and sets source='rest_fallback' when stale REST polling succeeds.",
+    "Live SSE sample from /api/stream/state showed slug 'mlb-wsh-mil-2026-04-10' with mark_source='rest_fallback' and current_price_stale=false.",
+    "dashboard.html contains explicit mark-source rendering logic that maps rest_fallback to a visible 'mark REST' chip.",
+    "dashboard.html guard rendering reads only state.last_guard_result or state.guard and displays raw key/value badges; it does not hardcode a 'max down' label.",
+    "runtime/state.json currently shows null for last_guard_result, guard, last_guard_reason, and last_guard_reasons during this audit pass."
+  ],
+  "acceptance_criteria_met": {
+    "why_cards_show_mark_rest": true,
+    "classify_mark_rest_behavior": true,
+    "why_max_down_warning_appears": true,
+    "locate_fault_domain": true
+  },
+  "residual_risks": [
+    "Guard-message issue is only partially attributable with current runtime snapshot because state.json did not contain active guard payloads during the audit; historical or transient upstream payloads may still need capture if the warning recurs.",
+    "The audit confirms 'mark REST' is fallback behavior, but whether fallback frequency is acceptable operationally is a separate reliability question outside this brief."
+  ],
+  "restart_required": false,
+  "result_file_path": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_DASHBOARD_MARK_SOURCE_AND_GUARD_MESSAGE_AUDIT_001.json"
+}

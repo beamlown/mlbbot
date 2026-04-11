@@ -1,0 +1,42 @@
+{
+  "task_id": "MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001",
+  "type": "read_only_trace",
+  "priority": "MEDIUM",
+  "status": "ACTIVE",
+  "issued": "2026-04-10",
+  "subsystem": "dashboard / stream / runtime state",
+  "title": "Trace mark-source fallback frequency and guard-message payload origin",
+  "one_sentence": "Determine exactly where mark_source is set, what condition triggers rest_fallback, how often fallback is occurring, and where the guard/warning text originates in the payload chain before it reaches the dashboard UI.",
+  "prior_task": "DASHBOARD_MARK_SOURCE_AND_GUARD_MESSAGE_AUDIT_001 (PARTIAL PASS) — dashboard layer cleared; upstream origin not traced",
+  "allowed_files": [
+    "runtime/state.json",
+    "dashboard_server.py",
+    "logs/dashboard.log",
+    "logs/dashboard_err.log",
+    "core/polymarket_stream.py (Step 5 only — justify if used)",
+    "bot_core.py (Step 5 only, guard payload write path only — justify if used)"
+  ],
+  "forbidden_files": [
+    "core/risk.py",
+    "launch_all.py",
+    ".env",
+    "trades_sports.db",
+    "dashboard.html (already audited)"
+  ],
+  "read_only": true,
+  "no_code_edits": true,
+  "no_restarts": true,
+  "no_db_writes": true,
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001.json",
+  "acceptance_criteria": [
+    "read_only_confirmed: true",
+    "Exact function + condition in dashboard_server.py that sets mark_source",
+    "Explicit staleness/stream-health trigger condition for rest_fallback",
+    "Severity label (a/b/c/d/e) for current fallback frequency with evidence",
+    "Guard/warning payload write chain traced to source",
+    "Explicit answer on whether 'max down' text is present anywhere in current runtime state",
+    "Root-cause classification for both symptoms",
+    "Result written to correct path"
+  ]
+}
