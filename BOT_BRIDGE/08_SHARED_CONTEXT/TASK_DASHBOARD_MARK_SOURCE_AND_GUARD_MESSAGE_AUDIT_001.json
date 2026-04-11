@@ -1,0 +1,41 @@
+{
+  "task_id": "DASHBOARD_MARK_SOURCE_AND_GUARD_MESSAGE_AUDIT_001",
+  "type": "read_only_audit",
+  "priority": "MEDIUM",
+  "status": "ACTIVE",
+  "issued": "2026-04-10",
+  "subsystem": "dashboard",
+  "title": "Audit mark REST chip and max-down warning message — identify display chain root causes",
+  "one_sentence": "Determine why position cards show mark REST instead of live stream marks, and why the dashboard shows a max-down style warning when runtime guard reasons are micro_depth_too_low and micro_spread_too_wide.",
+  "allowed_files": [
+    "runtime/state.json",
+    "logs/dashboard.log",
+    "logs/dashboard_err.log",
+    "dashboard.html",
+    "dashboard_server.py",
+    "core/polymarket_stream.py (Step 5 only — justify if used)"
+  ],
+  "forbidden_files": [
+    "bot_core.py",
+    "core/risk.py",
+    "launch_all.py",
+    ".env",
+    "trades_sports.db"
+  ],
+  "read_only": true,
+  "no_code_edits": true,
+  "no_restarts": true,
+  "no_db_writes": true,
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_DASHBOARD_MARK_SOURCE_AND_GUARD_MESSAGE_AUDIT_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_DASHBOARD_MARK_SOURCE_AND_GUARD_MESSAGE_AUDIT_001.json",
+  "acceptance_criteria": [
+    "read_only_confirmed: true",
+    "mark_source chain documented from state.json to chip display",
+    "Explicit cause label (a/b/c/d/e) for mark REST with evidence",
+    "Explicit identification of what triggers the max-down style message",
+    "Actual guard_reasons values from live runtime state",
+    "Assessment of whether displayed message is accurate or misleading",
+    "Root-cause classification for both symptoms",
+    "Result written to correct path"
+  ]
+}
