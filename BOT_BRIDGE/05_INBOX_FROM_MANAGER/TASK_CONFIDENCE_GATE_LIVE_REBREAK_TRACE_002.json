@@ -1,0 +1,59 @@
+{
+  "task_id": "CONFIDENCE_GATE_LIVE_REBREAK_TRACE_002",
+  "title": "Trace exact live open path for current confidence-gate rebreak",
+  "priority": "HIGH",
+  "type": "expanded-scope read-only runtime trace",
+  "issued": "2026-04-10",
+  "subsystem": "risk / entry-gating / bridge open flow",
+  "status": "ACTIVE",
+  "depends_on": "CONFIDENCE_GATE_LIVE_REBREAK_FIX_001 (BLOCKED)",
+  "context": {
+    "problem_statement": "Fresh live runtime still opened sub-0.60 trades after restart, but the current on-disk bot_core.py already appears to reject and continue on failed gate checks in the inspected bridge path. The exact live bypass/open path is still not proven.",
+    "known_live_examples": [
+      "trade 241 confidence=0.3863",
+      "trade 243 confidence=0.3279",
+      "trade 244 confidence=0.3769"
+    ],
+    "manager_intent": "Do not patch code until the exact current live open path is proven from logs/code/DB evidence."
+  },
+  "objective": "Prove exactly how current live sub-0.60 trades are still reaching open_position() after restart, despite the inspected bridge path appearing to reject and continue on failed gate checks.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260410.log",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db (SELECT only)"
+  ],
+  "conditionally_allowed_files": [
+    "Any other file in sports_bot_v2 only if it contains another live call site to open_position(...) or a bridge-entry helper discovered during the trace, and only if the worker documents why it was necessary"
+  ],
+  "forbidden_actions": [
+    "Edit any code",
+    "Restart processes",
+    "DB writes",
+    "Open new tasks",
+    "Broad repo sweep without targeting entry/open call sites"
+  ],
+  "required_work": [
+    "Enumerate the current live call sites and paths that can reach open_position(...) for bridge-issued entries",
+    "Trace the current live evidence for trades 241, 243, and 244 against the surrounding log lines",
+    "Identify whether the current mismatch is due to another open path, duplicate/repeated intents, loop re-entry, stale process/runtime divergence, or another concrete cause",
+    "If another file must be read to prove an alternate open path, keep that expansion minimal and explicitly justify it"
+  ],
+  "questions": [
+    "1. What exact path reached open_position(...) for trades 241, 243, and 244?",
+    "2. Did those trades pass through the failed-gate branch the worker inspected, or another path?",
+    "3. Are duplicate/repeated intents still involved in the current live rebreak?",
+    "4. Is the running behavior inconsistent with on-disk code, or is there another on-disk path that still permits the open?",
+    "5. What exact file/function should the next fix task target?"
+  ],
+  "acceptance_criteria": [
+    "read_only_confirmed: true",
+    "Exact open path identified or narrowed to one concrete path",
+    "Trades 241/243/244 traced against surrounding logs/DB/code evidence",
+    "Explicit answer on whether another open_position path exists",
+    "Explicit recommendation for the next fix target file/function"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_CONFIDENCE_GATE_LIVE_REBREAK_TRACE_002.json"
+}

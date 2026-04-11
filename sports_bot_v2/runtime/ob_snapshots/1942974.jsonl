@@ -1,0 +1,1 @@
+{"bid_yes": 0.23, "ask_yes": 0.4, "bid_no": 0.6, "ask_no": 0.77, "spread_yes": 0.17, "spread_no": 0.17000000000000004, "depth_top5_usd_yes": 0.0, "depth_top5_usd_no": 0.0, "imbalance": 0.0, "micro_ok": false, "micro_reason": "spread_too_wide", "fetched_at": "2026-04-11T01:37:22.986772+00:00"}
