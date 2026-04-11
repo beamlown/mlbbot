@@ -23,5 +23,4 @@ Approve `BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001`.
 
 ## Manager judgment
 Close `BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001` to DONE.
-Promote the next queued critical risk task:
-`MARKET_COOLDOWN_PERSIST_001`
+Promote `MARKET_COOLDOWN_PERSIST_001` to ACTIVE.

@@ -2,13 +2,13 @@
   "engine": "sports_paper_baseball",
   "build": "sports_bot_v2.baseball.2026-03-29",
   "sport": "baseball",
-  "now": "2026-04-11T02:26:52.061535+00:00",
-  "loop_count": 3,
+  "now": "2026-04-11T02:30:24.042750+00:00",
+  "loop_count": 5,
   "config_hash": "2f0dd9e0ef8a",
   "pnl": {
     "realized": 97.9182,
-    "unrealized": -3.8342,
-    "net": 94.084,
+    "unrealized": 5.4266,
+    "net": 103.3448,
     "session_start_ts": 1775874090
   },
   "slots": {
@@ -84,7 +84,7 @@
       "entry_px": 0.3618,
       "qty": 138.197899,
       "confidence": 0.3996,
-      "pnl_usd": -0.4975,
+      "pnl_usd": -1.8726,
       "ts_open": "2026-04-11T02:00:41.137952+00:00",
       "source": "model_bridge"
     },
@@ -96,7 +96,7 @@
       "entry_px": 0.29145,
       "qty": 171.556013,
       "confidence": 0.6429,
-      "pnl_usd": -2.2045,
+      "pnl_usd": 4.6234,
       "ts_open": "2026-04-11T02:26:13.943476+00:00",
       "source": "model_bridge"
     },
@@ -108,7 +108,7 @@
       "entry_px": 0.7839,
       "qty": 63.783646,
       "confidence": 0.6429,
-      "pnl_usd": -1.1322,
+      "pnl_usd": 2.6757,
       "ts_open": "2026-04-11T02:26:14.404835+00:00",
       "source": "model_bridge"
     }
@@ -205,5 +205,5 @@
       "exit_px": 0.3582
     }
   ],
-  "status_line": "loop=3 sport=baseball mode=neutral open=1 guard_block=196"
+  "status_line": "loop=5 sport=baseball mode=neutral open=3 guard_block=196"
 }
