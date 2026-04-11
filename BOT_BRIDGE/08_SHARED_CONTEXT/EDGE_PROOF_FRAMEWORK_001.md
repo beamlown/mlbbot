@@ -94,9 +94,11 @@ Trades 310 and 316 entered at 0.01 and 0.011 — below the now-enforced MIN_ENTR
 
 *0.55-0.60 positive avg_pnl is suspicious — likely contains near-resolution winners.
 
-**Confidence is INVERTED.** Higher confidence → lower win rate. This is a critical finding. The model's confidence output is not calibrated as a probability. The 0.30-0.40 bucket outperforms 0.60-0.65. This means the confidence gate at 0.65 is not filtering low-quality signals — it may be filtering the better signals.
+**Confidence inversion is largely an artifact.** MODEL_SIGNAL_QUALITY_AUDIT_001 confirmed: removing trades 183/184/185/316 from the 0.30-0.40 bucket flips it from +$830 to -$65. The apparent low-confidence superiority was driven by 4 trades (+$895 combined). The gate is not disproven.
 
-**E6 fails on current data.**
+**However: high-confidence buckets are still genuinely bad.** The 0.60-0.65 bucket is -$826 over 86 trades even with no outlier contamination. The failure mechanism is stop_loss + gap_stop damage, not low win rate alone: stop_loss = -$587, gap_stop = -$683, take_profit = +$446. This is a different problem — not that the gate selects wrong-direction trades, but that high-confidence entries are getting exit-damaged before resolution.
+
+**E6 status: FAIL (revised interpretation).** Confidence is not broadly inverted. But it is also not predictive in the intended direction — high-confidence buckets remain negative in the historical sample. The failure mechanism is exit damage, not win-rate inversion. Whether this persists in the clean restart era is unanswered — CLEAN_RUNTIME_WINDOW_AUDIT_001 will resolve it.
 
 ### D. Side Asymmetry
 
@@ -105,7 +107,7 @@ Trades 310 and 316 entered at 0.01 and 0.011 — below the now-enforced MIN_ENTR
 | BUY_NO | 80 | 32.5% | +$5.79 |
 | BUY_YES | 191 | 23.6% | -$2.90 |
 
-BUY_NO has a materially higher win rate and positive expectancy. BUY_YES is deeply negative. This asymmetry is large and persistent — warrants separate treatment in every audit.
+BUY_NO's apparent advantage at low confidence is outlier-driven (lad-tor cluster in 0.30-0.40 bucket). The raw asymmetry headline is not structurally actionable. Whether BUY_NO retains an edge in the clean restart era requires CLEAN_RUNTIME_WINDOW_AUDIT_001.
 
 ### E. Era Analysis
 

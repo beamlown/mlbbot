@@ -1,86 +1,75 @@
 # CLAUDE_STATUS.md — Manager Status Snapshot
-## Last reconciled: 2026-04-11 — POST_GAP_STOP_SAME_SIDE_SESSION_BAN_001 APPROVED. All Track A urgent patches now in source. No active code-change tasks. RESTART_CONFIG_HASH_VERIFY_001 queued pending operator cold restart. CRITICAL: do cold restart (pyc delete + relaunch) to activate all 8 patches.
-
----
-
-## ⚠ OPERATOR ACTIONS REQUIRED (TOMORROW MORNING — DO BEFORE ANYTHING ELSE)
-
-**1. Kill bot_core process now if still running.** Do not leave it running overnight — gates are not enforcing.
-
-**2. Tomorrow: Full verified restart sequence:**
-   a. Kill entire stack (launch_all, bot_core, dashboard_server, resolution_watcher)
-   b. Delete `__pycache__/bot_core.cpython-*.pyc`
-   c. Relaunch from clean terminal
-   d. Immediately read `runtime/state.json` and confirm `config_hash` changed from `2f0dd9e0ef8a`
-   e. Watch log for first bridge gate: confirm `BRIDGE GATE REJECT [check_entry_gates]` fires for any sub-0.65 confidence rec before any new trade opens
-   f. Only trust the session after step (e) is confirmed in the log
-
-**3. Browser hard refresh (`Ctrl+Shift+R`) on the dashboard.**
+## Last reconciled: 2026-04-11 — Track A complete. Track B: EDGE_BASELINE + MODEL_SIGNAL_QUALITY both DONE. Confidence inversion is artifact. High-confidence exit damage is the live concern. Waiting on post-restart trade accumulation for CLEAN_RUNTIME_WINDOW_AUDIT_001 (n≥30 required).
 
 ---
 
 ## System State
 
 ### Launcher
-- `launch_all.py` — singleton guard active
+- `launch_all.py` — singleton guard active (SINGLE_STACK_LAUNCH_GUARD_001 DONE)
 - 4 children managed: `shadow_engine`, `bot_core`, `dashboard` (port 8900), `resolution_watcher`
 
 ### sports_bot_v2 (paper bot)
 - Mode: LIVE TRADES ACTIVE
 - Bridge: ENABLED (`ENABLE_MODEL_BRIDGE = True`)
-- **Confidence gate: PATCHED IN SOURCE — awaiting cold restart** — `bot_core.py` lines 504–525 patched. Stale `__pycache__/bot_core.cpython-*.pyc` must be deleted before patch executes.
-- **Tonight's session: -$159.54 on 40 closed trades.** 31/42 (73.8%) sub-0.60 confidence. Gate failure was primary cause.
-- **Currently open trades (from last state.json read):**
-  - #276: BUY_YES mlb-tex-lad entry=0.2412
-  - #277: BUY_YES mlb-hou-sea entry=0.3819
-- **Market cooldown: PATCHED IN SOURCE — awaiting cold restart** — MARKET_COOLDOWN_PERSIST_001 DONE.
-- **Session PnL: PATCHED IN SOURCE — awaiting cold restart** — SESSION_PNL_TRUE_START_FIX_001 DONE.
-- **Min entry price gate: PATCHED** — MIN_ENTRY_PRICE_GATE_001 DONE.
-- **TP math: PATCHED** — TP_NEAR_RESOLUTION_CAP_FIX_001 DONE.
-- **Dupe-slug bypass: PATCHED** — BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 DONE.
-- **Mark fallback reliability: LIVE** — MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001 DONE. dashboard_server.py patched. Dashboard restart confirmed.
+- **Clean restart confirmed 2026-04-11** — config_hash `f87077f219dd`, all gates correct
+- **Confidence gate: LIVE** — MIN_ENTRY_CONFIDENCE=0.65, 7 rejections confirmed in log
+- **Min entry price gate: LIVE** — MIN_ENTRY_PRICE=0.22
+- **Post-restart trades: 0** (n=0 since restart as of end of 2026-04-11)
+- All Track A patches active: cooldown persistence, session PnL, dupe-slug fix, gap_stop session ban, slug cap
+
+### Gate configuration (verified from STARTUP_PROOF log line)
+```
+MIN_ENTRY_CONFIDENCE: 0.65
+MIN_ENTRY_PRICE:      0.22
+MIN_CONFIDENCE:       0.25
+MAX_CONCURRENT_TRADES: 3
+MAX_TRADES_PER_MARKET: 1
+LATE_INNING_BLOCK:    7
+AUTO_STOP_LOSS_PCT:   0.12
+LOOP_SECONDS:         30
+```
 
 ### Dashboard
 - Running on port 8900
-- **Side semantics: FIXED** — POSITION_SIDE_SEMANTICS_MERGE_FIX_001 DONE. `renderUnifiedPositions()` no longer overwrites `side`, `backed_team`, `faded_team`, `entry_px`, `qty`, `id` from stale cache. **Hard refresh required.**
-- **Games-tab position lookup: FIXED** — `renderGamesTab()` slug-key date-suffix mismatch fixed. Open positions now appear in Games tab after hard refresh.
-- Truth status: FIXED — realized PnL authoritative, mark_source chip correct, R25 sublabel correct, side/team semantics correct.
-- At-bat upgrade: LIVE (DASHBOARD_LIVE_ATBAT_POLISH_001 PROVISIONAL PASS)
-- Mark fallback chain: RESOLVED — trace DONE (PARTIAL PASS), fix DONE (APPROVED), verify DONE (PROVISIONAL PASS)
+- Side semantics: FIXED (POSITION_SIDE_SEMANTICS_MERGE_FIX_001 DONE)
+- Mark fallback reliability: FIXED (MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001 DONE)
+- At-bat upgrade: LIVE
 
 ### mlb_model
-- Authority: clean (execution_guard.py deleted, ROLLBACK_DISABLE removed)
-- Producing today's recs via recommendation_api.py
-- resolution_watcher running
+- Authority: clean (execution_guard.py deleted)
+- Producing recs via recommendation_api.py
+- Shadow log: `C:\Users\johnny\Desktop\mlb_model\logs\shadow_recommendations.jsonl`
+  - ~63,000 entries, 18,760 BUY_YES/BUY_NO recs, 44,285 NO_TRADE recs
 
 ---
 
-## Completed This Session (2026-04-10)
+## Edge Proof Status (Track B)
 
-| Task | Outcome |
-|------|---------|
-| MARK_SOURCE_FALLBACK_RELIABILITY_VERIFY_001 | PROVISIONAL PASS — stream-mark authority confirmed in healthy case. Fallback path not live-fired in short window. |
-| MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001 | APPROVED — dashboard_server.py `_has_fresh_stream_mark` guard added. Stream marks stay primary. Dashboard restarted. |
-| MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 | PARTIAL PASS — mark-source chain documented. "max down" not found. REST fallback active due to upstream freshness, not UI bug. |
-| POSITION_SIDE_SEMANTICS_MERGE_FIX_001 | APPROVED — dashboard.html renderUnifiedPositions() and renderGamesTab() patched. Browser hard refresh required. |
-| POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001 | APPROVED — root cause confirmed at line 1139, stale full-object spread. |
-| SESSION_PNL_TRUE_START_FIX_001 | APPROVED — bot_core.py patched; session_start_ts persists across restarts. |
-| MARKET_COOLDOWN_PERSIST_001 | APPROVED — bot_core.py patched; cooldown expiry timestamps persist across restarts. |
-| BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 | APPROVED — bot_core.py bridge loop deduplication patched. |
-| TP_NEAR_RESOLUTION_CAP_FIX_001 | APPROVED — core/risk.py TP capped at 0.97 for near-resolution entries. |
-| MIN_ENTRY_PRICE_GATE_001 | APPROVED — core/risk.py min entry price gate added. |
+| Criterion | Status | Key finding |
+|-----------|--------|-------------|
+| E1 — positive net expectancy | **FAIL** | -$91.13 net, avg -$0.33/trade |
+| E2 — win rate > break-even | **MARGINAL FAIL** | 26.2% actual vs 26.7% required |
+| E3 — not single-slug concentrated | **FAIL** | lad-tor = +$630.79, explains all positive offset |
+| E4 — not single-trade concentrated | **FAIL** | top 5 = +$1,111 vs -$91 total; ex-top-5 = -$1,202 |
+| E5 — clean-runtime window | **DEFERRED** | n=0 post-restart |
+| E6 — confidence predictive | **FAIL** (revised) | Inversion is outlier artifact. High-confidence failure is exit-damage: stop_loss -$587 + gap_stop -$683 in 0.60-0.65 bucket |
+| E7 — gated universe edge | **DEFERRED** | n=5, -$59.77 |
+| E8 — beats random-side baseline | **UNRESOLVED** | proxy only, needs proper audit |
+
+**Overall verdict: NO PROVEN EDGE.**
 
 ---
 
 ## Active Tasks
 
-_(none — all patches in source, awaiting cold restart)_
+_(none — waiting on post-restart trade accumulation)_
 
-## Queued Tasks (in order — see CLAUDE_TASK_BOARD.md for full detail)
+## Queued Tasks
 
 | task_id | status | unlock condition |
 |---------|--------|-----------------|
-| RESTART_CONFIG_HASH_VERIFY_001 | QUEUED (read-only) | Cold restart confirmed by operator |
+| CLEAN_RUNTIME_WINDOW_AUDIT_001 | DEFERRED | Post-restart n≥30 trades |
 
 ---
 
@@ -88,34 +77,30 @@ _(none — all patches in source, awaiting cold restart)_
 
 | Item | Severity | Notes |
 |------|----------|-------|
-| **Pyc cache delete + cold restart** | CRITICAL OPERATOR ACTION | Activates: confidence gate, min price gate, cooldown persistence, session PnL fix, dupe-slug fix |
-| **Browser hard refresh** | OPERATOR ACTION | Activates: side/team semantics fix, Games-tab position lookup fix |
-| BUY_YES/BUY_NO sign semantics re-check | LOW | Deprioritized; semantic identity fields are now authoritative post-merge fix |
-| next_three_up dashboard feature | LOW | Deferred — ESPN data unavailable |
+| Post-restart trade accumulation | ONGOING | n=0 as of 2026-04-11. E5/E7 cannot be evaluated until n≥30. |
+| BUY_YES/BUY_NO structural asymmetry | UNDER INVESTIGATION | +$464 vs -$555 gap — MODEL_SIGNAL_QUALITY_AUDIT_001 will characterize |
+| NEAR_RESOLUTION_CONFIDENCE_SUPPRESSOR_001 | BACKLOG | Model-side fix in recommendation_api.py — do not open until audits complete |
 | Polymarket user/fill stream | BLOCKED | Requires apiKey, secret, passphrase in .env |
 
 ---
 
-## Blocked on Johnny (user action required)
+## Completed Track A (all patches live as of 2026-04-11 restart)
 
-| Item | What's needed |
-|------|--------------|
-| **Pyc cache clear + cold restart** | `del __pycache__/bot_core.cpython-*.pyc` then cold restart via launch_all.py |
-| **Dashboard hard refresh** | `Ctrl+Shift+R` in browser — picks up POSITION_SIDE_SEMANTICS_MERGE_FIX_001 |
-| **Gate verification after restart** | Confirm `BRIDGE GATE REJECT [check_entry_gates]` fires before any sub-0.60 or sub-MIN_ENTRY_PRICE entry |
-| Polymarket user/fill stream | Add apiKey, secret, passphrase to .env |
+| Task | Outcome |
+|------|---------|
+| RESTART_CONFIG_HASH_VERIFY_001 | PASS — config_hash f87077f219dd confirmed |
+| POST_GAP_STOP_SAME_SIDE_SESSION_BAN_001 | APPROVED — session ban after gap_stop live |
+| SESSION_MARKET_TRADE_CAP_001 | APPROVED — MAX_SLUG_ENTRIES_SESSION=3 live |
+| SINGLE_STACK_LAUNCH_GUARD_001 | APPROVED — post-sweep bot.pid guard live |
+| STARTUP_PROOF_BLOCK_001 | APPROVED — STARTUP_PROOF log line live |
+| LATE_INNING_BLOCK_WIRING_FIX_001 | APPROVED — LATE_INNING_BLOCK=7 live |
+| CONFIG_HASH_INPUTS_FIX_001 | APPROVED — 15-var hash live |
+| All prior Track A patches | APPROVED and LIVE |
 
----
+## Completed Track B
 
-## Confidence Gate Fix — Full Evidence Chain
-
-| Step | Task | Status |
-|------|------|--------|
-| 1. Gate code written | MIN_ENTRY_CONFIDENCE_001 | APPROVED |
-| 2. Gate confirmed un-wired | CONFIDENCE_GATE_RUNTIME_VERIFY_001 | APPROVED |
-| 3. Wiring fix applied | BRIDGE_ENTRY_GATE_WIRING_FIX_001 | APPROVED — in source |
-| 4. Post-fix verify | CONFIDENCE_GATE_POSTFIX_VERIFY_001 | PARTIAL PASS — pyc + dupe-slug bypasses found |
-| 5. All-night audit confirms gate not firing | TONIGHT_TRADE_AUDIT_2026_04_10 | APPROVED — pyc confirmed as root cause |
-| 6. Min price gate added | MIN_ENTRY_PRICE_GATE_001 | APPROVED — in source |
-| 7. Dupe-slug bypass fixed | BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 | APPROVED — in source |
-| 8. Clear pyc + cold restart | OPERATOR_ACTION_REQUIRED_001 | **PENDING — operator must do this** |
+| Task | Outcome |
+|------|---------|
+| MODEL_SIGNAL_QUALITY_AUDIT_001 | APPROVED 2026-04-11 — Confidence inversion is artifact (4 outlier trades). High-confidence weakness confirmed but is exit-damage, not direction inversion. BUY_NO advantage not yet structurally proven. |
+| EDGE_BASELINE_AND_EXPECTANCY_AUDIT_001 | APPROVED 2026-04-11 — NO PROVEN EDGE. E1-E4 FAIL. E5/E7 DEFERRED. E6 revised by MODEL_SIGNAL_QUALITY_AUDIT_001. |
+| NEAR_RESOLUTION_CONFIDENCE_SANITY_AUDIT_001 | APPROVED 2026-04-11 — root cause B confirmed (edge inflation). MIN_ENTRY_PRICE=0.22 is primary gate. |

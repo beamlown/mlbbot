@@ -1,5 +1,5 @@
 # CLAUDE_TASK_BOARD.md — Manager Task Board
-## Last updated: 2026-04-11 — Track A complete. Clean restart verified. Entered SUPERVISOR + ANALYTICAL SPECIALIST MODE. EDGE_PROOF_FRAMEWORK_001 written. EDGE_BASELINE_AND_EXPECTANCY_AUDIT_001 now ACTIVE (Track B).
+## Last updated: 2026-04-11 — MODEL_SIGNAL_QUALITY_AUDIT_001 DONE. Confidence inversion is artifact (outlier-driven). High-confidence exit damage identified. CLEAN_RUNTIME_WINDOW_AUDIT_001 is next — deferred until post-restart n≥30.
 
 ---
 
@@ -13,24 +13,9 @@
 
 ---
 
-## ⚠ OPERATOR ACTION REQUIRED FIRST — TOMORROW MORNING
-
-**Do this before running ANY task tomorrow:**
-1. Confirm bot is OFF (no bot_core process running)
-2. Delete `__pycache__\bot_core.cpython-*.pyc`
-3. Relaunch via `launch_all.py` from a clean terminal
-4. Run `RESTART_CONFIG_HASH_VERIFY_001` (first task) — confirm config_hash changed from `2f0dd9e0ef8a`
-5. Do NOT dispatch code fix tasks until step 4 PASSES
-
-**Also required: Browser hard refresh (`Ctrl+Shift+R`) for dashboard side-semantics fix.**
-
----
-
 ## ACTIVE
 
-| task_id | title | priority | subsystem | allowed_files | notes |
-|---------|-------|----------|-----------|---------------|-------|
-| EDGE_BASELINE_AND_EXPECTANCY_AUDIT_001 | Compute break-even, net expectancy, segment breakdowns, random baseline from real trade history | HIGH | Track B — edge proof / strategy evaluation | trades_sports.db, runtime/state.json, logs (read-only) | **ACTIVE — read-only, no file lock.** |
+_(none — all Track B audits in DONE or DEFERRED. Waiting on post-restart trade accumulation for CLEAN_RUNTIME_WINDOW_AUDIT_001.)_
 
 ---
 
@@ -38,7 +23,7 @@
 
 | task_id | title | priority | subsystem | allowed_files | notes |
 |---------|-------|----------|-----------|---------------|-------|
-| RESTART_CONFIG_HASH_VERIFY_001 | Verify clean restart loaded new .env config | CRITICAL | runtime / entry gates / process topology | runtime/state.json, logs (read-only) | Read-only verify — no file lock. **Activate when operator confirms cold restart.** |
+| CLEAN_RUNTIME_WINDOW_AUDIT_001 | Isolate and evaluate post-2026-04-11 restart trades only — E1+E2 proof in the verified gate era | HIGH | Track B — edge proof / clean era | trades_sports.db (read-only) | **DEFERRED — activate when post-restart n≥30 trades exist.** |
 
 ## BACKLOG (after tomorrow's first-wave queue, in this order)
 
@@ -75,6 +60,9 @@
 
 | task_id | title | outcome | allowed_files |
 |---------|-------|---------|---------------|
+| MODEL_SIGNAL_QUALITY_AUDIT_001 | Audit confidence calibration, BUY_NO/BUY_YES asymmetry root cause, shadow distribution | APPROVED 2026-04-11 — Confidence inversion is artifact (4 outlier trades explain all of 0.30-0.40 bucket outperformance). High-confidence failure is exit-damage dominated (stop_loss -$587 + gap_stop -$683 in 0.60-0.65 bucket). BUY_NO advantage is outlier-driven at current evidence level. E6 revised: not anti-predictive, but not yet proven predictive. Review: REVIEW_MODEL_SIGNAL_QUALITY_AUDIT_001.md | trades_sports.db, shadow_recommendations.jsonl (read-only) |
+| EDGE_BASELINE_AND_EXPECTANCY_AUDIT_001 | Compute break-even, net expectancy, segment breakdowns, random baseline from real trade history | APPROVED 2026-04-11 — Full E1-E8 analysis complete. Verdict: NO PROVEN EDGE. E1 FAIL (-$91 net), E2 MARGINAL FAIL (26.2% vs 26.7% BE), E3 FAIL (lad-tor +$630 explains all offset), E4 FAIL (top-5 +$1,111 vs -$91 total), E5 DEFERRED (n=0 post-restart), E6 FAIL (confidence inverted — revised by MODEL_SIGNAL_QUALITY_AUDIT_001), E7 DEFERRED (n=5 gated universe), E8 UNRESOLVED (proxy only). Review: REVIEW_EDGE_BASELINE_AND_EXPECTANCY_AUDIT_001.md | trades_sports.db, core/paper_exec.py (read-only) |
+| RESTART_CONFIG_HASH_VERIFY_001 | Verify clean restart loaded new .env config | APPROVED 2026-04-11 — PASS. config_hash f87077f219dd confirmed (changed from 2f0dd9e0ef8a). All gate values correct: MIN_ENTRY_CONFIDENCE=0.65, MIN_ENTRY_PRICE=0.22. Single bot_core process. 7 gate rejections confirmed in log before any new trade. | runtime/state.json, logs (read-only) |
 | POST_GAP_STOP_SAME_SIDE_SESSION_BAN_001 | Block same-side re-entry after gap_stop for session | APPROVED 2026-04-11 — _session_gap_stop_bans set added to bot_core.py. Ban registered on gap_stop exit, checked in bridge loop pre-gate. In-memory, session-scoped. py_compile PASS. Restart required. Review: REVIEW_POST_GAP_STOP_SAME_SIDE_SESSION_BAN_001.md | bot_core.py |
 | SESSION_MARKET_TRADE_CAP_001 | Per-session trade count cap per market slug | APPROVED 2026-04-11 — Pre-gate check in bot_core.py bridge loop. MAX_SLUG_ENTRIES_SESSION=3. DB query counts open+closed trades for slug today. py_compile PASS. Restart required. Review: REVIEW_SESSION_MARKET_TRADE_CAP_001.md | bot_core.py, .env |
 | SINGLE_STACK_LAUNCH_GUARD_001 | Prevent multiple live bot stacks | APPROVED 2026-04-11 — Post-sweep bot.pid check in launch_all.py main(). Aborts with actionable error if bot_core still live after sweep. py_compile PASS. Review: REVIEW_SINGLE_STACK_LAUNCH_GUARD_001.md | launch_all.py |
