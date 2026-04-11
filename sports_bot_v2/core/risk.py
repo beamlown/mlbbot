@@ -59,7 +59,8 @@ def get_committed_usd(trade: Trade) -> float:
 
 def get_tp_price(trade: Trade) -> float:
     entry_px = trade.entry_px or 0.0
-    return entry_px * (1.0 + AUTO_TAKE_PROFIT_PCT)
+    raw_tp = entry_px * (1.0 + AUTO_TAKE_PROFIT_PCT)
+    return min(raw_tp, NEAR_RESOLUTION_PRICE)
 
 
 def get_sl_price(trade: Trade) -> float:

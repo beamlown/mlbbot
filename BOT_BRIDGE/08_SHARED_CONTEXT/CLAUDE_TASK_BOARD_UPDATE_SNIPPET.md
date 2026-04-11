@@ -5,36 +5,32 @@ Use this to update `08_SHARED_CONTEXT/CLAUDE_TASK_BOARD.md`.
 ## Header line
 Replace the top header note with:
 
-`## Last updated: 2026-04-10 — CONFIDENCE_GATE_RUNTIME_VERSION_TRACE_001 approved. POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001 promoted to ACTIVE. 1 ACTIVE task.`
+`## Last updated: 2026-04-10 — TP_NEAR_RESOLUTION_CAP_FIX_001 approved. BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 promoted to ACTIVE. 2 ACTIVE tasks.`
 
 ## ACTIVE section
 Replace the ACTIVE section with:
 
 | task_id | title | priority | subsystem | allowed_files | status |
 |---------|-------|----------|-----------|---------------|--------|
-| POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001 | Audit position card backed-team / held-side mismatch on live dashboard | HIGH | read-only display-truth audit | `runtime/state.json`, `dashboard_server.py`, `dashboard.html`, `trades_sports.db (SELECT only if needed)`, `logs/dashboard.log` | ACTIVE — worker-ready. Brief already in 05_INBOX. |
+| BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 | Prevent duplicate/repeated slug intents from bypassing gate protections in the same bridge loop | HIGH | bridge entry gating / duplicate intent handling | `bot_core.py`; `core/model_bridge.py` only if strictly required | ACTIVE — worker-ready. Brief in 05_INBOX. |
+| MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 | Trace mark-source fallback frequency and guard-message payload origin | MEDIUM | read-only trace — dashboard_server / stream / runtime state | runtime/state.json, dashboard_server.py, logs/dashboard.log, logs/dashboard_err.log | ACTIVE — read-only, non-conflicting. |
 
 ## QUEUED section
-Replace QUEUED with:
-
-_None._
+Leave queued ordering as:
+1. MARKET_COOLDOWN_PERSIST_001
+2. SESSION_PNL_TRUE_START_FIX_001
+3. POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001 (still deprioritized behind critical risk items if your board currently includes it)
 
 ## DONE row to add near the top of DONE
 Add:
 
 | task_id | title | outcome | allowed_files |
 |---------|-------|---------|---------------|
-| CONFIDENCE_GATE_RUNTIME_VERSION_TRACE_001 | Trace runtime code/version/process identity for low-confidence live opens | APPROVED 2026-04-10 — strongest supported conclusion is runtime divergence / stale prior process state. Bad opens around 19:00 local predated the currently running launcher/process (~19:50 local). Current on-disk `bot_core.py` already shows guarded reject+continue flow. | `bot_core.py`, bot log, DB read-only |
+| TP_NEAR_RESOLUTION_CAP_FIX_001 | Fix unreachable TP math for near-1.0 entries | APPROVED 2026-04-10 — `get_tp_price(trade)` now caps TP at the near-resolution ceiling so near-1.0 entries cannot compute unreachable TP values above the meaningful contract limit. `py_compile` PASS. Restart required. | `core/risk.py` |
 
 ## System-state line to replace
-Replace the confidence-gate line with:
+Replace the near-resolution TP bug/open-item line with:
 
-- **Confidence gate: EARLIER LIVE REBREAK MOST LIKELY FROM STALE PRIOR PROCESS STATE** — runtime version trace found the bad low-confidence opens predated the currently running launcher/process, while current on-disk `bot_core.py` already shows guarded reject+continue flow. No new blind logic patch opened. Future hardening follow-on recommended: runtime code/version fingerprint logging.
+- **Near-resolution TP bug: PATCHED, VERIFY PENDING** — `TP_NEAR_RESOLUTION_CAP_FIX_001` APPROVED. `get_tp_price(trade)` now caps unreachable TP values for near-1.0 entries. Restart required before live protection is trusted.
 
-Replace the dashboard side-truth line with:
-
-- **Dashboard side-truth issue: ACTIVE** — operator reports the dashboard sometimes shows the bot backing the wrong team. `POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001` is now the active worker task.
-
-## Keep unchanged for now
-- `RUNTIME_USER_STREAM_AUTH_UNBLOCK_001` remains blocked on user credentials.
-- Optional future hardening: runtime code/version fingerprint logging (not opened in this pass).
+Keep pycache/cold-restart operator action prominent.

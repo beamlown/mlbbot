@@ -3,22 +3,17 @@
 Use this to update `08_SHARED_CONTEXT/CLAUDE_STATUS.md`.
 
 ## Add under Completed This Reconciliation Pass
-| CONFIDENCE_GATE_RUNTIME_VERSION_TRACE_001 | APPROVED — strongest supported conclusion is runtime divergence / stale prior process state. Bad low-confidence opens predated the currently running launcher/process, while current on-disk `bot_core.py` already appears correctly guarded. |
+| TP_NEAR_RESOLUTION_CAP_FIX_001 | APPROVED — near-resolution TP now capped in `core/risk.py` so near-1.0 entries cannot compute unreachable TP values above the contract ceiling; `py_compile` PASS; restart required. |
 
-## Replace the confidence gate paragraph with:
-- **Confidence gate: earlier live rebreak most likely from stale prior process state** — The runtime/version trace found that the low-confidence opens around 19:00 local predated the currently running launcher/process that started around 19:50 local. Combined with the currently guarded on-disk `bot_core.py`, the strongest supported conclusion is stale prior process/runtime divergence rather than a new blind logic patch target.
-
-## Replace the dashboard display/issues paragraph with:
-- **Display issues — side-truth regression now active** — With the confidence-gate runtime/version trace complete, the next active investigation is `POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001` to determine why the dashboard sometimes shows the bot backing the wrong team.
+## Replace the relevant risk/open-item paragraph with:
+- **Near-resolution TP bug: patched, verify pending** — `TP_NEAR_RESOLUTION_CAP_FIX_001` is approved. The TP pipeline now caps unreachable TP values for near-1.0 entries. Restart is required before this protection is live.
 
 ## Update Open Items section
-Replace the confidence gate item with:
+Add or replace with:
+| **Duplicate-slug bridge gate fix** | HIGH | Repeated intents for the same slug can still bypass protections within a bridge loop. `BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001` is now ACTIVE. |
 
-| **Runtime code/version traceability hardening** | MEDIUM | Current evidence points to stale prior process state rather than a clear current on-disk logic defect. Future follow-on recommended: runtime code/version fingerprint logging at startup and bridge gate/open events. |
-
-Replace the side semantics item with:
-
-| **Side-semantics regression audit** | HIGH | Operator reports dashboard sometimes shows the wrong backed team. `POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001` is now ACTIVE. |
-
-## Keep unchanged for now
-- user/fill stream credentials remain blocked on Johnny
+Keep unchanged for now
+- pycache delete + cold restart remains operator-critical
+- market cooldown persistence still queued
+- session PnL true-start fix still queued
+- side-semantics audit still queued behind critical risk items
