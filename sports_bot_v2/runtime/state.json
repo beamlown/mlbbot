@@ -2,19 +2,19 @@
   "engine": "sports_paper_baseball",
   "build": "sports_bot_v2.baseball.2026-03-29",
   "sport": "baseball",
-  "now": "2026-04-11T00:55:06.661431+00:00",
-  "loop_count": 170,
+  "now": "2026-04-11T00:56:37.027862+00:00",
+  "loop_count": 171,
   "config_hash": "2f0dd9e0ef8a",
   "pnl": {
     "realized": 274.2837,
-    "unrealized": -6.7139,
-    "net": 267.5698
+    "unrealized": -7.2972,
+    "net": 266.9866
   },
   "slots": {
-    "open": 2,
+    "open": 3,
     "max": 3
   },
-  "total_trades": 199,
+  "total_trades": 200,
   "rolling": {
     "r25": {
       "n": 25,
@@ -52,9 +52,9 @@
   },
   "mode": {
     "mode": "neutral",
-    "score": 0.2829,
-    "dwell_trades": 1,
-    "switch_reason": "downshift_pending dwell=1/5",
+    "score": 0.2817,
+    "dwell_trades": 2,
+    "switch_reason": "downshift_pending dwell=2/5",
     "multipliers": {
       "min_confidence": 1.0,
       "max_spread": 1.0,
@@ -100,8 +100,20 @@
       "entry_px": 0.35175,
       "qty": 142.146411,
       "confidence": 0.6429,
-      "pnl_usd": -1.9119,
+      "pnl_usd": -0.4975,
       "ts_open": "2026-04-11T00:52:07.965941+00:00",
+      "source": "model_bridge"
+    },
+    {
+      "id": 246,
+      "market_slug": "mlb-cws-kc-2026-04-10",
+      "market_id": "1860423",
+      "side": "BUY_YES",
+      "entry_px": 0.33165,
+      "qty": 150.761345,
+      "confidence": 0.2824,
+      "pnl_usd": -1.9976,
+      "ts_open": "2026-04-11T00:56:34.399134+00:00",
       "source": "model_bridge"
     }
   ],
@@ -197,5 +209,5 @@
       "exit_px": 0.34825
     }
   ],
-  "status_line": "loop=170 sport=baseball mode=neutral open=3 guard_block=150"
+  "status_line": "loop=171 sport=baseball mode=neutral open=2 guard_block=152"
 }

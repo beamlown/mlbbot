@@ -19,16 +19,10 @@ Approve `MARK_SOURCE_FALLBACK_RELIABILITY_FIX_001`.
 - Stream marks remain the primary authority when healthy.
 - `mark_source` should now better reflect the source actually used for the displayed mark.
 
-## Notes
-- This task is code-complete but not yet runtime-verified.
-- Restart is required before the fix is live.
+## Runtime note
+- Restart was completed after this fix.
+- A separate read-only verify can still be run later, but the operator's current urgent issues have shifted to confidence-gate failure and side-semantics mismatch.
 
-## Follow-on task required
-Open:
-`MARK_SOURCE_FALLBACK_RELIABILITY_VERIFY_001`
-
-Purpose:
-- confirm restart picked up the patch
-- confirm live stream marks remain primary when healthy
-- confirm `mark REST` appears only for true stale/missing cases
-- confirm fallback frequency is materially reduced
+## Manager judgment
+Close this task to DONE.
+Do not keep it as the active bottleneck while higher-severity runtime truth issues are unresolved.

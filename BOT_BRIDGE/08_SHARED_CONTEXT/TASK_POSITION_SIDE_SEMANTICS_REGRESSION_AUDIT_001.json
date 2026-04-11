@@ -1,0 +1,47 @@
+{
+  "task_id": "POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001",
+  "title": "Audit position card backed-team / held-side mismatch on live dashboard",
+  "priority": "HIGH",
+  "type": "read-only display-truth audit",
+  "issued": "2026-04-10",
+  "subsystem": "dashboard truth / side semantics",
+  "status": "ACTIVE",
+  "context": {
+    "operator_report": "Dashboard sometimes shows that the bot is backing one team when it is really backing the other team.",
+    "known_history": [
+      "This system has had prior BUY_YES / BUY_NO and held-side semantics incidents",
+      "Live card baseball semantics were patched before, but the operator is reporting the regression again"
+    ],
+    "problem_statement": "Need to determine whether the current mismatch is in execution-side truth, dashboard_server payload mapping, or dashboard.html card labeling."
+  },
+  "objective": "Trace one or more current live positions from execution truth to dashboard card semantics and identify where the side/backed-team mismatch is introduced.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db (SELECT only if needed)",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\dashboard.log"
+  ],
+  "forbidden_actions": [
+    "Edit any code",
+    "Restart processes",
+    "DB writes",
+    "Open new tasks",
+    "Broad repo sweep"
+  ],
+  "questions": [
+    "1. For at least one current live trade, what is the true held contract side from execution/runtime truth?",
+    "2. What team should the dashboard describe as backed or faded for that trade?",
+    "3. What team/side is the dashboard payload currently presenting?",
+    "4. Does the mismatch come from dashboard_server.py payload mapping, dashboard.html labeling logic, or execution truth itself?",
+    "5. Is this a regression of a previously fixed semantics bug or a new mapping bug?"
+  ],
+  "acceptance_criteria": [
+    "read_only_confirmed: true",
+    "At least one current live trade traced end-to-end",
+    "Explicit statement of true held side vs displayed side",
+    "Exact mismatch point identified or ruled out",
+    "Clear recommendation for the next fix task if a bug is found"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001.json"
+}
