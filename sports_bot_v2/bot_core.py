@@ -205,6 +205,9 @@ def _write_state(status_line: str = "", mode_ctx=None):
             "invalid_market_blocks": sum(_guard_market_blocks.values()),
             "last_invalid_market_details": _last_invalid_market_details,
             "exit_reason_counts": dict(_exit_reason_counts),
+            "market_cooldown_expiry": {
+                k: v for k, v in _market_cooldown.items() if v > time.time()
+            },
             "market_cooldowns_active": sum(
                 1 for exp in _market_cooldown.values() if time.time() < exp
             ),
@@ -336,6 +339,24 @@ def main():
 
     init_db()
     _write_pid()
+
+    # ── Restore market cooldown from prior state ───────────────────────────
+    global _market_cooldown
+    try:
+        with open(STATE_PATH) as _f:
+            _prior = json.load(_f)
+        _now = time.time()
+        for _mid, _exp in _prior.get("market_cooldown_expiry", {}).items():
+            if float(_exp) > _now:
+                _market_cooldown[_mid] = float(_exp)
+        if _market_cooldown:
+            logger.info(
+                "Restored %d active market cooldown(s) from prior state",
+                len(_market_cooldown),
+            )
+    except (FileNotFoundError, KeyError, ValueError, TypeError, OSError):
+        pass
+
     Path(OB_SNAPSHOTS_DIR).mkdir(parents=True, exist_ok=True)
 
     try:

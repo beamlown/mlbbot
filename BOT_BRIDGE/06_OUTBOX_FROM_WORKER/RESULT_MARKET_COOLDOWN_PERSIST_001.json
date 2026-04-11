@@ -1,26 +1,47 @@
 {
   "task_id": "MARKET_COOLDOWN_PERSIST_001",
-  "result": "BLOCKED — NOT EXECUTED",
+  "status": "DONE",
   "mode_used": "WORKER MODE",
   "active_tasks_found": [
-    "MIN_ENTRY_PRICE_GATE_001 (ACTIVE — core/risk.py)",
-    "MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 (ACTIVE — read-only)"
+    "MARKET_COOLDOWN_PERSIST_001 (ACTIVE — task JSON confirmed, prerequisite BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 DONE)"
   ],
-  "task_selected": "MARKET_COOLDOWN_PERSIST_001 — CANNOT EXECUTE",
-  "reason_not_executed": "Task is QUEUED, not ACTIVE on the board. Board status: QUEUED, blocked by BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 (also QUEUED). Prerequisite chain: MIN_ENTRY_PRICE_GATE_001 (ACTIVE) must complete → TP_NEAR_RESOLUTION_CAP_FIX_001 → BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 → MARKET_COOLDOWN_PERSIST_001. Execution rule requires task to be ACTIVE before proceeding. This check FAILED.",
-  "pre_execution_checks": {
-    "task_is_active_on_board": false,
-    "brief_present_in_inbox": "NOT CHECKED — stopped at active check",
-    "prerequisite_tasks_done": false,
-    "blocking_task": "BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 (QUEUED — not yet done)"
-  },
+  "task_selected": "MARKET_COOLDOWN_PERSIST_001",
   "files_read": [
-    "08_SHARED_CONTEXT/CLAUDE_TASK_BOARD.md",
-    "08_SHARED_CONTEXT/CLAUDE_STATUS.md"
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_TASK_BOARD.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_STATUS.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_MARKET_COOLDOWN_PERSIST_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_MARKET_COOLDOWN_PERSIST_001.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json"
   ],
-  "files_changed": [],
-  "verification_performed": "Board read confirmed task is QUEUED. No code changes made.",
-  "restart_needed": "N/A — no changes made",
-  "result_file_written": "06_OUTBOX_FROM_WORKER/RESULT_MARKET_COOLDOWN_PERSIST_001.json",
-  "summary": "MARKET_COOLDOWN_PERSIST_001 is QUEUED (not ACTIVE) and blocked by BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 — worker halted per execution rules, no files changed."
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "exact_sections_changed": [
+    {
+      "location": "_write_state() payload dict — lines 207-213",
+      "old": "\"exit_reason_counts\": dict(_exit_reason_counts),\n\"market_cooldowns_active\": sum(\n    1 for exp in _market_cooldown.values() if time.time() < exp\n),",
+      "new": "\"exit_reason_counts\": dict(_exit_reason_counts),\n\"market_cooldown_expiry\": {\n    k: v for k, v in _market_cooldown.items() if v > time.time()\n},\n\"market_cooldowns_active\": sum(\n    1 for exp in _market_cooldown.values() if time.time() < exp\n),",
+      "effect": "Serializes the full market_cooldown dict (non-expired entries only) into state.json on every _write_state() call. market_cooldowns_active count field preserved unchanged."
+    },
+    {
+      "location": "main() startup — after _write_pid(), before Path(OB_SNAPSHOTS_DIR).mkdir()",
+      "old": "init_db()\n_write_pid()\nPath(OB_SNAPSHOTS_DIR).mkdir(parents=True, exist_ok=True)",
+      "new": "init_db()\n_write_pid()\n\n# ── Restore market cooldown from prior state ───────────────────────────\nglobal _market_cooldown\ntry:\n    with open(STATE_PATH) as _f:\n        _prior = json.load(_f)\n    _now = time.time()\n    for _mid, _exp in _prior.get(\"market_cooldown_expiry\", {}).items():\n        if float(_exp) > _now:\n            _market_cooldown[_mid] = float(_exp)\n    if _market_cooldown:\n        logger.info(\n            \"Restored %d active market cooldown(s) from prior state\",\n            len(_market_cooldown),\n        )\nexcept (FileNotFoundError, KeyError, ValueError, TypeError, OSError):\n    pass\n\nPath(OB_SNAPSHOTS_DIR).mkdir(parents=True, exist_ok=True)",
+      "effect": "On startup, reads state.json and restores any non-expired cooldown expiry timestamps into _market_cooldown. Fails silently if state.json does not exist (first run) or is corrupt."
+    }
+  ],
+  "old_behavior": "_market_cooldown was a module-level in-memory dict never written to persistent storage. state.json only recorded market_cooldowns_active (a count). On restart, _market_cooldown was always empty, so all cooldowns were lost and markets could reopen immediately.",
+  "new_behavior": "Every _write_state() call now writes market_cooldown_expiry (the dict of market_id → expiry_timestamp, non-expired only) into state.json. On startup, main() reads this key and repopulates _market_cooldown with any entries whose expiry is still in the future. Cooldown semantics (per-reason durations: 600s near_resolution, 1800s stop_loss, 3600s gap_stop) are completely unchanged.",
+  "cooldown_write_location": "bot_core.py close path — lines 643/646/649: _market_cooldown[trade.market_id] = time.time() + <duration>. Now also serialized via _write_state() payload key market_cooldown_expiry.",
+  "cooldown_reload_location": "bot_core.py main() startup block — reads STATE_PATH, iterates market_cooldown_expiry, restores non-expired entries into _market_cooldown global.",
+  "verification": {
+    "py_compile": "python -m py_compile C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py — PASS",
+    "grep_verify": "market_cooldown_expiry and 'Restored.*market cooldown' both present and correctly placed in bot_core.py"
+  },
+  "restart_required": true,
+  "restart_notes": "Yes — restart required for fix to take effect. The new serialization path only writes market_cooldown_expiry on the next _write_state() call. The reload path only runs on startup. Both require a fresh process. Additionally, the stale __pycache__/bot_core.cpython-*.pyc must be deleted before restart per OPERATOR_ACTION_REQUIRED_001.",
+  "result_file_written": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MARKET_COOLDOWN_PERSIST_001.json",
+  "summary": "Added market_cooldown_expiry dict to _write_state() payload and a startup load block in main() so non-expired cooldown timestamps survive restart and are restored into _market_cooldown before the first loop runs."
 }
