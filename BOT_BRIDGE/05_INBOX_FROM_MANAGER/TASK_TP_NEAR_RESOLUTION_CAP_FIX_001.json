@@ -1,0 +1,16 @@
+{
+  "task_id": "TP_NEAR_RESOLUTION_CAP_FIX_001",
+  "type": "code_fix",
+  "priority": "HIGH",
+  "status": "QUEUED",
+  "queued_reason": "core/risk.py conflict with ACTIVE task MIN_ENTRY_PRICE_GATE_001 — execute immediately after MIN_ENTRY_PRICE_GATE_001 is DONE",
+  "issued": "2026-04-11",
+  "subsystem": "exit_math",
+  "title": "Fix unreachable TP math for near-1.0 entry prices",
+  "allowed_files": ["core/risk.py"],
+  "forbidden_files": ["bot_core.py", "dashboard_server.py", "dashboard.html", "core/paper_exec.py"],
+  "evidence": "Trade #259 BUY_NO entry=0.9447. TP = 0.9447 * 1.40 = 1.3226 — unreachable on 0-1 contract. TP will never fire. Asymmetric risk: max gain $2.93, SL loss $5.99.",
+  "preferred_fix": "Cap get_tp_price() return at min(raw_tp, NEAR_RESOLUTION_PRICE)",
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_TP_NEAR_RESOLUTION_CAP_FIX_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_TP_NEAR_RESOLUTION_CAP_FIX_001.json"
+}

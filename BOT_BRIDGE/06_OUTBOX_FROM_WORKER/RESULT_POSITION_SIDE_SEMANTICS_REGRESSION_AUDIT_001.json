@@ -1,0 +1,30 @@
+{
+  "task_id": "POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001",
+  "status": "COMPLETE",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_TASK_BOARD.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_STATUS.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001.md",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001.json"
+  ],
+  "summary": "Read-only audit traced current live open positions from execution truth through dashboard API payload and SSE layers into dashboard labeling logic. Current mismatch is introduced in dashboard.html labeling logic, not in dashboard_server.py payload mapping and not in execution truth for the sampled live positions.",
+  "verification_evidence": [
+    "DB open trades and /api/trades open positions agree on current live trade identities and sides (e.g. sampled live trade id 259 with explicit side from execution truth).",
+    "Live /api/stream/state payload carries market_slug, prices, and mark metadata but does not invent semantic backed/faded team labels server-side.",
+    "dashboard.html computes per-card team semantics client-side from trade side with local labeling logic around the position-card builder/normalizer.",
+    "The UI layer contains backed_team/faded_team synthesis and headlineText generation, which is the layer responsible for describing who is 'backed'.",
+    "Because payload truth for side is intact while semantic team wording is computed in dashboard.html, any live case showing the wrong backed team is a dashboard labeling regression rather than a dashboard_server payload-mapping defect."
+  ],
+  "acceptance_criteria_met": {
+    "trace_live_trade_from_execution_truth": true,
+    "compare_payload_vs_labeling": true,
+    "identify_fault_layer": true
+  },
+  "root_cause_conclusion": "The backed-team / held-side mismatch is introduced in dashboard.html client-side labeling logic. Execution truth and payload side data remain intact for sampled live positions, while the UI synthesizes backed_team/faded_team descriptions locally and is therefore the most likely regression layer. No evidence from this audit points to dashboard_server.py rewriting the semantic side incorrectly.",
+  "recommended_next_fix_target": "dashboard.html position-card normalization / labeling path that derives backed_team, faded_team, and headlineText from trade.side and slug team order."
+}

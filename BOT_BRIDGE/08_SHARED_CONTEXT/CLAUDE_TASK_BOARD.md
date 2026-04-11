@@ -1,5 +1,5 @@
 # CLAUDE_TASK_BOARD.md — Manager Task Board
-## Last updated: 2026-04-10 — DASHBOARD_MARK_SOURCE_AND_GUARD_MESSAGE_AUDIT_001 closed PARTIAL PASS. MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 opened. 1 ACTIVE task.
+## Last updated: 2026-04-11 — Reprioritized after tonight's trade audit. Gate failure confirmed all-night. 2 ACTIVE tasks. 4 QUEUED. OPERATOR ACTION REQUIRED before any fix has effect.
 
 ---
 
@@ -13,17 +13,31 @@
 
 ---
 
+## ⚠ OPERATOR ACTION REQUIRED FIRST
+
+**Delete `__pycache__/bot_core.cpython-*.pyc` and perform a cold clean restart BEFORE any code fix has value.**
+See: `08_SHARED_CONTEXT/OPERATOR_ACTION_REQUIRED_001.md`
+Until this is done: confidence gate, cooldown checks, and all `check_entry_gates()` logic are NOT running.
+
+---
+
 ## ACTIVE
 
 | task_id | title | priority | subsystem | allowed_files | status |
 |---------|-------|----------|-----------|---------------|--------|
-| MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 | Trace mark-source fallback frequency and guard-message payload origin | MEDIUM | read-only trace — dashboard_server / stream / runtime state | runtime/state.json, dashboard_server.py, logs/dashboard.log, logs/dashboard_err.log | ACTIVE — awaiting worker execution. Brief in 05_INBOX. |
+| MIN_ENTRY_PRICE_GATE_001 | Add minimum entry price gate — block entries at 0.05–0.07 where spread exceeds SL threshold | CRITICAL | entry_gates | `core/risk.py`, `.env` (optional) | ACTIVE — brief in 05_INBOX. Execute first. |
+| MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 | Trace mark-source fallback frequency and guard-message payload origin | MEDIUM | read-only trace — dashboard_server / stream / runtime state | runtime/state.json, dashboard_server.py, logs/dashboard.log, logs/dashboard_err.log | ACTIVE — read-only, no file conflicts. Brief in 05_INBOX. |
 
 ---
 
-## QUEUED
+## QUEUED (execute in this order)
 
-_None._
+| task_id | title | priority | blocked_by | notes |
+|---------|-------|----------|------------|-------|
+| TP_NEAR_RESOLUTION_CAP_FIX_001 | Fix unreachable TP math for near-1.0 entry prices | HIGH | MIN_ENTRY_PRICE_GATE_001 (same file: core/risk.py) | Execute immediately after MIN_ENTRY_PRICE_GATE_001 is DONE |
+| BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 | Prevent duplicate slug intents from bypassing gate in same bridge loop | HIGH | risk.py tasks DONE first; bot_core.py available | Execute before MARKET_COOLDOWN_PERSIST_001 |
+| MARKET_COOLDOWN_PERSIST_001 | Persist market cooldown across restarts | HIGH | BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 (same file: bot_core.py) | Execute after dupe-slug fix |
+| SESSION_PNL_TRUE_START_FIX_001 | Track true session PnL from actual session start, not last restart | MEDIUM | All critical risk fixes DONE | Lower priority — dashboard visibility only |
 
 ---
 
@@ -176,21 +190,22 @@ _None._
 
 | File | Locked by |
 |------|-----------|
-| runtime/state.json, logs/dashboard.log, dashboard_server.py | MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 (read-only, no exclusive lock) |
+| `core/risk.py` | MIN_ENTRY_PRICE_GATE_001 (ACTIVE — exclusive) |
+| `runtime/state.json`, `logs/dashboard.log`, `dashboard_server.py` | MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 (read-only, no exclusive lock) |
+| `bot_core.py` | UNLOCKED — queued tasks BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 → MARKET_COOLDOWN_PERSIST_001 (sequential) |
 | All other files | UNLOCKED |
 
 ---
 
-## System state (2026-04-10 — post gate postfix verify)
+## System state (2026-04-11 — post tonight's trade audit, gate failure confirmed all-night)
 
-- **Realized PnL: $405.89** (last verified at DASHBOARD_TRUTH_FIXES_001)
-- **Dashboard truth: FIXED** — Realized P&L authoritative, mark_source chip live, R25 sublabel corrected
-- **At-bat dashboard: UPGRADED** — DASHBOARD_LIVE_ATBAT_POLISH_001 PROVISIONAL PASS. count chips, dominant score, batter/pitcher identity live.
-- **Authority separation: CODE COMPLETE** — local origination removed (AUTHORITY_SEPARATION_CLEANUP_001 PROVISIONAL PASS)
-- **Risk pack: VERIFIED** — 12/12 checks pass. All 4 risk/sizing tasks APPROVED.
-- **Confidence gate: PARTIALLY ACTIVE** — BRIDGE_ENTRY_GATE_WIRING_FIX_001 patch in source. Gate fires at first restart. Two bypass paths identified (duplicate intent, stale pyc). **BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 fix task needed. Clear pyc cache + clean restart required.**
-- **Currently open trades: 223 (conf=0.3353), 237 (conf=0.6429), 238 (conf=0.4639)** — 223 pre-fix; 237 valid; 238 Issue B bypass. Bot at MAX_CONCURRENT_TRADES (3/3). All loops show BRIDGE SKIP.
-- **Dashboard display issues — upstream trace in progress** — DASHBOARD_MARK_SOURCE_AND_GUARD_MESSAGE_AUDIT_001 PARTIAL PASS (dashboard layer cleared). MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 ACTIVE — tracing mark_source production chain, fallback frequency, and guard payload origin.
+- **Tonight's session: -$159.54 closed PnL (40 trades).** 31/42 trades sub-0.60 confidence. Gate was not enforcing.
+- **Confidence gate: NOT ENFORCING** — stale `__pycache__/bot_core.cpython-*.pyc` loading pre-patch bytecode on every restart since 18:41 CDT 2026-04-10. Patch is in source but not executing. **Pyc must be deleted + cold restart done before any gate fix takes effect.**
+- **Currently open trades: #254 (conf=0.4438 BUY_NO wsh-mil), #258 (conf=0.3537 BUY_NO bos-stl), #259 (conf=0.3781 BUY_NO nyy-tb entry=0.9447)** — all sub-floor, all byproduct of broken gate. #259 has unreachable TP (TP fix queued).
+- **Market cooldown: NOT SURVIVING RESTARTS** — in-memory dict wiped on every restart. CWS-KC entered 8 times tonight. MARKET_COOLDOWN_PERSIST_001 queued.
+- **Ultra-low-price entry churn confirmed** — 7 trades at 0.05–0.07 stopped out in 1–2s. MIN_ENTRY_PRICE_GATE_001 ACTIVE.
+- **TP math broken for entries > 0.714** — TP_NEAR_RESOLUTION_CAP_FIX_001 queued.
+- **Dashboard truth: FIXED** — mark_source chip, realized PnL, R25 sublabel correct.
+- **Dashboard upstream trace: IN PROGRESS** — MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 ACTIVE (read-only).
 - **User/fill stream: BLOCKED** — requires apiKey, secret, passphrase in .env
-- **Stale mark REST fallback: LIVE** — commit b31b548
 - **Dashboard redesign: COMPLETE**

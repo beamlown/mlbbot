@@ -1,0 +1,13 @@
+{
+  "task_id": "TP_NEAR_RESOLUTION_CAP_FIX_001",
+  "type": "code_fix",
+  "priority": "HIGH",
+  "status": "QUEUED",
+  "queued_reason": "core/risk.py conflict with MIN_ENTRY_PRICE_GATE_001 — execute next after that is DONE",
+  "issued": "2026-04-11",
+  "subsystem": "exit_math",
+  "title": "Fix unreachable TP math for near-1.0 entry prices",
+  "allowed_files": ["core/risk.py"],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_TP_NEAR_RESOLUTION_CAP_FIX_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_TP_NEAR_RESOLUTION_CAP_FIX_001.json"
+}

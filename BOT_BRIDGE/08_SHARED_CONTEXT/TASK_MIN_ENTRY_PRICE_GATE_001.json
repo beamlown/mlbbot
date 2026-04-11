@@ -1,0 +1,13 @@
+{
+  "task_id": "MIN_ENTRY_PRICE_GATE_001",
+  "type": "code_fix",
+  "priority": "CRITICAL",
+  "status": "ACTIVE",
+  "issued": "2026-04-11",
+  "subsystem": "entry_gates",
+  "title": "Add minimum entry price gate to prevent instant stop-loss churn on ultra-low-price entries",
+  "allowed_files": ["core/risk.py", ".env (optional)"],
+  "forbidden_files": ["bot_core.py", "dashboard_server.py", "dashboard.html"],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_MIN_ENTRY_PRICE_GATE_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_MIN_ENTRY_PRICE_GATE_001.json"
+}

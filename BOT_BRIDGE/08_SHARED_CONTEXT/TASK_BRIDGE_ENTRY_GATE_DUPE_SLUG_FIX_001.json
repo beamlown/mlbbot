@@ -1,0 +1,13 @@
+{
+  "task_id": "BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001",
+  "type": "code_fix",
+  "priority": "HIGH",
+  "status": "QUEUED",
+  "queued_reason": "bot_core.py — execute after risk.py tasks are DONE; execute before MARKET_COOLDOWN_PERSIST_001",
+  "issued": "2026-04-11",
+  "subsystem": "bridge_loop",
+  "title": "Prevent duplicate slug intents from bypassing gate protections in the same bridge loop iteration",
+  "allowed_files": ["bot_core.py"],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001.json"
+}

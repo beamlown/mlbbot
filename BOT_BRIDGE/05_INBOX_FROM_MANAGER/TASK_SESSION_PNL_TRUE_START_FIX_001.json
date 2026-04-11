@@ -1,0 +1,16 @@
+{
+  "task_id": "SESSION_PNL_TRUE_START_FIX_001",
+  "type": "code_fix",
+  "priority": "MEDIUM",
+  "status": "QUEUED",
+  "queued_reason": "Lower priority — execute after all critical risk fixes are DONE",
+  "issued": "2026-04-11",
+  "subsystem": "session_accounting",
+  "title": "Track true session PnL from actual trading session start, not last restart timestamp",
+  "allowed_files": ["bot_core.py", "dashboard_server.py (only if session_start_ts lives there)"],
+  "forbidden_files": ["core/risk.py", "core/paper_exec.py", "dashboard.html"],
+  "evidence": "session_start_ts = 00:50:22 UTC (last restart). Trading started 18:23 UTC. Dashboard session PnL missed ~6.5 hours of losses. session_start_ts resets on every restart.",
+  "preferred_approach": "Set session_start_ts to start of current UTC calendar day on startup; persist across intraday restarts",
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_SESSION_PNL_TRUE_START_FIX_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_SESSION_PNL_TRUE_START_FIX_001.json"
+}

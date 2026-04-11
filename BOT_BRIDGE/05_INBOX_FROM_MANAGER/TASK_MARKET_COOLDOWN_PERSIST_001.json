@@ -1,0 +1,16 @@
+{
+  "task_id": "MARKET_COOLDOWN_PERSIST_001",
+  "type": "code_fix",
+  "priority": "HIGH",
+  "status": "QUEUED",
+  "queued_reason": "bot_core.py conflict with ACTIVE task BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 — execute after dupe-slug fix is DONE",
+  "issued": "2026-04-11",
+  "subsystem": "runtime_state / cooldown",
+  "title": "Persist market cooldown across restarts",
+  "allowed_files": ["bot_core.py"],
+  "forbidden_files": ["core/risk.py", "dashboard_server.py", "dashboard.html", ".env"],
+  "evidence": "Restart at 00:50:22 UTC wiped cooldown dict. CWS-KC (market_id=1860423) was re-entered 93 seconds after a gap_stop cooldown was set. Cooldown is in-memory only — every restart wipes it.",
+  "approach": "Write _market_cooldown expiry timestamps to state.json in _write_state(); reload on startup, filtering expired entries",
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_MARKET_COOLDOWN_PERSIST_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_MARKET_COOLDOWN_PERSIST_001.json"
+}

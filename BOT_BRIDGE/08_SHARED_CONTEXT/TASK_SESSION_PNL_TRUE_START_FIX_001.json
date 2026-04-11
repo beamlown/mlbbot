@@ -1,0 +1,13 @@
+{
+  "task_id": "SESSION_PNL_TRUE_START_FIX_001",
+  "type": "code_fix",
+  "priority": "MEDIUM",
+  "status": "QUEUED",
+  "queued_reason": "Lower priority — execute after all critical risk fixes complete",
+  "issued": "2026-04-11",
+  "subsystem": "session_accounting",
+  "title": "Track true session PnL from actual trading session start, not last restart timestamp",
+  "allowed_files": ["bot_core.py", "dashboard_server.py (if needed)"],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_SESSION_PNL_TRUE_START_FIX_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_SESSION_PNL_TRUE_START_FIX_001.json"
+}

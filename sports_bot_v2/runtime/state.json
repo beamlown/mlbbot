@@ -2,19 +2,20 @@
   "engine": "sports_paper_baseball",
   "build": "sports_bot_v2.baseball.2026-03-29",
   "sport": "baseball",
-  "now": "2026-04-11T01:41:41.353192+00:00",
-  "loop_count": 199,
+  "now": "2026-04-11T02:02:32.786646+00:00",
+  "loop_count": 1,
   "config_hash": "2f0dd9e0ef8a",
   "pnl": {
-    "realized": 208.1916,
-    "unrealized": 12.6196,
-    "net": 220.8113
+    "realized": 144.585,
+    "unrealized": 6.3807,
+    "net": 150.9658,
+    "session_start_ts": 1775872849
   },
   "slots": {
     "open": 3,
     "max": 3
   },
-  "total_trades": 213,
+  "total_trades": 219,
   "rolling": {
     "r25": {
       "n": 25,
@@ -22,44 +23,44 @@
       "losses": 20,
       "breakeven": 0,
       "win_rate": 20.0,
-      "pnl": -138.3973,
-      "avg_win": 24.8473,
-      "avg_loss": -13.1317,
-      "expectancy": -5.5359
+      "pnl": -181.9594,
+      "avg_win": 21.5217,
+      "avg_loss": -14.4784,
+      "expectancy": -7.2784
     },
     "r50": {
       "n": 50,
-      "wins": 14,
-      "losses": 34,
+      "wins": 12,
+      "losses": 36,
       "breakeven": 2,
-      "win_rate": 29.17,
-      "pnl": -132.4381,
-      "avg_win": 21.1626,
-      "avg_loss": -12.6093,
-      "expectancy": -2.7591
+      "win_rate": 25.0,
+      "pnl": -217.6883,
+      "avg_win": 20.8346,
+      "avg_loss": -12.9918,
+      "expectancy": -4.5352
     },
     "r100": {
       "n": 100,
-      "wins": 34,
-      "losses": 62,
+      "wins": 33,
+      "losses": 63,
       "breakeven": 4,
-      "win_rate": 35.42,
-      "pnl": 727.6672,
-      "avg_win": 47.5015,
-      "avg_loss": -14.3127,
-      "expectancy": 7.5799
+      "win_rate": 34.38,
+      "pnl": 662.1898,
+      "avg_win": 47.2962,
+      "avg_loss": -14.2632,
+      "expectancy": 6.8978
     }
   },
   "mode": {
-    "mode": "conservative",
-    "score": 0.2354,
-    "dwell_trades": 10,
-    "switch_reason": "holding_conservative",
+    "mode": "neutral",
+    "score": 0.2442,
+    "dwell_trades": 0,
+    "switch_reason": "downshift_pending dwell=0/5",
     "multipliers": {
-      "min_confidence": 1.1,
-      "max_spread": 0.85,
-      "min_depth_usd": 1.25,
-      "max_concurrent": 1.0
+      "min_confidence": 1.0,
+      "max_spread": 1.0,
+      "min_depth_usd": 1.0,
+      "max_concurrent": 3.0
     }
   },
   "guard_block_rate": 1.0,
@@ -70,55 +71,92 @@
   "market_validity_blocks": {},
   "invalid_market_blocks": 0,
   "last_invalid_market_details": {},
-  "exit_reason_counts": {
-    "stop_loss": 13,
-    "gap_stop": 9,
-    "trailing_stop(peak=28%,now=12%)": 1,
-    "take_profit": 4,
-    "trailing_stop(peak=15%,now=-6%)": 1,
-    "trailing_stop(peak=14%,now=-10%)": 1,
-    "near_resolution": 1
-  },
-  "market_cooldowns_active": 2,
+  "exit_reason_counts": {},
+  "market_cooldowns_active": 0,
   "open_positions": [
     {
-      "id": 254,
+      "id": 262,
       "market_slug": "mlb-wsh-mil-2026-04-10",
       "market_id": "1860425",
-      "side": "BUY_NO",
-      "entry_px": 0.59295,
-      "qty": 84.324142,
-      "confidence": 0.4438,
-      "pnl_usd": 15.444,
-      "ts_open": "2026-04-11T01:26:30.581906+00:00",
+      "side": "BUY_YES",
+      "entry_px": 0.35175,
+      "qty": 142.146411,
+      "confidence": 0.6429,
+      "pnl_usd": 9.403,
+      "ts_open": "2026-04-11T01:57:14.551947+00:00",
       "source": "model_bridge"
     },
     {
-      "id": 258,
-      "market_slug": "mlb-bos-stl-2026-04-10",
-      "market_id": "1860428",
-      "side": "BUY_NO",
-      "entry_px": 0.3819,
-      "qty": 130.924326,
-      "confidence": 0.3537,
-      "pnl_usd": -1.8002,
-      "ts_open": "2026-04-11T01:36:35.873288+00:00",
+      "id": 264,
+      "market_slug": "mlb-col-sd-2026-04-10",
+      "market_id": "1860430",
+      "side": "BUY_YES",
+      "entry_px": 0.3618,
+      "qty": 138.197899,
+      "confidence": 0.3996,
+      "pnl_usd": -1.8726,
+      "ts_open": "2026-04-11T02:00:41.137952+00:00",
       "source": "model_bridge"
     },
     {
-      "id": 259,
-      "market_slug": "mlb-nyy-tb-2026-04-10",
-      "market_id": "1860417",
-      "side": "BUY_NO",
-      "entry_px": 0.9447,
-      "qty": 52.926855,
-      "confidence": 0.3781,
-      "pnl_usd": -1.0241,
-      "ts_open": "2026-04-11T01:41:38.467820+00:00",
+      "id": 265,
+      "market_slug": "mlb-hou-sea-2026-04-10",
+      "market_id": "1860435",
+      "side": "BUY_YES",
+      "entry_px": 0.201,
+      "qty": 96.206719,
+      "confidence": 0.6429,
+      "pnl_usd": -1.1497,
+      "ts_open": "2026-04-11T02:02:29.931987+00:00",
       "source": "model_bridge"
     }
   ],
   "recent_closed": [
+    {
+      "id": 263,
+      "market_slug": "mlb-hou-sea-2026-04-10",
+      "side": "BUY_YES",
+      "reason_close": "gap_stop",
+      "pnl_usd": -26.088208,
+      "entry_px": 0.37185,
+      "exit_px": 0.18905
+    },
+    {
+      "id": 261,
+      "market_slug": "mlb-col-sd-2026-04-10",
+      "side": "BUY_YES",
+      "reason_close": "stop_loss",
+      "pnl_usd": -8.551617,
+      "entry_px": 0.402,
+      "exit_px": 0.34825
+    },
+    {
+      "id": 260,
+      "market_slug": "mlb-hou-sea-2026-04-10",
+      "side": "BUY_YES",
+      "reason_close": "stop_loss",
+      "pnl_usd": -11.308005,
+      "entry_px": 0.4422,
+      "exit_px": 0.3582
+    },
+    {
+      "id": 259,
+      "market_slug": "mlb-nyy-tb-2026-04-10",
+      "side": "BUY_NO",
+      "reason_close": "stop_loss",
+      "pnl_usd": -8.680639,
+      "entry_px": 0.9447,
+      "exit_px": 0.8159
+    },
+    {
+      "id": 258,
+      "market_slug": "mlb-bos-stl-2026-04-10",
+      "side": "BUY_NO",
+      "reason_close": "stop_loss",
+      "pnl_usd": -11.424064,
+      "entry_px": 0.3819,
+      "exit_px": 0.30845
+    },
     {
       "id": 257,
       "market_slug": "mlb-cws-kc-2026-04-10",
@@ -147,6 +185,15 @@
       "exit_px": 0.0398
     },
     {
+      "id": 254,
+      "market_slug": "mlb-wsh-mil-2026-04-10",
+      "side": "BUY_NO",
+      "reason_close": "trailing_stop(peak=37%,now=10%)",
+      "pnl_usd": 2.445906,
+      "entry_px": 0.59295,
+      "exit_px": 0.64675
+    },
+    {
       "id": 253,
       "market_slug": "mlb-oak-nym-2026-04-10",
       "side": "BUY_YES",
@@ -154,61 +201,7 @@
       "pnl_usd": 13.246202,
       "entry_px": 0.7437,
       "exit_px": 0.9751
-    },
-    {
-      "id": 252,
-      "market_slug": "mlb-cws-kc-2026-04-10",
-      "side": "BUY_YES",
-      "reason_close": "gap_stop",
-      "pnl_usd": -18.658375,
-      "entry_px": 0.09045,
-      "exit_px": 0.0597
-    },
-    {
-      "id": 251,
-      "market_slug": "mlb-cws-kc-2026-04-10",
-      "side": "BUY_YES",
-      "reason_close": "gap_stop",
-      "pnl_usd": -29.438917,
-      "entry_px": 0.1809,
-      "exit_px": 0.0796
-    },
-    {
-      "id": 250,
-      "market_slug": "mlb-wsh-mil-2026-04-10",
-      "side": "BUY_YES",
-      "reason_close": "take_profit",
-      "pnl_usd": 31.875415,
-      "entry_px": 0.2412,
-      "exit_px": 0.40795
-    },
-    {
-      "id": 249,
-      "market_slug": "mlb-min-tor-2026-04-10",
-      "side": "BUY_YES",
-      "reason_close": "stop_loss",
-      "pnl_usd": -10.572968,
-      "entry_px": 0.0603,
-      "exit_px": 0.04975
-    },
-    {
-      "id": 248,
-      "market_slug": "mlb-min-tor-2026-04-10",
-      "side": "BUY_YES",
-      "reason_close": "stop_loss",
-      "pnl_usd": -10.572968,
-      "entry_px": 0.0603,
-      "exit_px": 0.04975
-    },
-    {
-      "id": 247,
-      "market_slug": "mlb-cws-kc-2026-04-10",
-      "side": "BUY_YES",
-      "reason_close": "gap_stop",
-      "pnl_usd": -15.142981,
-      "entry_px": 0.23115,
-      "exit_px": 0.16915
     }
   ],
-  "status_line": "loop=199 sport=baseball mode=conservative open=2 guard_block=174"
+  "status_line": "loop=1 sport=baseball mode=neutral open=3 guard_block=195"
 }
