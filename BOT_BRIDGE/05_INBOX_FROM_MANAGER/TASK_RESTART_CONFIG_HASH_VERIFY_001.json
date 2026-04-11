@@ -1,0 +1,64 @@
+{
+  "task_id": "RESTART_CONFIG_HASH_VERIFY_001",
+  "title": "Verify clean restart loaded new .env config — confirm gates enforcing at new thresholds",
+  "priority": "CRITICAL",
+  "type": "read-only runtime verification",
+  "issued": "2026-04-10",
+  "subsystem": "runtime / entry gates / process topology",
+  "status": "QUEUED — requires operator cold restart first",
+  "depends_on": "Operator must: (1) kill all running stack processes, (2) delete __pycache__/bot_core.cpython-*.pyc, (3) relaunch via launch_all.py — BEFORE this task runs",
+  "context": {
+    "problem": "Tonight's bot ran with stale config at every restart. config_hash stayed '2f0dd9e0ef8a' across multiple restarts while .env had been edited. The live process opened trades at conf=0.43 and entry=0.01 after gates were supposedly live. The .env was updated to MIN_ENTRY_CONFIDENCE=0.65 and MIN_ENTRY_PRICE=0.22 but neither was ever picked up.",
+    "evidence": [
+      "State.json at 04:19 UTC: config_hash='2f0dd9e0ef8a' unchanged from 03:49 UTC snapshot",
+      "Trade #306: conf=0.4279, entry=0.1407 — violates both new thresholds",
+      "Trade #310: conf=0.5507, entry=0.01005 — model assigned 55% confidence to near-resolved market",
+      "Session_start_ts changed at ~04:14 UTC (another restart) but config_hash unchanged"
+    ],
+    "risk": "If tomorrow's restart also fails to load the new config, every trade opened is ungated. Must verify config pickup before trusting any live behavior."
+  },
+  "objective": "Confirm the restarted bot process loaded the corrected .env values by reading live runtime state and early log entries. Do not trust any live trade behavior until this verification passes.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260411.log",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260412.log"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
+    "Any file not listed above"
+  ],
+  "forbidden_actions": [
+    "Edit any code",
+    "Edit .env",
+    "Restart or kill processes",
+    "DB writes",
+    "Open new tasks"
+  ],
+  "required_work": [
+    "1. Read runtime/state.json immediately after relaunch. Record config_hash. Confirm it is NOT '2f0dd9e0ef8a'.",
+    "2. Read the fresh bot log. Find the startup banner line that prints min_conf. Confirm it shows 0.65 (not 0.25 or 0.60).",
+    "3. Wait for at least one bridge loop cycle. Find BRIDGE GATE REJECT entries in the log. Confirm confidence rejections are firing at 0.65 threshold.",
+    "4. Confirm no new trade was opened with confidence < 0.65 or entry_px < 0.22.",
+    "5. Check process topology: confirm only one bot_core process is running (no duplicate PIDs).",
+    "6. Confirm session_start_ts in state.json matches the fresh relaunch time (not a stale prior session)."
+  ],
+  "acceptance_criteria": [
+    "config_hash in state.json is different from '2f0dd9e0ef8a'",
+    "Bot log startup line shows min_conf=0.65 (or shows the correct loaded threshold)",
+    "At least one BRIDGE GATE REJECT log entry confirms confidence threshold is 0.65",
+    "No trade opened post-restart with confidence < 0.65",
+    "No trade opened post-restart with entry_px < 0.22",
+    "Exactly one bot_core process running",
+    "session_start_ts is fresh (within 5 minutes of relaunch)"
+  ],
+  "verification_required": [
+    "Quote the exact config_hash from the new state.json",
+    "Quote the startup min_conf line from the log",
+    "Quote at least one BRIDGE GATE REJECT line showing the 0.65 threshold",
+    "State PASS or FAIL for each acceptance criterion",
+    "If any criterion FAILs, do NOT open worker code tasks — flag the failure and stop"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_RESTART_CONFIG_HASH_VERIFY_001.json"
+}

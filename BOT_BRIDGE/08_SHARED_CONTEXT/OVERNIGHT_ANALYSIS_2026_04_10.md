@@ -28,15 +28,22 @@
 
 ### Before clean restart (trades 201–289)
 - **Confidence gate was NOT enforcing** for most of the early session — stale pyc (confirmed). 57 of 89 closed trades were sub-0.60 confidence. Sub-0.60 trades: **-$298.74 PnL.**
-- After the pyc-clear restart, gate fired correctly: `confidence_too_low`, `imbalance_extreme`, `depth_too_low`, `exposure_cap_exceeded` all logging correctly.
 
-### After clean restart (trades 288–292)
-- All gates **working**. Every open position is confidence ≥ 0.60.
-- Gate log confirms: confidence rejections, depth rejections, exposure cap firing.
-- `check_entry_gates` messages visible — gate is live.
-- Above-0.60 trades still lost: **-$19.50 on 35 closed trades above-0.60.** The model has negative edge even in the gated universe.
+### After first clean restart (~22:38 UTC, trades 288–292)
+- Gates appeared to be working. Above-0.60 entries logged. **But this turned out to be temporary.**
 
-**Verdict: gates are now mechanically correct. The problem is now model quality, not gate wiring.**
+### ⚠ CORRECTED — Later runtime reveals gates are still not enforcing
+
+**State.json snapshot at 04:19 UTC shows:**
+- Realized PnL: **-$360.90** (from -$77.91 at 03:49 — lost ~$283 in 30 min with gates supposedly live)
+- **Config hash unchanged: `2f0dd9e0ef8a`** — proof the process is still running the old config
+- A second restart occurred at ~04:14 UTC (new session_start_ts). That restart also loaded the old config.
+- **.env was updated AFTER this restart** — the process never saw the new values
+- Open positions at 04:19: #306 conf=0.4279 entry=0.1407 and #310 conf=0.5507 entry=**0.01005** — both violate the new AND old thresholds
+
+**Critical model failure observed**: Trade #310 opened on HOU-SEA at entry 0.01 (1 cent), confidence 0.5507. HOU already lost. Market is resolving. Model assigned 55% confidence to a near-zero probability event. This is a model/data disconnect that gates alone cannot fully protect against.
+
+**Verdict: gates are NOT reliably enforcing. The live process did not load the corrected .env at either restart tonight. Tomorrow's first action must be a verified clean restart that proves new config is loaded before any new trade is allowed.**
 
 ---
 
@@ -146,15 +153,25 @@ Entries below 0.15 are especially bad: the model is recommending "buy this team 
 
 ---
 
-## Current Open Positions at Session End
+## ⚠ Current Open Positions (04:19 UTC — UPDATED — much worse than earlier snapshot)
 
 | Trade | Market | Side | Entry | Conf | Notes |
 |-------|--------|------|-------|------|-------|
-| #290 | mlb-tex-lad | BUY_YES | 0.5427 | 0.6286 | High entry — check final score |
-| #291 | mlb-hou-sea | BUY_YES | 0.2211 | 0.6193 | HOU lost tonight? Verify |
-| #292 | mlb-col-sd | BUY_YES | 0.2613 | 0.6429 | COL-SD burned us 8T already |
+| #306 | mlb-tex-lad | BUY_YES | 0.1407 | 0.4279 | Violates 0.65 conf and 0.22 price |
+| #310 | mlb-hou-sea | BUY_YES | **0.01005** | 0.5507 | **CRITICAL — entry at 1 cent, 4975 qty. HOU lost. Market near resolution at 0.** |
 
-**Warning on #292**: COL-SD cost us $77.53 in 8 trades tonight (all losses). This position should be watched carefully. If COL is losing, this should be exited early.
+Trades #290–#305 all opened and closed since the "clean restart" — nearly all losses. The bot was running ungated.
+
+**Resolution_watcher will close #310 at ~0.01 (near total loss on that position). #306 is also likely a loss.**
+
+## Realized PnL Progression Tonight
+| Time | Realized PnL | Notes |
+|------|-------------|-------|
+| ~22:38 UTC | First restart | |
+| 03:49 UTC | -$77.91 | Appeared gated |
+| 04:19 UTC | **-$360.90** | +$283 losses in 30 min — gates not enforcing |
+
+**Total trades tonight (as of 04:19): 264 opened since session origin.**
 
 ---
 

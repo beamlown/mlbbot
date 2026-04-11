@@ -29,7 +29,7 @@
     "late_tie_bottom"
   ],
   "n_features": 22,
-  "export_ts": "2026-04-03T21:21:30.749233Z",
+  "export_ts": "2026-04-11T04:25:15.742659Z",
   "promotion_passed": true,
   "test_log_loss": 0.46529884814839495,
   "test_brier": 0.15609870552511204

@@ -1,16 +1,21 @@
 # CLAUDE_STATUS.md — Manager Status Snapshot
-## Last reconciled: 2026-04-10 — Board reconciliation: MARK_FALLBACK trace, FIX, and VERIFY all closed. 0 ACTIVE tasks. Mark fallback reliability fix live. Two operator actions still required (pyc + cold restart; browser hard refresh).
+## Last reconciled: 2026-04-10 (end of night) — 0 ACTIVE tasks. .env updated (MIN_ENTRY_CONFIDENCE=0.65, MIN_ENTRY_PRICE=0.22). CRITICAL: live process did not load new config at either restart tonight. Bot opened trades through id=310 at conf=0.43/0.55 and entry=0.01 with gates not enforcing. Must kill bot_core and do verified clean restart before any new trades tomorrow.
 
 ---
 
-## ⚠ OPERATOR ACTIONS REQUIRED
+## ⚠ OPERATOR ACTIONS REQUIRED (TOMORROW MORNING — DO BEFORE ANYTHING ELSE)
 
-**1. Delete `__pycache__/bot_core.cpython-*.pyc` and cold-restart the stack.**
-Until this is done, confidence gate, cooldown persistence, session PnL fix, and dupe-slug fix are NOT executing regardless of what code is patched.
-See: `08_SHARED_CONTEXT/OPERATOR_ACTION_REQUIRED_001.md`
+**1. Kill bot_core process now if still running.** Do not leave it running overnight — gates are not enforcing.
 
-**2. Browser hard refresh (`Ctrl+Shift+R`) on the dashboard.**
-POSITION_SIDE_SEMANTICS_MERGE_FIX_001 is live in dashboard.html — no server restart needed, but the browser must reload the file.
+**2. Tomorrow: Full verified restart sequence:**
+   a. Kill entire stack (launch_all, bot_core, dashboard_server, resolution_watcher)
+   b. Delete `__pycache__/bot_core.cpython-*.pyc`
+   c. Relaunch from clean terminal
+   d. Immediately read `runtime/state.json` and confirm `config_hash` changed from `2f0dd9e0ef8a`
+   e. Watch log for first bridge gate: confirm `BRIDGE GATE REJECT [check_entry_gates]` fires for any sub-0.65 confidence rec before any new trade opens
+   f. Only trust the session after step (e) is confirmed in the log
+
+**3. Browser hard refresh (`Ctrl+Shift+R`) on the dashboard.**
 
 ---
 
