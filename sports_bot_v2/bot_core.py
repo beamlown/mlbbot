@@ -461,15 +461,25 @@ def main():
                             )
                             break
                         current_open_slugs = {t.market_slug for t in current_open}
+                        if '_bridge_consumed_slugs' not in locals():
+                            _bridge_consumed_slugs = set()
+                        if intent["slug"] in _bridge_consumed_slugs:
+                            logger.info(
+                                "BRIDGE GATE REJECT [loop_slug_dedupe] slug=%s reason=already_consumed_this_loop",
+                                intent["slug"],
+                            )
+                            continue
                         if intent["slug"] in current_open_slugs:
                             logger.info(
                                 "BRIDGE RACE SKIP slug=%s reason=slug_opened_by_concurrent_process",
                                 intent["slug"],
                             )
+                            _bridge_consumed_slugs.add(intent["slug"])
                             continue
                         market = next((m for m in _markets if m.slug == intent["slug"]), None)
                         if market is None:
                             logger.info("BRIDGE GATE REJECT [market_lookup] slug=%s reason=market_not_found", intent["slug"])
+                            _bridge_consumed_slugs.add(intent["slug"])
                             continue
                         ob = get_orderbook_snapshot(market)
                         signal = Signal(
@@ -522,6 +532,7 @@ def main():
                             )
                             _guard_block_count += 1
                             loop_guard_reasons.append(f"bridge:{_gate_reasons[0] if _gate_reasons else 'unknown'}")
+                            _bridge_consumed_slugs.add(market.slug)
                             continue
                         trade = open_position(
                             market,
@@ -533,12 +544,14 @@ def main():
                         trade_id = insert_open_trade(trade, sport=SPORT)
                         if trade_id is None:
                             logger.info("BRIDGE OPEN SKIPPED (duplicate slug) slug=%s", market.slug)
+                            _bridge_consumed_slugs.add(market.slug)
                             continue
                         trade.id = trade_id
                         logger.info(
                             "BRIDGE OPEN trade=%d %s %s @ %.4f source=%s",
                             trade_id, market.slug[:30], trade.side, trade.entry_px, trade.source,
                         )
+                        _bridge_consumed_slugs.add(market.slug)
             except Exception as e:
                 logger.warning("Model bridge error: %s", e)
 
