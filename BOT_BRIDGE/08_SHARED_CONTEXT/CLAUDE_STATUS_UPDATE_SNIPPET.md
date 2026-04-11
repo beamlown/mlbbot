@@ -3,15 +3,14 @@
 Use this to update `08_SHARED_CONTEXT/CLAUDE_STATUS.md`.
 
 ## Add under Completed This Reconciliation Pass
-| MARKET_COOLDOWN_PERSIST_001 | APPROVED — `bot_core.py` now persists non-expired cooldown expiries to runtime state and reloads them on startup; `py_compile` PASS; restart required. |
+| POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001 | APPROVED — execution truth and server payload mapping clean; root cause traced to dashboard.html client-side full-object merge that lets stale cache overwrite current trade side semantics; secondary Games-tab slug-key mismatch also found. |
 
-## Replace the market cooldown paragraph with:
-- **Market cooldown persistence: patched, verify pending** — `MARKET_COOLDOWN_PERSIST_001` is approved. The bot now persists active cooldown expiries into runtime state and restores them at startup so restarts no longer wipe cooldown protection. Restart is required before this protection is live, and stale bot_core pycache must still be cleared.
+## Replace the dashboard display/issues paragraph with:
+- **Display issues — side-semantics root cause found, fix active** — `POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001` traced the backed-team mismatch to a stale client-side merge in `dashboard.html`. `POSITION_SIDE_SEMANTICS_MERGE_FIX_001` is now ACTIVE to keep current trade identity fields authoritative and prevent stale cache overwrite.
 
 ## Update Open Items section
 Replace or add:
-| **Session PnL true-start fix** | MEDIUM | Session PnL still follows restart timing instead of true trading session start. `SESSION_PNL_TRUE_START_FIX_001` is now ACTIVE. |
-| **Side-semantics regression audit** | MEDIUM | Still queued behind the remaining visibility/session fix. |
+| **Side-semantics merge fix** | HIGH | dashboard.html stale cache merge can overwrite current trade side/backed_team/faded_team fields. `POSITION_SIDE_SEMANTICS_MERGE_FIX_001` is now ACTIVE. |
 
 ## Keep unchanged for now
 - pycache delete + cold restart remains operator-critical

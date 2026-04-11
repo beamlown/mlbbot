@@ -1,0 +1,64 @@
+{
+  "task_id": "POSITION_SIDE_SEMANTICS_MERGE_FIX_001",
+  "title": "Fix stale client-side merge overwriting backed-team and side semantics",
+  "priority": "HIGH",
+  "type": "surgical code fix",
+  "issued": "2026-04-10",
+  "subsystem": "dashboard truth / side semantics",
+  "status": "ACTIVE",
+  "depends_on": "POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001 (APPROVED)",
+  "context": {
+    "problem_statement": "A read-only audit traced the backed-team mismatch to dashboard.html client-side merge logic. Cached mark data from an older trade on the same slug can overwrite the current trade's correct side/backed_team/faded_team semantics.",
+    "primary_root_cause": "renderUnifiedPositions() performs a full-object spread from markMap into the current open paper position object.",
+    "secondary_finding": "Games-tab openBySlug lookup uses inconsistent slug keys (stored with date, looked up without date).",
+    "manager_intent": "Apply the smallest safe dashboard.html-only patch so stale cached mark data cannot overwrite semantic identity fields, and fix the Games-tab slug-key mismatch if it is safely in the same file."
+  },
+  "objective": "Preserve correct trade semantics in the dashboard by limiting stale cache merges to mark/price/game-state fields only, while keeping correct side/team identity from the current trade object.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "conditional_allowed_files": [],
+  "read_only_context_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\dashboard.log"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py",
+    "Any file not listed above"
+  ],
+  "forbidden_actions": [
+    "Broad repo sweep",
+    "Read every file in the repo",
+    "Refactor unrelated dashboard behavior",
+    "Server-side payload changes",
+    "Restart processes",
+    "DB writes",
+    "Open new tasks"
+  ],
+  "required_work": [
+    "Inspect renderUnifiedPositions() merge logic in dashboard.html",
+    "Replace the full-object spread from markMap with a field-specific merge that copies only safe dynamic fields like current_price, unrealized_pnl_usd, live_equity_usd, mark_source, and current game-state fields",
+    "Do not allow cached merge data to overwrite side, backed_team, faded_team, entry_px, qty, id, or other identity fields of the current trade object",
+    "Inspect the Games-tab openBySlug key path and fix the slug-key mismatch if it is safely addressable in the same file",
+    "Keep the patch local and minimal"
+  ],
+  "acceptance_criteria": [
+    "Cached mark data no longer overwrites current trade side/backed_team/faded_team semantics",
+    "Current trade identity fields remain authoritative from the openPaperPositions source object",
+    "Games-tab open-position lookup uses consistent slug keys if the secondary bug is fixed in the same patch",
+    "No files outside allowed scope are modified",
+    "python syntax / structure remains valid for dashboard.html"
+  ],
+  "verification_required": [
+    "Show the exact function/section changed",
+    "Explain old behavior vs new behavior",
+    "State whether the Games-tab slug mismatch was fixed too",
+    "Describe which fields are now merged and which are protected",
+    "State whether restart is required for the fix to take effect"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_POSITION_SIDE_SEMANTICS_MERGE_FIX_001.json"
+}

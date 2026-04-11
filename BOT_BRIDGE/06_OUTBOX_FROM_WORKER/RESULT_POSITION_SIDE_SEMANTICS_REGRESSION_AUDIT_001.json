@@ -1,30 +1,126 @@
 {
   "task_id": "POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001",
-  "status": "COMPLETE",
+  "status": "DONE",
+  "mode_used": "WORKER MODE",
+  "read_only_confirmed": true,
+  "active_tasks_found": [
+    "POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001 (ACTIVE — task JSON confirmed)"
+  ],
+  "task_selected": "POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001",
   "files_read": [
-    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_TASK_BOARD.md",
-    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_STATUS.md",
     "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001.json",
-    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001.md",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
     "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
     "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
   ],
-  "files_changed": [
-    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001.json"
+  "files_changed": [],
+
+  "live_positions_at_audit_time": [
+    {
+      "id": 276,
+      "market_slug": "mlb-tex-lad-2026-04-10",
+      "side": "BUY_YES",
+      "entry_px": 0.2412,
+      "source": "model_bridge"
+    },
+    {
+      "id": 277,
+      "market_slug": "mlb-hou-sea-2026-04-10",
+      "side": "BUY_YES",
+      "entry_px": 0.3819,
+      "source": "model_bridge"
+    }
   ],
-  "summary": "Read-only audit traced current live open positions from execution truth through dashboard API payload and SSE layers into dashboard labeling logic. Current mismatch is introduced in dashboard.html labeling logic, not in dashboard_server.py payload mapping and not in execution truth for the sampled live positions.",
-  "verification_evidence": [
-    "DB open trades and /api/trades open positions agree on current live trade identities and sides (e.g. sampled live trade id 259 with explicit side from execution truth).",
-    "Live /api/stream/state payload carries market_slug, prices, and mark metadata but does not invent semantic backed/faded team labels server-side.",
-    "dashboard.html computes per-card team semantics client-side from trade side with local labeling logic around the position-card builder/normalizer.",
-    "The UI layer contains backed_team/faded_team synthesis and headlineText generation, which is the layer responsible for describing who is 'backed'.",
-    "Because payload truth for side is intact while semantic team wording is computed in dashboard.html, any live case showing the wrong backed team is a dashboard labeling regression rather than a dashboard_server payload-mapping defect."
-  ],
-  "acceptance_criteria_met": {
-    "trace_live_trade_from_execution_truth": true,
-    "compare_payload_vs_labeling": true,
-    "identify_fault_layer": true
+
+  "end_to_end_trace": {
+    "trade_traced": "Trade #277 — mlb-hou-sea-2026-04-10, BUY_YES",
+    "step_1_execution_truth": {
+      "source": "DB via _fetch_trades() → /api/trades",
+      "side": "BUY_YES",
+      "entry_px": 0.3819,
+      "slug": "mlb-hou-sea-2026-04-10",
+      "verdict": "CORRECT — side=BUY_YES stored faithfully in DB and returned by _fetch_trades"
+    },
+    "step_2_semantic_mapping": {
+      "source": "dashboard.html inferTeamsFromTrade() called from buildOpenPaperPositions()",
+      "function": "inferTeamsFromTrade",
+      "slug_parse": "slugToGameParts('mlb-hou-sea-2026-04-10') → { away: 'HOU', home: 'SEA' }",
+      "isYes": true,
+      "backed_team_computed": "HOU (away, slug position 1)",
+      "faded_team_computed": "SEA (home, slug position 2)",
+      "convention": "BUY_YES → backed_team = slug[1] (away). Consistent with YES contract resolving if away team wins.",
+      "verdict": "CORRECT — inferTeamsFromTrade produces correct backed_team for this trade"
+    },
+    "step_3_stream_payload": {
+      "source": "dashboard_server.py _stream_positions_mark()",
+      "backed_team_in_payload": "NOT PRESENT — _stream_positions_mark does not emit side, backed_team, faded_team, or away_team/home_team",
+      "payload_fields": "market_slug, current_price, unrealized_pnl_usd, live_equity_usd, best_bid, best_ask, spread, source_ts, mark_source, game_status, inning, inning_half, outs, home_score, away_score, game_source_ts",
+      "pnl_formula": "(current_price - entry_px) * qty — correct for both BUY_YES (tracked YES token) and BUY_NO (tracked NO token via no_token_id asset_id)",
+      "verdict": "CORRECT — payload carries only mark/price data, no semantic side corruption here"
+    },
+    "step_4_card_render": {
+      "source": "dashboard.html buildUnifiedPositionCards() + renderUnifiedPositions()",
+      "headlineText_logic": "r.backed_team ? `${r.backed_team} backed` : 'Backed side'",
+      "action_pill_logic": "renderLiveGamesFocus line 1592: `${p.backed_team || away} ${side}`",
+      "verdict": "CORRECT IF r.backed_team is valid — both use p.backed_team from inferTeamsFromTrade"
+    },
+    "step_5_merge_bug": {
+      "source": "dashboard.html renderUnifiedPositions() line 1139",
+      "code": "latestOpenPaperPositions = openPaperPositions.map(p => ({ ...p, ...(markMap.get(p.market_slug) || {}) }));",
+      "what_markMap_contains": "All fields from the PRIOR latestOpenPaperPositions, including semantic trade fields: side, backed_team, faded_team, held_contract_side, side_label, entry_px, qty, id",
+      "bug": "When a trade closes and a NEW trade opens on the SAME market_slug with a DIFFERENT side, markMap still contains the OLD position's side/backed_team. The spread `...markMap.get(p.market_slug)` overwrites the freshly-built position's correct side/backed_team with stale values from the prior trade.",
+      "verdict": "BUG CONFIRMED — this is the root cause of the operator-reported mismatch"
+    }
   },
-  "root_cause_conclusion": "The backed-team / held-side mismatch is introduced in dashboard.html client-side labeling logic. Execution truth and payload side data remain intact for sampled live positions, while the UI synthesizes backed_team/faded_team descriptions locally and is therefore the most likely regression layer. No evidence from this audit points to dashboard_server.py rewriting the semantic side incorrectly.",
-  "recommended_next_fix_target": "dashboard.html position-card normalization / labeling path that derives backed_team, faded_team, and headlineText from trade.side and slug team order."
+
+  "bug_scenario_confirmed": {
+    "market_slug": "mlb-hou-sea-2026-04-10",
+    "prior_trade": "Trade #272 — BUY_NO, entry_px=0.7839 (closed stop_loss)",
+    "current_trade": "Trade #277 — BUY_YES, entry_px=0.3819 (currently open)",
+    "corruption_path": [
+      "1. Trade #272 (BUY_NO) was open → latestOpenPaperPositions had { market_slug:'mlb-hou-sea-2026-04-10', side:'BUY_NO', backed_team:'SEA', faded_team:'HOU' }",
+      "2. Trade #272 closed (stop_loss). Trades API returns #272 as closed, #277 as open.",
+      "3. fetchTrades() → buildOpenPaperPositions builds new position correctly: { side:'BUY_YES', backed_team:'HOU', faded_team:'SEA' }",
+      "4. markMap = Map from latestOpenPaperPositions — still has old BUY_NO entry for 'mlb-hou-sea-2026-04-10'",
+      "5. Line 1139: { ...newBUY_YES, ...oldBUY_NO_markMap } = { side:'BUY_NO', backed_team:'SEA', ... } — OLD values OVERWRITE correct new values",
+      "6. Dashboard now shows 'SEA backed LOSE' for a position that is actually BUY_YES backing HOU to win",
+      "7. This corruption persists through all subsequent renderUnifiedPositions() cycles until a page reload"
+    ]
+  },
+
+  "secondary_bug_found": {
+    "id": "Games Tab slug date mismatch",
+    "source": "dashboard.html renderGamesTab() line 1441 vs lines 1449/1454",
+    "openBySlug_key": "p.market_slug = 'mlb-tex-lad-2026-04-10' (with date)",
+    "lookup_key_constructed": "`mlb-${shortTeam(g.away)}-${shortTeam(g.home)}` = 'mlb-tex-lad' (no date)",
+    "verdict": "NEVER MATCHES — open positions never appear in the Games tab 'OPEN POSITION' badge or 'Backed/Unrealized' display box",
+    "severity": "MEDIUM — separate from the backed_team mismatch; cosmetic but defeats the Games tab overlay feature entirely"
+  },
+
+  "layers_ruled_out": {
+    "execution_truth": "CLEAN — DB side field is authoritative and correct",
+    "dashboard_server_payload_mapping": "CLEAN — _fetch_trades returns correct side; _stream_positions_mark does not touch side/backed_team",
+    "inferTeamsFromTrade_semantics": "CLEAN — BUY_YES→away backed, BUY_NO→home backed is consistently correct in both inferTeamsFromTrade and tradeTeams functions",
+    "stream_pnl_formula": "CLEAN — (current_price - entry_px)*qty correct for both sides since BUY_NO tracks no_token_id asset"
+  },
+
+  "true_held_side_for_traced_trades": {
+    "trade_276": "BUY_YES — holds YES contracts on mlb-tex-lad. TEX (away) should be shown as backed. CORRECTLY labeled under current state (no prior BUY_NO on this slug in current session).",
+    "trade_277": "BUY_YES — holds YES contracts on mlb-hou-sea. HOU (away) should be shown as backed. POTENTIALLY MIS-LABELED due to merge bug (prior BUY_NO trade #272 on same slug)."
+  },
+
+  "root_cause_conclusion": "The backed-team mismatch is introduced at dashboard.html renderUnifiedPositions() line 1139 — the merge `{ ...p, ...(markMap.get(p.market_slug) || {}) }` spreads ALL fields from the prior latestOpenPaperPositions (including semantic trade fields side, backed_team, faded_team) over freshly-built positions. When a trade closes and a new trade opens on the same market_slug with a different side, the stale semantic fields from the old position permanently overwrite the correct fields of the new position until page reload. Execution truth and all server-side payload mapping are clean.",
+
+  "recommended_next_fix_target": {
+    "file": "dashboard.html",
+    "function": "renderUnifiedPositions()",
+    "line": 1139,
+    "fix": "Replace the full-object spread merge with a field-specific merge that only copies mark/price/game-state fields from markMap (current_price, current_price_stale, unrealized_pnl_usd, live_equity_usd, best_bid, best_ask, spread, source_ts, mark_source, game_status, inning, inning_half, outs, balls, strikes, home_score, away_score, game_source_ts) — never overwriting side, backed_team, faded_team, held_contract_side, side_label, entry_px, qty, id, ts_open from the old position.",
+    "secondary_fix": "renderGamesTab() openBySlug lookup key must strip the date suffix from p.market_slug so it matches the date-free key constructed from ESPN game data."
+  },
+
+  "verification_performed": "Traced trade #277 (mlb-hou-sea BUY_YES) end-to-end from DB execution truth through dashboard_server payload to dashboard.html merge logic. Confirmed prior BUY_NO trade #272 on same slug. Confirmed merge overwrites correct backed_team via line 1139 full-object spread. Confirmed persistence of corruption across render cycles.",
+  "restart_needed": "N/A — read-only audit, no code changes",
+  "result_file_written": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001.json",
+  "summary": "Root cause confirmed: renderUnifiedPositions() line 1139 full-object spread overwrites freshly-built position semantics (side, backed_team, faded_team) with stale values from a prior trade on the same market_slug, causing persistent wrong-team display after any close+reopen on the same slug — execution truth and server payload are clean, the bug is entirely in the dashboard.html merge logic."
 }

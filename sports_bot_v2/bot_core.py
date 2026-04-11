@@ -340,12 +340,13 @@ def main():
     init_db()
     _write_pid()
 
-    # ── Restore market cooldown from prior state ───────────────────────────
-    global _market_cooldown
+    # ── Restore cooldown and session start from prior state ───────────────
+    global _market_cooldown, _session_start_ts
     try:
         with open(STATE_PATH) as _f:
             _prior = json.load(_f)
         _now = time.time()
+        # Restore cooldown expiry timestamps
         for _mid, _exp in _prior.get("market_cooldown_expiry", {}).items():
             if float(_exp) > _now:
                 _market_cooldown[_mid] = float(_exp)
@@ -354,6 +355,11 @@ def main():
                 "Restored %d active market cooldown(s) from prior state",
                 len(_market_cooldown),
             )
+        # Restore session start so PnL accumulates from true session start, not restart
+        _prior_ts = int(((_prior.get("pnl") or {}).get("session_start_ts") or 0))
+        if 0 < _prior_ts and (_now - _prior_ts) < 86400:
+            _session_start_ts = _prior_ts
+            logger.info("Restored session_start_ts=%d from prior state", _session_start_ts)
     except (FileNotFoundError, KeyError, ValueError, TypeError, OSError):
         pass
 
