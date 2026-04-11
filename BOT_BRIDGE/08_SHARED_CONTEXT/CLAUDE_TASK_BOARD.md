@@ -1,5 +1,5 @@
 # CLAUDE_TASK_BOARD.md — Manager Task Board
-## Last updated: 2026-04-11 — Reprioritized after tonight's trade audit. Gate failure confirmed all-night. 2 ACTIVE tasks. 4 QUEUED. OPERATOR ACTION REQUIRED before any fix has effect.
+## Last updated: 2026-04-11 — Reconciliation pass after side-semantics fix approved. 1 ACTIVE task remains. All queued tasks DONE. OPERATOR ACTION REQUIRED: cold restart to activate all bot_core + risk.py patches.
 
 ---
 
@@ -25,19 +25,13 @@ Until this is done: confidence gate, cooldown checks, and all `check_entry_gates
 
 | task_id | title | priority | subsystem | allowed_files | status |
 |---------|-------|----------|-----------|---------------|--------|
-| MIN_ENTRY_PRICE_GATE_001 | Add minimum entry price gate — block entries at 0.05–0.07 where spread exceeds SL threshold | CRITICAL | entry_gates | `core/risk.py`, `.env` (optional) | ACTIVE — brief in 05_INBOX. Execute first. |
 | MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 | Trace mark-source fallback frequency and guard-message payload origin | MEDIUM | read-only trace — dashboard_server / stream / runtime state | runtime/state.json, dashboard_server.py, logs/dashboard.log, logs/dashboard_err.log | ACTIVE — read-only, no file conflicts. Brief in 05_INBOX. |
 
 ---
 
 ## QUEUED (execute in this order)
 
-| task_id | title | priority | blocked_by | notes |
-|---------|-------|----------|------------|-------|
-| TP_NEAR_RESOLUTION_CAP_FIX_001 | Fix unreachable TP math for near-1.0 entry prices | HIGH | MIN_ENTRY_PRICE_GATE_001 (same file: core/risk.py) | Execute immediately after MIN_ENTRY_PRICE_GATE_001 is DONE |
-| BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 | Prevent duplicate slug intents from bypassing gate in same bridge loop | HIGH | risk.py tasks DONE first; bot_core.py available | Execute before MARKET_COOLDOWN_PERSIST_001 |
-| MARKET_COOLDOWN_PERSIST_001 | Persist market cooldown across restarts | HIGH | BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 (same file: bot_core.py) | Execute after dupe-slug fix |
-| SESSION_PNL_TRUE_START_FIX_001 | Track true session PnL from actual session start, not last restart | MEDIUM | All critical risk fixes DONE | Lower priority — dashboard visibility only |
+_No queued tasks. All previously queued tasks are DONE._
 
 ---
 
@@ -54,6 +48,13 @@ Until this is done: confidence gate, cooldown checks, and all `check_entry_gates
 
 | task_id | title | outcome | allowed_files |
 |---------|-------|---------|---------------|
+| POSITION_SIDE_SEMANTICS_MERGE_FIX_001 | Fix stale client-side merge overwriting backed-team and side semantics | APPROVED 2026-04-11 — dashboard.html renderUnifiedPositions() full-spread replaced with field-specific merge. renderGamesTab() slug-key mismatch fixed. Browser hard refresh required. | `dashboard.html` |
+| POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001 | Read-only audit: trace backed-team / held-side mismatch on live dashboard | APPROVED 2026-04-11 — Root cause confirmed: renderUnifiedPositions() full-object spread at line 1139 overwrites trade identity fields with stale cached mark data. renderGamesTab() openBySlug slug-key mismatch confirmed as secondary bug. Fix task authorized. | read-only |
+| SESSION_PNL_TRUE_START_FIX_001 | Track true session PnL from actual session start, not last restart | APPROVED 2026-04-11 — bot_core.py startup load block restores _session_start_ts from pnl.session_start_ts in prior state.json if within 24h. py_compile PASS. Restart required. | `bot_core.py` |
+| MARKET_COOLDOWN_PERSIST_001 | Persist market cooldown across restarts | APPROVED 2026-04-11 — bot_core.py _write_state() now includes market_cooldown_expiry dict; startup load block restores non-expired entries. py_compile PASS. Restart required. | `bot_core.py` |
+| BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 | Prevent duplicate slug intents from bypassing gate in same bridge loop | APPROVED 2026-04-10 — bot_core.py bridge loop patched. py_compile PASS. | `bot_core.py` |
+| TP_NEAR_RESOLUTION_CAP_FIX_001 | Fix unreachable TP math for near-1.0 entry prices | APPROVED 2026-04-10 — core/risk.py TP capped at 0.97. py_compile PASS. | `core/risk.py` |
+| MIN_ENTRY_PRICE_GATE_001 | Add minimum entry price gate — block entries at 0.05–0.07 where spread exceeds SL threshold | APPROVED 2026-04-10 — core/risk.py MIN_ENTRY_PRICE_USD gate added (default 0.15). py_compile PASS. | `core/risk.py`, `.env` |
 | DASHBOARD_MARK_SOURCE_AND_GUARD_MESSAGE_AUDIT_001 | Audit mark REST chip and max-down warning message — identify display chain root causes | PARTIAL PASS 2026-04-10 — Dashboard layer cleared: mark REST chip is expected behavior (rest_fallback mechanism confirmed). "max down" text not hardcoded in dashboard.html. Guard fields null in state.json at audit time. Upstream payload origin and fallback frequency unresolved → follow-on: MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001. | runtime/state.json, logs/dashboard.log, dashboard.html, dashboard_server.py (read-only) |
 | CONFIDENCE_GATE_POSTFIX_VERIFY_001 | Verify check_entry_gates() is live post-restart: confirm gate rejections and no sub-0.60 bridge entries | PARTIAL PASS 2026-04-10 — Gate confirmed at restart 1 (3 rejections). Two bypass paths found: (A) duplicate intents — trade 236 conf=0.56 slipped through second iteration; (B) stale pyc cache at restart 2 — trade 238 conf=0.4639 opened with zero gate rejections. Fix tasks required: BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 + pyc cache clear + clean restart. | bot logs (read-only), trades_sports.db (SELECT only), bot_core.py (read-only) |
 | BRIDGE_ENTRY_GATE_WIRING_FIX_001 | Wire check_entry_gates() into live bridge entry path | APPROVED 2026-04-10 — bot_core.py lines 507-517 patched; py_compile PASS. Postfix verify: PARTIAL PASS (see above). | `bot_core.py` |
@@ -190,22 +191,22 @@ Until this is done: confidence gate, cooldown checks, and all `check_entry_gates
 
 | File | Locked by |
 |------|-----------|
-| `core/risk.py` | MIN_ENTRY_PRICE_GATE_001 (ACTIVE — exclusive) |
 | `runtime/state.json`, `logs/dashboard.log`, `dashboard_server.py` | MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 (read-only, no exclusive lock) |
-| `bot_core.py` | UNLOCKED — queued tasks BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 → MARKET_COOLDOWN_PERSIST_001 (sequential) |
 | All other files | UNLOCKED |
 
 ---
 
-## System state (2026-04-11 — post tonight's trade audit, gate failure confirmed all-night)
+## System state (2026-04-11 — reconciliation pass after side-semantics fix approved)
 
-- **Tonight's session: -$159.54 closed PnL (40 trades).** 31/42 trades sub-0.60 confidence. Gate was not enforcing.
-- **Confidence gate: NOT ENFORCING** — stale `__pycache__/bot_core.cpython-*.pyc` loading pre-patch bytecode on every restart since 18:41 CDT 2026-04-10. Patch is in source but not executing. **Pyc must be deleted + cold restart done before any gate fix takes effect.**
-- **Currently open trades: #254 (conf=0.4438 BUY_NO wsh-mil), #258 (conf=0.3537 BUY_NO bos-stl), #259 (conf=0.3781 BUY_NO nyy-tb entry=0.9447)** — all sub-floor, all byproduct of broken gate. #259 has unreachable TP (TP fix queued).
-- **Market cooldown: NOT SURVIVING RESTARTS** — in-memory dict wiped on every restart. CWS-KC entered 8 times tonight. MARKET_COOLDOWN_PERSIST_001 queued.
-- **Ultra-low-price entry churn confirmed** — 7 trades at 0.05–0.07 stopped out in 1–2s. MIN_ENTRY_PRICE_GATE_001 ACTIVE.
-- **TP math broken for entries > 0.714** — TP_NEAR_RESOLUTION_CAP_FIX_001 queued.
-- **Dashboard truth: FIXED** — mark_source chip, realized PnL, R25 sublabel correct.
+- **Tonight's session: -$159.54 closed PnL (40 trades).** 31/42 trades sub-0.60 confidence. Gate was not enforcing due to stale pyc.
+- **Confidence gate: PATCHED IN SOURCE — awaiting operator cold restart** — `bot_core.py` lines 504–525 patched (BRIDGE_ENTRY_GATE_WIRING_FIX_001, MIN_ENTRY_PRICE_GATE_001, BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001 all DONE). **Pyc must be deleted + cold restart done before gate logic executes.**
+- **Currently open trades: #276 (BUY_YES mlb-tex-lad entry=0.2412), #277 (BUY_YES mlb-hou-sea entry=0.3819)** — both open as of last state.json read.
+- **Market cooldown: PATCHED IN SOURCE — awaiting cold restart** — MARKET_COOLDOWN_PERSIST_001 DONE. Cooldown expiry timestamps now written to state.json and reloaded on startup.
+- **Session PnL: PATCHED IN SOURCE — awaiting cold restart** — SESSION_PNL_TRUE_START_FIX_001 DONE. Session start timestamp now persists across restarts via state.json.
+- **TP math: FIXED** — TP_NEAR_RESOLUTION_CAP_FIX_001 DONE. core/risk.py patched.
+- **Min entry price gate: FIXED** — MIN_ENTRY_PRICE_GATE_001 DONE. core/risk.py patched.
+- **Dashboard side semantics: FIXED** — POSITION_SIDE_SEMANTICS_MERGE_FIX_001 DONE. dashboard.html patched. **Browser hard refresh (Ctrl+Shift+R) required.**
+- **Dashboard truth: FIXED** — mark_source chip, realized PnL, R25 sublabel, side/backed_team semantics all correct after hard refresh.
 - **Dashboard upstream trace: IN PROGRESS** — MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001 ACTIVE (read-only).
 - **User/fill stream: BLOCKED** — requires apiKey, secret, passphrase in .env
 - **Dashboard redesign: COMPLETE**
