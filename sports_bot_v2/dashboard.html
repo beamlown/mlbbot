@@ -1136,7 +1136,35 @@ function renderUnifiedPositions() {
   const trades = Array.isArray(latestTrades) ? latestTrades : [];
   const openPaperPositions = buildOpenPaperPositions(trades);
   const markMap = new Map((latestOpenPaperPositions || []).map(p => [p.market_slug, p]));
-  latestOpenPaperPositions = openPaperPositions.map(p => ({ ...p, ...(markMap.get(p.market_slug) || {}) }));
+  // Merge only safe dynamic fields from the mark cache — never overwrite trade identity fields
+  // (side, backed_team, faded_team, entry_px, qty, id) which must come from the current trade object.
+  latestOpenPaperPositions = openPaperPositions.map(p => {
+    const cached = markMap.get(p.market_slug);
+    if (!cached) return p;
+    return {
+      ...p,
+      current_price: cached.current_price,
+      current_price_stale: cached.current_price_stale ?? true,
+      unrealized_pnl_usd: cached.unrealized_pnl_usd,
+      live_equity_usd: cached.live_equity_usd,
+      best_bid: cached.best_bid,
+      best_ask: cached.best_ask,
+      spread: cached.spread,
+      source_ts: cached.source_ts,
+      mark_source: cached.mark_source,
+      game_status: cached.game_status,
+      inning: cached.inning,
+      inning_half: cached.inning_half,
+      outs: cached.outs,
+      balls: cached.balls,
+      strikes: cached.strikes,
+      home_score: cached.home_score,
+      away_score: cached.away_score,
+      game_source_ts: cached.game_source_ts,
+      game_stale: cached.game_stale,
+      game_source: cached.game_source,
+    };
+  });
 
   $('pos-count').textContent = latestOpenPaperPositions.length;
   $('kpi-open').textContent = latestOpenPaperPositions.length;
@@ -1438,8 +1466,13 @@ function renderPositionsTab(openPositions, trades, state) {
 }
 
 function renderGamesTab(games, openPositions, shadowData) {
-  const openBySlug = new Map((openPositions || []).map(p => [p.market_slug, p]));
-  const advisoryBySlug = new Map(((shadowData?.recs) || []).map(r => [r.market_slug, r]));
+  // Strip date suffix (e.g. -2026-04-10) so keys match the date-free slug built from ESPN game data below
+  const openBySlug = new Map((openPositions || []).map(p => [
+    (p.market_slug || '').replace(/-\d{4}-\d{2}-\d{2}$/, ''), p
+  ]));
+  const advisoryBySlug = new Map(((shadowData?.recs) || []).map(r => [
+    (r.market_slug || '').replace(/-\d{4}-\d{2}-\d{2}$/, ''), r
+  ]));
   $('games-total-count').textContent = String((games || []).length);
   if (!(games || []).length) {
     $('games-tab-list').innerHTML = '<div class="empty-state">no games available</div>';

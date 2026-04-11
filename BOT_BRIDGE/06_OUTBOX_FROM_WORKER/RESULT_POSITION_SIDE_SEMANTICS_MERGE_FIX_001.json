@@ -1,0 +1,64 @@
+{
+  "task_id": "POSITION_SIDE_SEMANTICS_MERGE_FIX_001",
+  "status": "DONE",
+  "mode_used": "WORKER MODE",
+  "active_tasks_found": [
+    "POSITION_SIDE_SEMANTICS_MERGE_FIX_001 (ACTIVE — task JSON confirmed, prerequisite POSITION_SIDE_SEMANTICS_REGRESSION_AUDIT_001 APPROVED)"
+  ],
+  "task_selected": "POSITION_SIDE_SEMANTICS_MERGE_FIX_001",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_POSITION_SIDE_SEMANTICS_MERGE_FIX_001.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html (targeted reads of renderUnifiedPositions and renderGamesTab)"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+
+  "fix_1_render_unified_positions": {
+    "location": "dashboard.html renderUnifiedPositions() — formerly line 1139, now lines 1139-1167",
+    "old_code": "latestOpenPaperPositions = openPaperPositions.map(p => ({ ...p, ...(markMap.get(p.market_slug) || {}) }));",
+    "new_code": "latestOpenPaperPositions = openPaperPositions.map(p => { const cached = markMap.get(p.market_slug); if (!cached) return p; return { ...p, current_price, current_price_stale, unrealized_pnl_usd, live_equity_usd, best_bid, best_ask, spread, source_ts, mark_source, game_status, inning, inning_half, outs, balls, strikes, home_score, away_score, game_source_ts, game_stale, game_source }; });",
+    "old_behavior": "Full-object spread from markMap overwrote ALL fields of the new trade object with whatever was cached for that market_slug. When a trade closed and a new trade opened on the same slug with a different side (e.g., BUY_NO closed → BUY_YES opened), the cached old position's side/backed_team/faded_team permanently corrupted the new trade's display. The corruption self-perpetuated across every render cycle until a page reload.",
+    "new_behavior": "Only 20 named safe dynamic fields are copied from the mark cache (current_price, current_price_stale, unrealized_pnl_usd, live_equity_usd, best_bid, best_ask, spread, source_ts, mark_source, game_status, inning, inning_half, outs, balls, strikes, home_score, away_score, game_source_ts, game_stale, game_source). Trade identity fields remain authoritative from the fresh openPaperPositions object built from the current trades API response.",
+    "fields_now_merged_from_cache": [
+      "current_price", "current_price_stale", "unrealized_pnl_usd", "live_equity_usd",
+      "best_bid", "best_ask", "spread", "source_ts", "mark_source",
+      "game_status", "inning", "inning_half", "outs", "balls", "strikes",
+      "home_score", "away_score", "game_source_ts", "game_stale", "game_source"
+    ],
+    "fields_protected_from_cache": [
+      "side", "backed_team", "faded_team", "held_contract_side", "side_label",
+      "entry_px", "exit_px", "qty", "size_usd", "id", "market_slug",
+      "away_team", "home_team", "confidence", "tp_price", "sl_price",
+      "status", "source", "ts_open", "pnl_usd", "_type", "_source"
+    ]
+  },
+
+  "fix_2_games_tab_slug_mismatch": {
+    "location": "dashboard.html renderGamesTab() — formerly line 1441, now lines 1469-1475",
+    "old_code": "const openBySlug = new Map((openPositions || []).map(p => [p.market_slug, p]));  // keyed by 'mlb-tex-lad-2026-04-10'",
+    "new_code": "const openBySlug = new Map((openPositions || []).map(p => [(p.market_slug || '').replace(/-\\d{4}-\\d{2}-\\d{2}$/, ''), p]));  // keyed by 'mlb-tex-lad'",
+    "old_behavior": "openBySlug was keyed by the full date-stamped slug (e.g. 'mlb-tex-lad-2026-04-10'). The lookup keys constructed from ESPN game data were date-free (e.g. 'mlb-tex-lad'). These NEVER matched, so open positions were never found in the Games tab — the 'OPEN POSITION' badge, the position sort bubble-up, and the 'Backed/Unrealized' box were all permanently hidden.",
+    "new_behavior": "Both openBySlug and advisoryBySlug strip the date suffix before keying, using the same regex /-\\d{4}-\\d{2}-\\d{2}$/ applied to replace(). Slugs without a date suffix are unaffected (replace is a no-op). The lookup keys constructed below from ESPN data are also date-free, so they now match. Open positions will correctly appear in the Games tab with the 'OPEN POSITION' badge and position detail box.",
+    "games_tab_slug_mismatch_fixed": true
+  },
+
+  "verification_summary": {
+    "exact_sections_changed": [
+      "renderUnifiedPositions() — line 1139 full-object spread replaced with 20-field specific merge",
+      "renderGamesTab() — openBySlug and advisoryBySlug key construction now strips date suffix"
+    ],
+    "old_behavior_renderUnifiedPositions": "Full spread { ...p, ...(markMap.get(slug) || {}) } — all cached fields including stale side/backed_team overwrite new trade",
+    "new_behavior_renderUnifiedPositions": "Field-specific merge — only mark/price/game-state fields copied; side/backed_team/faded_team always come from fresh buildOpenPaperPositions result",
+    "old_behavior_renderGamesTab": "openBySlug keyed by 'mlb-tex-lad-2026-04-10'; lookup key 'mlb-tex-lad' — never matched",
+    "new_behavior_renderGamesTab": "Both keys are now date-free 'mlb-tex-lad' — match confirmed",
+    "no_server_side_changes": true,
+    "files_outside_scope_modified": false
+  },
+
+  "restart_required": false,
+  "restart_notes": "No restart needed. dashboard.html is a static file served by dashboard_server.py on every page request. A browser hard-refresh (Ctrl+Shift+R) on the dashboard will load the patched JS. The running dashboard_server.py process does not need to be restarted.",
+
+  "result_file_written": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_POSITION_SIDE_SEMANTICS_MERGE_FIX_001.json",
+  "summary": "Replaced the full-object spread in renderUnifiedPositions() with a 20-field specific mark merge so stale cache can never overwrite side/backed_team/faded_team, and fixed the renderGamesTab slug-key mismatch by stripping date suffixes so open positions now appear in the Games tab."
+}
