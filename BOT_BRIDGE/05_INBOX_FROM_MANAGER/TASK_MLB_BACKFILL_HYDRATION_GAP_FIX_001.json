@@ -1,0 +1,43 @@
+{
+  "task_id": "MLB_BACKFILL_HYDRATION_GAP_FIX_001",
+  "title": "Fix missing pitcher/bullpen hydration and enforce completed season-to-date coverage in MLB backfill",
+  "priority": "HIGH",
+  "type": "code-writing task",
+  "track": "Track B — data foundation",
+  "issued": "2026-04-12",
+  "subsystem": "mlb_model current-season backfill / hydration coverage",
+  "status": "ACTIVE",
+  "depends_on": "MLB_CURRENT_SEASON_BACKFILL_BUILD_001 review",
+  "objective": "Repair or explicitly explain the missing pitcher_game_logs and bullpen_context hydration, and ensure the season backfill only includes completed season-to-date coverage as defined in the foundation spec.",
+  "paper_only_note": "This remains paper-only / observation-mode rebuild work. No model implementation or strategy change is authorized from this task.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\scripts\\**",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\data\\foundation\\mlb_statsapi\\season=2026\\**",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\MLB_STATS_FOUNDATION_SPEC_001.md"
+  ],
+  "forbidden_actions": [
+    "Patch recommendation or execution logic",
+    "Redesign the storage spec",
+    "Open daily updater work in the same task",
+    "Broad repo sweep outside the backfill path"
+  ],
+  "required_work": [
+    "1. Determine why pitcher_game_logs and bullpen_context came back empty in the first-pass backfill.",
+    "2. Fix the hydration/source path if repairable within the allowed scope, or explicitly classify the exact source limitation if not.",
+    "3. Restrict the backfill to completed season-to-date coverage only, consistent with the current date and the foundation spec.",
+    "4. Rewrite affected raw/normalized partitions and manifest as needed to reflect corrected coverage."
+  ],
+  "acceptance_criteria": [
+    "pitcher_game_logs is populated where source data is available, or explicit source-unavailable classification is documented in the manifest/results",
+    "bullpen_context is populated where derivable, or explicit source-unavailable classification is documented",
+    "coverage window reflects completed season-to-date only",
+    "No unrelated files modified"
+  ],
+  "verification": [
+    "Show corrected hydration path or explicit source limitation",
+    "State corrected coverage window",
+    "State final pitcher/bullpen entity counts",
+    "State manifest/result changes"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_BACKFILL_HYDRATION_GAP_FIX_001.json"
+}

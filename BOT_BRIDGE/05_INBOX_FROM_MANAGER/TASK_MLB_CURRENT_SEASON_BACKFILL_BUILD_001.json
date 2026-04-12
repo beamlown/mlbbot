@@ -1,0 +1,45 @@
+{
+  "task_id": "MLB_CURRENT_SEASON_BACKFILL_BUILD_001",
+  "title": "Backfill full current-season MLB completed-game stats into the canonical store",
+  "priority": "HIGH",
+  "type": "code-writing task",
+  "track": "Track B — data foundation",
+  "issued": "2026-04-12",
+  "subsystem": "mlb_model current-season backfill",
+  "status": "QUEUED",
+  "depends_on": "MLB_STATS_FOUNDATION_SPEC_001",
+  "objective": "Build the narrow backfill path that loads season-to-date completed MLB stats into the canonical store defined by the foundation spec.",
+  "paper_only_note": "This is paper-only / observation-mode rebuild work. No live model implementation or strategy change is authorized from this task.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\scripts\\**",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\data\\**",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\MODEL_REBUILD_TRACK_001.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_STATS_FOUNDATION_SPEC_001.json"
+  ],
+  "forbidden_actions": [
+    "Patch unrelated model logic",
+    "Modify recommendation or execution code",
+    "Invent a storage target different from the approved spec",
+    "Open updater logic in the same task"
+  ],
+  "required_work": [
+    "1. Implement a season-to-date backfill path using the approved stats foundation spec.",
+    "2. Fetch completed MLB games for the current season so far.",
+    "3. Persist raw entities into the canonical raw store.",
+    "4. If normalized derivatives are part of the approved spec, generate only the approved normalized layer.",
+    "5. Make the backfill rerunnable without corrupting or duplicating the canonical store."
+  ],
+  "acceptance_criteria": [
+    "Season-to-date completed MLB coverage is backfilled into the canonical raw store",
+    "Output matches the approved storage/schema target",
+    "Rerun safety / dedupe behavior is documented",
+    "No unrelated files modified"
+  ],
+  "verification": [
+    "Show code paths added",
+    "Show where raw data landed",
+    "State season coverage achieved",
+    "State rerun/idempotency behavior"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_CURRENT_SEASON_BACKFILL_BUILD_001.json"
+}

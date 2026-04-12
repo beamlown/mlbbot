@@ -1,5 +1,5 @@
 # CLAUDE_TASK_BOARD.md — Manager Task Board
-## Last updated: 2026-04-11 — MODEL_SIGNAL_QUALITY_AUDIT_001 DONE. Confidence inversion is artifact (outlier-driven). High-confidence exit damage identified. CLEAN_RUNTIME_WINDOW_AUDIT_001 is next — deferred until post-restart n≥30.
+## Last updated: 2026-04-12 — hydration-gap review routed. MLB_BACKFILL_HYDRATION_GAP_FIX_001 received CHANGES REQUESTED. MLB_PITCHER_BULLPEN_HYDRATION_BUILD_001 is ACTIVE. MLB_DAILY_PREV_DAY_UPDATER_BUILD_001 stays QUEUED. Paper-only / observation mode remains in force.
 
 ---
 
@@ -15,7 +15,9 @@
 
 ## ACTIVE
 
-_(none — all Track B audits in DONE or DEFERRED. Waiting on post-restart trade accumulation for CLEAN_RUNTIME_WINDOW_AUDIT_001.)_
+| task_id | title | priority | subsystem | allowed_files | notes |
+|---------|-------|----------|-----------|---------------|-------|
+| MLB_PITCHER_BULLPEN_HYDRATION_BUILD_001 | Populate pitcher_game_logs and bullpen_context in the canonical 2026 MLB foundation | HIGH | mlb_model pitcher/bullpen hydration completion | mlb_model/scripts/**, canonical foundation paths, MLB_STATS_FOUNDATION_SPEC_001.md | Narrow completion task. Paper-only / observation mode. |
 
 ---
 
@@ -23,6 +25,7 @@ _(none — all Track B audits in DONE or DEFERRED. Waiting on post-restart trade
 
 | task_id | title | priority | subsystem | allowed_files | notes |
 |---------|-------|----------|-----------|---------------|-------|
+| MLB_DAILY_PREV_DAY_UPDATER_BUILD_001 | Build a daily previous-day MLB completed-game ingestion path into the canonical store | HIGH | mlb_model daily stats ingestion | mlb_model/scripts/**, mlb_model/data/**, spec/backfill result artifacts | Keep queued until hydration/coverage gap fix is reviewed and accepted. |
 | CLEAN_RUNTIME_WINDOW_AUDIT_001 | Isolate and evaluate post-2026-04-11 restart trades only — E1+E2 proof in the verified gate era | HIGH | Track B — edge proof / clean era | trades_sports.db (read-only) | **DEFERRED — activate when post-restart n≥30 trades exist.** |
 
 ## BACKLOG (after tomorrow's first-wave queue, in this order)

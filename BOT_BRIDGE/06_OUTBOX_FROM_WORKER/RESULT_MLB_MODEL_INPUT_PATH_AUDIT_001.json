@@ -1,0 +1,151 @@
+{
+  "mode_used": "WORKER MODE",
+  "active_tasks_found": [
+    "MLB_DATA_INVENTORY_AUDIT_001",
+    "MLB_MODEL_INPUT_PATH_AUDIT_001"
+  ],
+  "task_selected": "MLB_MODEL_INPUT_PATH_AUDIT_001",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\01_RULES\\WORKER_RULES.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_TASK_BOARD.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_STATUS.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_MLB_MODEL_INPUT_PATH_AUDIT_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_MLB_MODEL_INPUT_PATH_AUDIT_001.md",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\sports\\mlb\\game_state_service.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\sports\\mlb\\winprob_inference.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\sports\\mlb\\market_state_stream.py"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_MODEL_INPUT_PATH_AUDIT_001.json"
+  ],
+  "verification_performed": [
+    "Confirmed MLB_MODEL_INPUT_PATH_AUDIT_001 is ACTIVE on the board",
+    "Confirmed task brief and handoff are present in 05_INBOX_FROM_MANAGER",
+    "Confirmed the task remains paper-only / observation-mode work",
+    "Traced game-state source fields in game_state_service.py",
+    "Traced model feature assembly in winprob_inference.py",
+    "Traced market-state inputs and edge computation in market_state_stream.py",
+    "Traced recommendation output fields in recommendation_api.py",
+    "Traced bridge pass-through fields in sports_bot_v2/core/model_bridge.py"
+  ],
+  "restart_needed": "No",
+  "result_file_written": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_MODEL_INPUT_PATH_AUDIT_001.json",
+  "feature_path_summary": {
+    "task_confirmation": {
+      "active_on_board": true,
+      "brief_present": true,
+      "handoff_present": true,
+      "paper_only": true
+    },
+    "source_to_output_path": [
+      "game_state_service.get_game_snapshot(...) builds live MLB snapshot",
+      "winprob_inference.infer_for_team(snapshot, tracked_team, pregame_prob) converts snapshot into model feature vector + feature_dict + data_quality",
+      "market_state_stream.get_market_state(...) fetches ask/bid/spread/depth state",
+      "market_state_stream.compute_edge(...) combines model probability with market prices",
+      "integration/recommendation_api.generate_recommendation_for_game(...) builds Recommendation output",
+      "sports_bot_v2/core/model_bridge.get_approved_intents(...) applies freshness/approval filters and passes selected fields into live intents"
+    ],
+    "game_state_reaches_model": {
+      "score": "Yes, but compressed mainly through score_diff and related derived features",
+      "inning": "Yes",
+      "inning_half": "Yes",
+      "outs": "Yes",
+      "base_state": "Yes",
+      "game_progress": "Yes",
+      "pitcher_state": "Yes via home/away pitcher ids, pitch counts, bullpen flags in snapshot; model feature path clearly uses pitch counts and bullpen indicators",
+      "bullpen_state": "Yes",
+      "late_game_signal": "Yes via late_game and walkoff_home flags in feature assembly"
+    },
+    "market_state_reaches_model_or_signal_layer": {
+      "ask_yes_ask_no": "Yes, but only in post-model market/edge layer, not in the inference feature vector shown in winprob_inference.py",
+      "spread": "Yes, used in recommendation confidence through spread_quality",
+      "depth": "Yes, emitted as thin_side_depth_usd and available in market state",
+      "market_price_awareness": "Yes in edge computation and recommendation metadata, but not shown as a direct model input in winprob_inference.py",
+      "near_resolution_context": "Indirect only, through market prices/costs after model inference, not as an explicit model feature in the audited path"
+    },
+    "exact_model_feature_families": [
+      "pregame prior",
+      "outs elapsed / game progress",
+      "score_diff and abs_score_diff",
+      "inning, half, outs",
+      "base_state and base_state_value",
+      "score_diff x late_game interaction",
+      "home/away pitch count normalized",
+      "home/away bullpen flags",
+      "walkoff_home late-state flag"
+    ],
+    "recommendation_output_fields_confirmed": [
+      "fair_win_prob",
+      "p_home",
+      "pregame_win_prob",
+      "market_yes_cost",
+      "market_no_cost",
+      "ask_yes",
+      "ask_no",
+      "spread",
+      "thin_side_depth_usd",
+      "edge_yes",
+      "edge_no",
+      "action",
+      "size_tier",
+      "size_mult",
+      "model_version",
+      "data_quality",
+      "confidence",
+      "inning",
+      "inning_half",
+      "outs",
+      "score_diff",
+      "game_progress",
+      "game_status",
+      "game_state_age_sec",
+      "book_age_sec"
+    ],
+    "bridge_pass_through_fields_confirmed": [
+      "fair_win_prob",
+      "pregame_win_prob",
+      "market_yes_cost",
+      "market_no_cost",
+      "ask_yes",
+      "ask_no",
+      "spread",
+      "thin_side_depth_usd",
+      "edge",
+      "edge_yes",
+      "edge_no",
+      "confidence",
+      "data_quality",
+      "inning",
+      "inning_half",
+      "outs",
+      "score_diff",
+      "game_progress",
+      "game_status",
+      "game_state_age_sec",
+      "book_age_sec"
+    ]
+  },
+  "missing_context_summary": {
+    "confirmed_missing_or_compressed": [
+      "Full score does not visibly survive as separate home_score and away_score in the recommendation output; it is compressed to score_diff in the audited path",
+      "Pitcher IDs are present in the raw snapshot layer but do not visibly survive into recommendation output or bridge output",
+      "Pitch counts and bullpen flags influence model features, but pitch-count detail itself does not visibly survive into recommendation output or bridge output",
+      "Base_state exists in the game-state snapshot and model feature assembly, but does not visibly survive into recommendation output or bridge output",
+      "Market price / ask state is not shown as a direct model input feature in winprob_inference.py; it enters after inference via edge computation and spread-quality adjustment",
+      "Near-resolution state is not represented as an explicit dedicated model feature in the audited inference path"
+    ],
+    "key_statement": {
+      "score_reaches_model": true,
+      "inning_reaches_model": true,
+      "outs_reaches_model": true,
+      "pitcher_state_reaches_model": true,
+      "market_price_awareness_reaches_recommendation_layer": true,
+      "market_price_awareness_reaches_model_core_as_direct_feature": false,
+      "near_resolution_context_reaches_model_as_explicit_feature": false
+    },
+    "interpretation": "The current path is not missing basic game-state context. Score/inning/outs/base_state/pitcher-condition features do reach the model core. The bigger gaps are that several rich context fields are compressed or dropped before recommendation output, and market-price / near-resolution awareness appears to live mostly in the post-model edge/confidence layer rather than as explicit core inference features."
+  },
+  "recommended_next_enabled_task": "MLB_CONFIDENCE_CALIBRATION_AUDIT_001 and MLB_NEAR_RESOLUTION_SANITY_AUDIT_001 are now the next enabled tasks, because this audit established that basic game-state reaches the model while market-awareness and confidence meaning still need direct evaluation."
+}

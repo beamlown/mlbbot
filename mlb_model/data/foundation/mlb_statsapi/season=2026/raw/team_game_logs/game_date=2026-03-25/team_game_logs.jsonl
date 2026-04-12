@@ -1,0 +1,2 @@
+{"game_pk": 823244, "game_date": "2026-03-25", "team_id": 137, "opponent_team_id": 147, "is_home": true, "runs_scored": 0, "runs_allowed": 7, "hits": 3, "errors": 1, "win_flag": false, "starting_pitcher_id": 657277, "bullpen_innings": 4.0, "bullpen_runs_allowed": 0}
+{"game_pk": 823244, "game_date": "2026-03-25", "team_id": 147, "opponent_team_id": 137, "is_home": false, "runs_scored": 7, "runs_allowed": 0, "hits": 10, "errors": 1, "win_flag": true, "starting_pitcher_id": 608331, "bullpen_innings": 2.1999999999999993, "bullpen_runs_allowed": 0}

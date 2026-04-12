@@ -1,0 +1,40 @@
+{
+  "task_id": "MLB_DATA_GAP_MAP_001",
+  "title": "Map missing current-season MLB data and classify must-have versus optional for rebuild",
+  "priority": "HIGH",
+  "type": "read-only audit",
+  "track": "Track B — data foundation",
+  "issued": "2026-04-11",
+  "subsystem": "mlb_model data completeness",
+  "status": "QUEUED",
+  "depends_on": "MLB_DATA_INVENTORY_AUDIT_001",
+  "objective": "Identify exactly what current-season MLB data is missing and classify each missing area as must-have, high-value optional, or deferrable for the rebuild track.",
+  "paper_only_note": "This is paper-only / observation-mode work. No model implementation or live strategy change is authorized from this task.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\**",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\**",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db"
+  ],
+  "forbidden_actions": [
+    "Edit any code",
+    "Write any data",
+    "Start backfill or updater jobs",
+    "Speculate beyond evidence from the inventory"
+  ],
+  "required_work": [
+    "1. Use the completed inventory as the baseline.",
+    "2. Determine what current-season MLB data is missing or incomplete.",
+    "3. Classify missing items into must-have, optional-high-value, or deferrable.",
+    "4. Produce an explicit gap map the backfill task can execute against."
+  ],
+  "acceptance_criteria": [
+    "Explicit missing-data map",
+    "Priority classification for each major gap",
+    "No files modified"
+  ],
+  "verification": [
+    "Show gap families and why each matters",
+    "State which gaps block the rebuild and which do not"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_DATA_GAP_MAP_001.json"
+}

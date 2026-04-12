@@ -1,0 +1,42 @@
+{
+  "task_id": "MLB_NEAR_RESOLUTION_SANITY_AUDIT_001",
+  "title": "Explain why near-dead or near-resolved MLB markets could still receive actionable confidence",
+  "priority": "HIGH",
+  "type": "read-only audit",
+  "track": "Track B — model audit / market awareness",
+  "issued": "2026-04-11",
+  "subsystem": "mlb_model near-resolution sanity / market awareness",
+  "status": "QUEUED",
+  "depends_on": "MLB_MODEL_INPUT_PATH_AUDIT_001",
+  "objective": "Identify why near-resolved or near-dead markets can still produce actionable recommendations or confidence, and determine whether the issue is missing market awareness, missing sanity layers, or malformed confidence use.",
+  "paper_only_note": "This is paper-only / observation-mode work. No model implementation or live strategy change is authorized from this task.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\logs\\shadow_recommendations.jsonl",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db"
+  ],
+  "forbidden_actions": [
+    "Edit any code",
+    "Change live gates",
+    "Broaden into unrelated execution/dashboard work",
+    "Open implementation work from this audit alone"
+  ],
+  "required_work": [
+    "1. Review concrete near-resolution failure examples.",
+    "2. Trace how market price/extreme state interacts with model outputs and bridge logic.",
+    "3. Identify whether the failure is due to missing market-price awareness, missing sanity suppression, or malformed confidence use.",
+    "4. Produce a root-cause classification with evidence only."
+  ],
+  "acceptance_criteria": [
+    "Root-cause classification with evidence",
+    "Concrete failure-case explanation",
+    "No files modified"
+  ],
+  "verification": [
+    "State exact mechanism believed responsible",
+    "Separate observed, proven, likely, and ruled out"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_NEAR_RESOLUTION_SANITY_AUDIT_001.json"
+}

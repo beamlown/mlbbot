@@ -1,0 +1,25 @@
+{
+  "load_type": "backfill",
+  "season": 2026,
+  "source_api": "MLB Stats API",
+  "run_ts": "2026-04-12T16:42:27.319049+00:00",
+  "status": "success",
+  "date_window": {
+    "start": "2026-03-25",
+    "end": "2026-04-11",
+    "bounded_to_today": "2026-04-12"
+  },
+  "entities_written": {
+    "games": 221,
+    "teams": 30,
+    "team_game_logs": 442,
+    "pitcher_game_logs": 1931,
+    "bullpen_context": 442,
+    "game_state_history": 3984,
+    "normalized_games": 221,
+    "normalized_team_game_logs": 442,
+    "normalized_pitcher_game_logs": 1931,
+    "normalized_game_state_features": 3984
+  },
+  "source_unavailable": []
+}
