@@ -342,7 +342,11 @@ function openLive(runId) {
     es.close();
     currentES = null;
     toast('run finished — reloading task');
-    setTimeout(() => location.reload(), 800);
+    // Drop ?watch=<rid> before reload so we don't auto-resubscribe to
+    // the same finished run on the next page load (that loops).
+    const u = new URL(location.href);
+    u.searchParams.delete('watch');
+    setTimeout(() => { location.href = u.toString(); }, 800);
   });
   es.onerror = () => {
     statusEl.textContent = 'stream error';

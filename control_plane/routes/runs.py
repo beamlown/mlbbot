@@ -151,6 +151,17 @@ def api_launch(task_id: str):
 
     row = DISPATCHER.launch(req, argv, prompt_text)
 
+    # If the adapter couldn't even spawn (binary missing, perm denied, etc.)
+    # the dispatcher already marked the run row failed and wrote a stderr
+    # log line. Return that to the client so the UI shows a toast instead
+    # of redirecting to ?watch=<rid> and looping.
+    if (row or {}).get("status") == "failed":
+        return jsonify({
+            "ok": False, "error": "spawn_failed",
+            "detail": (row.get("result_summary") or "")[:500],
+            "run": row, "adapter": adapter_name,
+        }), 500
+
     # Stamp the task as assigned to the run's role and mark ACTIVE so the
     # board snaps to the RUNNING lane immediately.
     get_conn().execute(

@@ -104,10 +104,28 @@ class RunDispatcher:
                 bufsize=1,       # line-buffered
                 env=env,
             )
-        except FileNotFoundError as e:
+        except (FileNotFoundError, OSError, PermissionError) as e:
+            msg = f"spawn_error: {e.__class__.__name__}: {e}"
+            hint = (
+                f"  argv[0] = {argv[0]!r}\n"
+                f"  cwd     = {cwd or SETTINGS.repo_root}\n"
+                f"  hint    = is the binary on PATH? set CONTROL_PLANE_CLAUDE_BIN "
+                f"to the absolute path, or use adapter=echo for a smoke test."
+            )
+            now = _now_iso()
             conn.execute(
-                "UPDATE runs SET status='failed', finished_at=?, result_summary=? WHERE run_id=?",
-                (_now_iso(), f"spawn_error: {e}", req.run_id),
+                "UPDATE runs SET status='failed', finished_at=?, exit_code=?, result_summary=? WHERE run_id=?",
+                (now, -1, msg[:500], req.run_id),
+            )
+            # Persist a readable log so /api/runs/<id>/logs and the SSE
+            # history dump surface the real error instead of an empty pane.
+            conn.execute(
+                "INSERT INTO run_logs(run_id, ts, stream, line) VALUES (?,?,?,?)",
+                (req.run_id, now, "stderr", msg),
+            )
+            conn.execute(
+                "INSERT INTO run_logs(run_id, ts, stream, line) VALUES (?,?,?,?)",
+                (req.run_id, now, "meta", hint),
             )
             return self._row(req.run_id)
 
