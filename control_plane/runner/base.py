@@ -10,6 +10,11 @@ from dataclasses import dataclass
 from typing import Protocol
 
 
+def passthrough_transform(raw: str) -> list[str]:
+    """Default stdout transformer: one raw line → one line unchanged."""
+    return [raw]
+
+
 @dataclass
 class RunRequest:
     run_id: str
@@ -33,3 +38,8 @@ class Adapter(Protocol):
 
     def build_prompt(self, req: RunRequest) -> str: ...
     def build_argv(self, req: RunRequest, prompt_text: str) -> list[str]: ...
+    # Optional: transform each raw stdout line from the child process into
+    # zero-or-more display lines. Default (if unimplemented) is passthrough.
+    # Used by adapters that emit structured output (e.g. stream-json) and
+    # want the dispatcher to store a human-readable form in run_logs + SSE.
+    # def transform_stdout_line(self, raw: str) -> list[str]: ...

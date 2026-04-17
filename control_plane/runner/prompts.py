@@ -88,8 +88,29 @@ def build_prompt(req) -> str:
     except Exception as e:
         handoff_text = f"(HANDOFF file could not be read: {e})"
 
+    # Ground the model in the repo layout up front. Without this, workers
+    # Glob/Grep the entire machine looking for files referenced by name in
+    # the HANDOFF. cwd here matches `dispatcher.launch(cwd=SETTINGS.repo_root)`.
+    repo_root = str(SETTINGS.repo_root)
+    layout_block = [
+        f"Working directory: {repo_root}",
+        "Do NOT search outside this root. All task paths are relative to it.",
+        "",
+        "Repo layout (top-level only):",
+        "  sports_bot_v2/   — live bot runtime (bot_core.py lives here)",
+        "  mlb_model/       — calibrated MLB win-prob model",
+        "  BOT_BRIDGE/      — task inbox/outbox, reviews, shared context",
+        "  control_plane/   — orchestrator (Flask + SQLite, this process)",
+        "",
+        "For files in `allowed_files`: open them directly — do not search.",
+        "If a HANDOFF mentions a filename without a directory prefix, check",
+        "`allowed_files` first; that list is the authoritative location.",
+    ]
+
     lines = [
         framing,
+        "",
+        *layout_block,
         "",
         f"Role: {ROLE_INFO.get(role).display if role in ROLE_INFO else role}",
         f"Task: {tid} — {title}",
