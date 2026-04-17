@@ -11,6 +11,7 @@ writes internally.
 """
 from __future__ import annotations
 
+import json
 import os
 import queue
 import subprocess
@@ -187,6 +188,7 @@ class RunDispatcher:
                 if ROLE_INFO.get(r.request.role)
                 and ROLE_INFO[r.request.role].family == family
             ) if family else 0
+        pr_meta = json.dumps(req.patch_review_meta) if req.patch_review_meta else None
         if family and active_family >= cap:
             msg = (f"cap_hit: family={family} active={active_family} cap={cap} "
                    f"(override with CONTROL_PLANE_CAP_{family.upper()})")
@@ -194,12 +196,12 @@ class RunDispatcher:
                 """INSERT INTO runs
                    (run_id, task_id, role, adapter, status, cmdline, prompt_text,
                     stdout_path, stderr_path, created_at, created_by,
-                    finished_at, exit_code, result_summary)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    finished_at, exit_code, result_summary, patch_review_meta)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (req.run_id, req.task_id, req.role, req.adapter, "failed",
                  " ".join(_shell_repr(a) for a in argv), prompt_text,
                  str(stdout_path), str(stderr_path), now, req.created_by,
-                 now, -1, msg[:500]),
+                 now, -1, msg[:500], pr_meta),
             )
             conn.execute(
                 "INSERT INTO run_logs(run_id, ts, stream, line) VALUES (?,?,?,?)",
@@ -210,14 +212,16 @@ class RunDispatcher:
         conn.execute(
             """INSERT INTO runs
                (run_id, task_id, role, adapter, status, cmdline, prompt_text,
-                stdout_path, stderr_path, created_at, created_by)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                stdout_path, stderr_path, created_at, created_by,
+                patch_review_meta)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 req.run_id, req.task_id, req.role, req.adapter, "queued",
                 " ".join(_shell_repr(a) for a in argv),
                 prompt_text,
                 str(stdout_path), str(stderr_path),
                 now, req.created_by,
+                pr_meta,
             ),
         )
 

@@ -10,9 +10,11 @@ from dataclasses import dataclass
 ROLES = (
     "OPUS_ARCHITECT",
     "OPUS_AUDITOR",
-    "OPUS_REVIEWER",
+    "OPUS_REVIEWER",           # retained for history; no new per-task reviews launched
+    "OPUS_PATCH_REVIEWER",     # sequential per-task review of a whole patch + synthesis
     "SONNET_MANAGER",
     "SONNET_WORKER",
+    "SONNET_TRIAGE",           # 2-line yes/no gate between worker RESULT and patch assignment
     "HAIKU_WORKER",
 )
 
@@ -59,6 +61,40 @@ CAPABILITIES: dict[str, dict[str, bool]] = {
         "write_result":        False,
         "launch_run":          True,
         "mutate_settings":     False,
+        "transition_patch":    False,
+    },
+    "OPUS_PATCH_REVIEWER": {
+        # Sole Opus gate before ship. Reviews the whole patch — one sequential
+        # step per task with TL;DRs carried forward, then a synthesis step.
+        "read_any":            True,
+        "create_task":         False,
+        "edit_task":           False,
+        "transition_task":     False,
+        "assign_task":         False,
+        "write_spec":          False,
+        "write_audit":         False,
+        "write_review":        True,
+        "write_result":        False,
+        "launch_run":          True,
+        "mutate_settings":     False,
+        "transition_patch":    True,
+    },
+    "SONNET_TRIAGE": {
+        # Cheap semantic gate between worker RESULT and patch assignment:
+        # "does RESULT.summary satisfy HANDOFF.acceptance? yes/no". Auto-
+        # launched by the capture hook; never invoked directly by a human.
+        "read_any":            True,
+        "create_task":         False,
+        "edit_task":           False,
+        "transition_task":     True,    # flips task DONE on yes, CHANGES_REQUESTED on no
+        "assign_task":         False,
+        "write_spec":          False,
+        "write_audit":         False,
+        "write_review":        True,
+        "write_result":        False,
+        "launch_run":          True,
+        "mutate_settings":     False,
+        "transition_patch":    False,
     },
     "SONNET_MANAGER": {
         "read_any":            True,
@@ -111,12 +147,14 @@ class RoleInfo:
 
 
 ROLE_INFO: dict[str, RoleInfo] = {
-    "OPUS_ARCHITECT": RoleInfo("OPUS_ARCHITECT", "Opus · Architect",  "opus",   "architect"),
-    "OPUS_AUDITOR":   RoleInfo("OPUS_AUDITOR",   "Opus · Auditor",    "opus",   "auditor"),
-    "OPUS_REVIEWER":  RoleInfo("OPUS_REVIEWER",  "Opus · Reviewer",   "opus",   "reviewer"),
-    "SONNET_MANAGER": RoleInfo("SONNET_MANAGER", "Sonnet · Manager",  "sonnet", "manager"),
-    "SONNET_WORKER":  RoleInfo("SONNET_WORKER",  "Sonnet · Worker",   "sonnet", "worker"),
-    "HAIKU_WORKER":   RoleInfo("HAIKU_WORKER",   "Haiku · Worker",    "haiku",  "worker"),
+    "OPUS_ARCHITECT":      RoleInfo("OPUS_ARCHITECT",      "Opus · Architect",      "opus",   "architect"),
+    "OPUS_AUDITOR":        RoleInfo("OPUS_AUDITOR",        "Opus · Auditor",        "opus",   "auditor"),
+    "OPUS_REVIEWER":       RoleInfo("OPUS_REVIEWER",       "Opus · Reviewer",       "opus",   "reviewer"),
+    "OPUS_PATCH_REVIEWER": RoleInfo("OPUS_PATCH_REVIEWER", "Opus · Patch Reviewer", "opus",   "patch_reviewer"),
+    "SONNET_MANAGER":      RoleInfo("SONNET_MANAGER",      "Sonnet · Manager",      "sonnet", "manager"),
+    "SONNET_WORKER":       RoleInfo("SONNET_WORKER",       "Sonnet · Worker",       "sonnet", "worker"),
+    "SONNET_TRIAGE":       RoleInfo("SONNET_TRIAGE",       "Sonnet · Triage",       "sonnet", "triage"),
+    "HAIKU_WORKER":        RoleInfo("HAIKU_WORKER",        "Haiku · Worker",        "haiku",  "worker"),
 }
 
 

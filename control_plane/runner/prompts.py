@@ -13,6 +13,28 @@ from ..config import SETTINGS
 from ..roles import ROLE_INFO
 
 
+def _layout_block() -> list[str]:
+    """Repo grounding: absolute cwd + top-level dirs + navigation rules.
+
+    Prepended to every role's prompt so workers don't Glob/Grep the whole
+    machine looking for files already listed in `allowed_files`.
+    """
+    return [
+        f"Working directory: {SETTINGS.repo_root}",
+        "Do NOT search outside this root. All task paths are relative to it.",
+        "",
+        "Repo layout (top-level only):",
+        "  sports_bot_v2/   — live bot runtime (bot_core.py lives here)",
+        "  mlb_model/       — calibrated MLB win-prob model",
+        "  BOT_BRIDGE/      — task inbox/outbox, reviews, shared context",
+        "  control_plane/   — orchestrator (Flask + SQLite, this process)",
+        "",
+        "For files in `allowed_files`: open them directly — do not search.",
+        "If a HANDOFF mentions a filename without a directory prefix, check",
+        "`allowed_files` first; that list is the authoritative location.",
+    ]
+
+
 _ROLE_FRAMING = {
     "OPUS_ARCHITECT": (
         "You are an ARCHITECT. Produce a specification or audit note. Do not "
@@ -52,6 +74,10 @@ _ROLE_FRAMING = {
         "`fail`. This file is the authoritative result — the control plane "
         "reads it directly."
     ),
+    # Stubs — patch-review and triage prompts are built by the dedicated
+    # builders below (orchestrator bypasses build_prompt entirely).
+    "OPUS_PATCH_REVIEWER": "You are the PATCH REVIEWER. (See step/synthesis prompt.)",
+    "SONNET_TRIAGE":       "You are TRIAGE. (See triage prompt.)",
 }
 
 
@@ -88,29 +114,10 @@ def build_prompt(req) -> str:
     except Exception as e:
         handoff_text = f"(HANDOFF file could not be read: {e})"
 
-    # Ground the model in the repo layout up front. Without this, workers
-    # Glob/Grep the entire machine looking for files referenced by name in
-    # the HANDOFF. cwd here matches `dispatcher.launch(cwd=SETTINGS.repo_root)`.
-    repo_root = str(SETTINGS.repo_root)
-    layout_block = [
-        f"Working directory: {repo_root}",
-        "Do NOT search outside this root. All task paths are relative to it.",
-        "",
-        "Repo layout (top-level only):",
-        "  sports_bot_v2/   — live bot runtime (bot_core.py lives here)",
-        "  mlb_model/       — calibrated MLB win-prob model",
-        "  BOT_BRIDGE/      — task inbox/outbox, reviews, shared context",
-        "  control_plane/   — orchestrator (Flask + SQLite, this process)",
-        "",
-        "For files in `allowed_files`: open them directly — do not search.",
-        "If a HANDOFF mentions a filename without a directory prefix, check",
-        "`allowed_files` first; that list is the authoritative location.",
-    ]
-
     lines = [
         framing,
         "",
-        *layout_block,
+        *_layout_block(),
         "",
         f"Role: {ROLE_INFO.get(role).display if role in ROLE_INFO else role}",
         f"Task: {tid} — {title}",
@@ -170,4 +177,212 @@ def build_prompt(req) -> str:
             "containing a JSON object with at minimum a `status` field "
             "(`ok` | `blocked` | `fail`) and a `summary` field.",
         ]
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Patch-review + triage prompt builders.
+#
+# These are called directly by runner/patch_review.py (the orchestrator)
+# and by the Sonnet-triage hook in runner/capture.py. They bypass the
+# role-dispatched build_prompt() because they need inputs that RunRequest
+# doesn't carry (patch metadata, prior-step TL;DRs, aggregated summaries).
+# ---------------------------------------------------------------------------
+
+
+def build_sonnet_triage_prompt(task: dict, result_json_text: str) -> str:
+    """2-line yes/no: does RESULT.summary satisfy HANDOFF.acceptance?
+
+    Contract: the model's final stdout line MUST start with `TRIAGE: yes`
+    or `TRIAGE: no — <short reason>`. capture.py greps for that anchor to
+    set task status (DONE on yes, CHANGES_REQUESTED + block_reason on no).
+    """
+    tid = task.get("task_id") or "(no-task)"
+    title = task.get("title") or ""
+    acceptance = (task.get("acceptance") or "(see HANDOFF)").strip()
+    allowed = task.get("allowed_files") or []
+    if isinstance(allowed, str):
+        try: allowed = json.loads(allowed)
+        except Exception: allowed = []
+    lines = [
+        "You are the TRIAGE gate. You look at ONE worker RESULT and answer ONE question:",
+        "does the RESULT plausibly satisfy the task's acceptance criteria?",
+        "",
+        *_layout_block(),
+        "",
+        f"Task: {tid} — {title}",
+        "",
+        "Acceptance:",
+        acceptance,
+        "",
+        f"Allowed files ({len(allowed)}):",
+        *[f"  - {a}" for a in (allowed or ['(none)'])],
+        "",
+        "RESULT (verbatim):",
+        "-" * 70,
+        (result_json_text or "(missing)").strip(),
+        "-" * 70,
+        "",
+        "Judge only against the acceptance criteria. If RESULT.status is not",
+        "'ok', answer no. If summary/files_changed don't plausibly match the",
+        "acceptance ask, answer no. Otherwise answer yes.",
+        "",
+        "Your final stdout line MUST be exactly one of:",
+        "  TRIAGE: yes",
+        "  TRIAGE: no — <one-sentence reason, <=120 chars>",
+        "",
+        "Do not write any file. Do not edit any file. Use Read only if needed.",
+    ]
+    return "\n".join(lines)
+
+
+def build_patch_review_step_prompt(
+    *,
+    patch: dict,
+    task: dict,
+    handoff_text: str,
+    result_json_text: str,
+    prior_summaries: list[str],
+    step_index: int,
+    total_steps: int,
+) -> str:
+    """Per-task step of a sequential patch review.
+
+    Writes BOT_BRIDGE/07_REVIEWS/PATCH_<pid>/REVIEW_<task>.md. Response
+    body MUST end with a `TL;DR:` line followed by exactly 5 single-line
+    bullet points — the orchestrator greps for that anchor and carries
+    the bullets forward into the next step's `prior_summaries`.
+    """
+    pid = patch.get("patch_id") or "(no-patch)"
+    version = patch.get("version") or "(no-version)"
+    tid = task.get("task_id") or "(no-task)"
+    title = task.get("title") or ""
+    review_dir = f"BOT_BRIDGE/07_REVIEWS/PATCH_{pid}"
+    review_file = f"{review_dir}/REVIEW_{tid}.md"
+
+    prior_block = []
+    if prior_summaries:
+        prior_block = ["Prior-step TL;DRs (in order):", ""]
+        for i, s in enumerate(prior_summaries, start=1):
+            prior_block.append(f"Step {i}:")
+            prior_block.append(s.rstrip())
+            prior_block.append("")
+
+    lines = [
+        "You are the PATCH REVIEWER. You are reviewing one task at a time",
+        "within a larger patch. After every task step, the orchestrator",
+        "extracts your TL;DR and carries it into the next step so you can",
+        "flag cross-task drift. A final synthesis step will render the",
+        "overall ship verdict.",
+        "",
+        *_layout_block(),
+        "",
+        f"Patch: {pid} (version {version})",
+        f"Step: {step_index + 1} of {total_steps}",
+        f"Task: {tid} — {title}",
+        "",
+        *prior_block,
+        "=" * 70,
+        f"HANDOFF — {tid}",
+        "=" * 70,
+        (handoff_text or "(missing)").rstrip(),
+        "=" * 70,
+        "",
+        "=" * 70,
+        f"RESULT — {tid}",
+        "=" * 70,
+        (result_json_text or "(missing)").strip(),
+        "=" * 70,
+        "",
+        "Your job:",
+        f"  1. Verify the RESULT satisfies the HANDOFF acceptance.",
+        f"  2. Check the code on disk — the allowed_files listed in the task.",
+        f"     Do NOT modify any file; this is a read-only review.",
+        f"  3. Flag any drift from prior steps' TL;DRs.",
+        f"  4. Write your review to: {review_file}",
+        f"     (create the directory {review_dir} if it doesn't exist)",
+        f"  5. The review body MUST end with the literal anchor line `TL;DR:`",
+        f"     followed by exactly 5 single-line bullet points. No extra text",
+        f"     after the 5th bullet.",
+        "",
+        "Decision line inside the review: one of",
+        "  DECISION: APPROVED",
+        "  DECISION: CHANGES_REQUESTED — <one-line reason>",
+        "  DECISION: FAIL — <one-line reason>",
+        "",
+        "Example ending of your review file:",
+        "  DECISION: APPROVED",
+        "  ",
+        "  TL;DR:",
+        "  - files_changed matched allowed_files exactly",
+        "  - acceptance criteria satisfied as written",
+        "  - no regression risk observed in neighboring code",
+        "  - consistent with prior-step conclusions",
+        "  - ready to ship as part of patch " + pid,
+    ]
+    return "\n".join(lines)
+
+
+def build_patch_synthesis_prompt(
+    *,
+    patch: dict,
+    summaries: list[str],
+    failed_steps: list[dict],
+    tasks: list[dict],
+) -> str:
+    """Final step: render PATCH_REVIEW_<pid>.md with overall decision.
+
+    Reads all TL;DRs + any skipped/failed step notes and emits one
+    ship/changes/fail verdict. Response body writes to disk.
+    """
+    pid = patch.get("patch_id") or "(no-patch)"
+    version = patch.get("version") or "(no-version)"
+    review_dir = f"BOT_BRIDGE/07_REVIEWS/PATCH_{pid}"
+    review_file = f"{review_dir}/PATCH_REVIEW_{pid}.md"
+
+    summary_block = []
+    for i, s in enumerate(summaries, start=1):
+        t = tasks[i - 1] if i - 1 < len(tasks) else {}
+        summary_block.append(f"### Step {i} — {t.get('task_id','?')} · {t.get('title','')}")
+        summary_block.append(s.rstrip())
+        summary_block.append("")
+
+    failed_block = []
+    if failed_steps:
+        failed_block = ["## Steps that failed to complete", ""]
+        for fs in failed_steps:
+            failed_block.append(
+                f"- Step {fs.get('index','?')} ({fs.get('task_id','?')}): "
+                f"{fs.get('reason','(no reason)')}"
+            )
+        failed_block.append("")
+
+    lines = [
+        "You are the PATCH REVIEWER — SYNTHESIS step. Every per-task step of",
+        "this patch has been completed; you now read the TL;DRs and render",
+        "the single ship verdict for the entire patch.",
+        "",
+        *_layout_block(),
+        "",
+        f"Patch: {pid} (version {version})",
+        f"Total tasks reviewed: {len(summaries)}",
+        f"Failed/skipped steps: {len(failed_steps)}",
+        "",
+        "## Per-step TL;DRs",
+        "",
+        *summary_block,
+        *failed_block,
+        "Your job:",
+        f"  1. Synthesize the per-step TL;DRs into one ship verdict.",
+        f"  2. Flag any cross-task concerns (e.g. task B touched files that",
+        f"     task A also changed, or two tasks make contradictory claims).",
+        f"  3. Write the final review to: {review_file}",
+        f"  4. End with one decision line: one of",
+        "       DECISION: SHIP",
+        "       DECISION: CHANGES_REQUESTED — <one-line reason>",
+        "       DECISION: BLOCK — <one-line reason>",
+        "",
+        "Keep the file under ~200 lines. It is the operator-facing",
+        "ship-or-don't-ship document for the whole patch.",
+    ]
     return "\n".join(lines)

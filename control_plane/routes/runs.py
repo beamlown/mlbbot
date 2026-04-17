@@ -40,6 +40,21 @@ except Exception:
     # Never fail module import because the reaper hiccupped.
     pass
 
+# Resume any in-progress patch reviews orphaned by a prior crash. MUST
+# run AFTER reap_zombies so any 'running' run rows have been flipped
+# first — resume_in_progress checks active dispatcher state, not the DB,
+# when deciding whether to relaunch.
+try:
+    from ..runner.patch_review import resume_in_progress as _resume_prs
+    _resumed = _resume_prs()
+    if _resumed:
+        import logging
+        logging.getLogger(__name__).info(
+            "startup patch-review resume: relaunched %d orphaned reviews", _resumed,
+        )
+except Exception:
+    pass
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -120,6 +135,21 @@ def api_launch(task_id: str):
     task = _task_row(task_id)
     if task is None:
         return jsonify({"ok": False, "error": "task_not_found"}), 404
+
+    # Block guard: if the task is parked or has a known block reason,
+    # refuse to launch unless the operator explicitly overrides with
+    # force=true. This is the "don't blindly retry" signal — prevents
+    # re-running a task whose prior failure the operator hasn't yet
+    # addressed.
+    if not force and (task.get("blocked_on") or task.get("block_reason")):
+        return jsonify({
+            "ok": False, "error": "task_blocked",
+            "detail": (task.get("block_reason") or
+                       f"parked behind {task.get('blocked_on')}"),
+            "blocked_on": task.get("blocked_on"),
+            "block_reason": task.get("block_reason"),
+            "blocked_at": task.get("blocked_at"),
+        }), 409
 
     # Resolve agent profile.
     if not profile_id:

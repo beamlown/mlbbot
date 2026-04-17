@@ -24,6 +24,10 @@ class RunRequest:
     task: dict | None            # full task row as dict (from `tasks`)
     created_by: str | None       # acting role at launch time
     extra_prompt: str | None = None
+    # Optional JSON-serializable dict tagging a run as part of a patch-
+    # review orchestration. Dispatcher persists this on the runs row so
+    # the capture hook can route the finalize to patch_review.advance().
+    patch_review_meta: dict | None = None
 
 
 @dataclass
