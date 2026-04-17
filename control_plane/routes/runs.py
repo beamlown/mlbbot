@@ -33,10 +33,9 @@ DISPATCHER.set_finalize(finalize_run)
 # longer alive is a crash-orphan — mark it failed so the board doesn't
 # show ghost running tasks across server restarts.
 try:
+    import logging
     _reaped = DISPATCHER.reap_zombies()
-    if _reaped:
-        import logging
-        logging.getLogger(__name__).info("startup reaper: %d zombie runs swept", _reaped)
+    logging.getLogger(__name__).info("startup reaper: swept %d zombies", _reaped)
 except Exception:
     # Never fail module import because the reaper hiccupped.
     pass
