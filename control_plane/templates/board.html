@@ -30,28 +30,31 @@
 <section class="board">
   {% for lane in lane_order %}
     {% set items = lanes[lane] or [] %}
-    <div class="lane lane-{{ lane|lower }}">
+    <div class="lane lane-{{ lane|lower }}" data-lane="{{ lane }}">
       <header class="lane-header">
         <span class="lane-title">{{ lane }}</span>
         <span class="lane-count">{{ items|length }}</span>
       </header>
-      <div class="lane-body">
+      <div class="lane-body sortable" data-lane="{{ lane }}">
         {% for t in items %}
-          <a class="card priority-{{ (t.priority or 'MEDIUM')|lower }}" href="{{ url_for('tasks.task_detail', task_id=t.task_id) }}">
-            <div class="card-head">
-              <span class="tid">{{ t.task_id }}</span>
-              <span class="pri">{{ t.priority or 'MEDIUM' }}</span>
-            </div>
-            <div class="card-title">{{ t.title }}</div>
-            <div class="card-meta">
-              {% if t.subsystem %}<span class="meta">{{ t.subsystem }}</span>{% endif %}
-              {% if t.assigned_role %}<span class="meta role">{{ t.assigned_role }}</span>{% endif %}
-              {% if t.allowed_files and t.allowed_files|length > 0 %}
-                <span class="meta files" title="{{ t.allowed_files|join(', ') }}">files: {{ t.allowed_files|length }}</span>
-              {% endif %}
-            </div>
-            {% if t.notes %}<div class="card-notes">{{ t.notes|truncate(160) }}</div>{% endif %}
-          </a>
+          <div class="card priority-{{ (t.priority or 'MEDIUM')|lower }}{% if t.conflict %} card-conflict{% endif %}" data-task-id="{{ t.task_id }}">
+            <a class="card-link" href="{{ url_for('tasks.task_detail', task_id=t.task_id) }}">
+              <div class="card-head">
+                <span class="tid">{{ t.task_id }}</span>
+                <span class="pri">{{ t.priority or 'MEDIUM' }}</span>
+              </div>
+              <div class="card-title">{{ t.title }}</div>
+              <div class="card-meta">
+                {% if t.subsystem %}<span class="meta">{{ t.subsystem }}</span>{% endif %}
+                {% if t.assigned_role %}<span class="meta role">{{ t.assigned_role }}</span>{% endif %}
+                {% if t.allowed_files and t.allowed_files|length > 0 %}
+                  <span class="meta files" title="{{ t.allowed_files|join(', ') }}">files: {{ t.allowed_files|length }}</span>
+                {% endif %}
+                {% if t.conflict %}<span class="meta conflict" title="External edit detected on TASK_{{ t.task_id }}.json">!conflict</span>{% endif %}
+              </div>
+              {% if t.notes %}<div class="card-notes">{{ t.notes|truncate(160) }}</div>{% endif %}
+            </a>
+          </div>
         {% else %}
           <div class="empty">no tasks</div>
         {% endfor %}
@@ -60,4 +63,57 @@
   {% endfor %}
 </section>
 
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+(function() {
+  const lanes = document.querySelectorAll('.lane-body.sortable');
+  lanes.forEach(el => {
+    new Sortable(el, {
+      group: 'board',
+      animation: 140,
+      ghostClass: 'card-ghost',
+      chosenClass: 'card-chosen',
+      dragClass: 'card-dragging',
+      filter: '.empty',
+      onEnd: async (evt) => {
+        const fromLane = evt.from.dataset.lane;
+        const toLane = evt.to.dataset.lane;
+        const moved = evt.item.dataset.taskId;
+        if (!moved) return;
+
+        // If we crossed lanes, set status first so the task row's status matches
+        // the new lane before we push the reorder payload.
+        if (fromLane !== toLane) {
+          const r = await postJSON(`/api/tasks/${moved}/transition`, {status: toLane});
+          if (!r.ok || !r.json.ok) {
+            toast(`Transition failed: ${r.json.error || r.status}`, false);
+            location.reload();
+            return;
+          }
+        }
+
+        const collect = (laneEl) => Array.from(laneEl.querySelectorAll('.card'))
+          .map(c => c.dataset.taskId).filter(Boolean);
+        const order = collect(evt.to);
+        const reorderRes = await postJSON('/api/board/reorder', {lane: toLane, order});
+        if (!reorderRes.ok || !reorderRes.json.ok) {
+          toast(`Reorder failed: ${reorderRes.json.error || reorderRes.status}`, false);
+          location.reload();
+          return;
+        }
+        toast(`${moved} → ${toLane}`);
+
+        // Also push a reorder for the source lane in case indices shifted.
+        if (fromLane !== toLane) {
+          const srcOrder = collect(evt.from);
+          await postJSON('/api/board/reorder', {lane: fromLane, order: srcOrder});
+        }
+      },
+    });
+  });
+})();
+</script>
 {% endblock %}

@@ -246,7 +246,7 @@ def _upsert_task_from_json(path: Path, report: ImportReport) -> None:
     ext_mtime = int(path.stat().st_mtime)
 
     conn = get_conn()
-    row = conn.execute("SELECT task_id FROM tasks WHERE task_id=?", (tid,)).fetchone()
+    row = conn.execute("SELECT task_id, external_hash, updated_at FROM tasks WHERE task_id=?", (tid,)).fetchone()
     if row is None:
         conn.execute(
             """INSERT INTO tasks
@@ -267,6 +267,12 @@ def _upsert_task_from_json(path: Path, report: ImportReport) -> None:
         )
         report.tasks_new += 1
     else:
+        # Conflict detection: if we previously exported a hash and the file on
+        # disk now has a different hash AND the DB row was edited in the
+        # dashboard since that export, flag it. Absent a tracked export hash,
+        # treat the file as authoritative and pull in.
+        prior_hash = row["external_hash"]
+        is_conflict = bool(prior_hash) and prior_hash != ext_hash
         conn.execute(
             """UPDATE tasks SET
                 type=?, priority=?, status=?, issued=?, subsystem=?, title=?,
@@ -274,7 +280,8 @@ def _upsert_task_from_json(path: Path, report: ImportReport) -> None:
                 brief_path=COALESCE(?, brief_path),
                 result_path=COALESCE(?, result_path),
                 review_path=COALESCE(?, review_path),
-                external_mtime=?, external_hash=?, updated_at=?
+                external_mtime=?, external_hash=?, updated_at=?,
+                conflict=CASE WHEN ? THEN 1 ELSE conflict END
                WHERE task_id=?""",
             (
                 parsed.type, parsed.priority, parsed.status, parsed.issued,
@@ -283,7 +290,7 @@ def _upsert_task_from_json(path: Path, report: ImportReport) -> None:
                 json.dumps(parsed.forbidden_files),
                 parsed.acceptance,
                 parsed.brief_path, parsed.result_path, parsed.review_path,
-                ext_mtime, ext_hash, now, tid,
+                ext_mtime, ext_hash, now, 1 if is_conflict else 0, tid,
             ),
         )
         report.tasks_updated += 1

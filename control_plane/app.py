@@ -15,6 +15,7 @@ from .bridge.importer import import_bot_bridge
 from .routes.tasks import bp as tasks_bp
 from .routes.artifacts import bp as artifacts_bp
 from .routes.system import bp as system_bp
+from .routes.actions import bp as actions_bp
 from .roles import ROLE_INFO
 
 
@@ -61,6 +62,7 @@ def create_app() -> Flask:
     app.register_blueprint(tasks_bp)
     app.register_blueprint(artifacts_bp)
     app.register_blueprint(system_bp)
+    app.register_blueprint(actions_bp)
 
     @app.errorhandler(404)
     def _404(e):

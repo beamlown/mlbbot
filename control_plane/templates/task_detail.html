@@ -6,20 +6,76 @@
 
 <header class="task-header">
   <div class="task-head-left">
-    <h1 class="task-title">{{ task.title }}</h1>
+    <h1 class="task-title" id="f-title-view">{{ task.title }}</h1>
     <code class="tid-big">{{ task.task_id }}</code>
   </div>
   <div class="task-head-right">
-    <span class="chip chip-{{ (task.status or 'PENDING')|lower }}">{{ task.status }}</span>
-    <span class="chip priority-{{ (task.priority or 'MEDIUM')|lower }}">{{ task.priority }}</span>
-    {% if task.subsystem %}<span class="chip">{{ task.subsystem }}</span>{% endif %}
-    {% if task.assigned_role %}<span class="chip role">{{ task.assigned_role }}</span>{% endif %}
+    <span class="chip chip-{{ (task.status or 'PENDING')|lower }}" id="status-chip">{{ task.status }}</span>
+    <span class="chip priority-{{ (task.priority or 'MEDIUM')|lower }}" id="priority-chip">{{ task.priority }}</span>
+    {% if task.subsystem %}<span class="chip" id="subsystem-chip">{{ task.subsystem }}</span>{% endif %}
+    {% if task.assigned_role %}<span class="chip role" id="role-chip">{{ task.assigned_role }}</span>{% endif %}
+    {% if task.conflict %}<span class="chip chip-conflict" title="External edit detected on TASK file">!conflict</span>{% endif %}
   </div>
 </header>
+
+<section class="controls-bar">
+  <div class="ctrl-group">
+    <label>Status</label>
+    <select id="ctl-status">
+      {% for s in VALID_STATUSES %}
+        <option value="{{ s }}" {% if task.status == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-xs" onclick="transitionTask()">Apply</button>
+  </div>
+  <div class="ctrl-group">
+    <label>Assign</label>
+    <select id="ctl-role">
+      <option value="">— unassigned —</option>
+      {% for key, info in ROLE_INFO.items() %}
+        <option value="{{ key }}" {% if task.assigned_role == key %}selected{% endif %}>{{ info.display }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-xs" onclick="assignTask()">Save</button>
+  </div>
+  <div class="ctrl-group">
+    <button class="btn btn-xs" onclick="exportTask(false)">Export</button>
+    <button class="btn btn-xs btn-ghost" onclick="checkConflict()">Check conflict</button>
+    <button class="btn btn-xs btn-danger" onclick="exportTask(true)" title="Overwrite external edits">Force export</button>
+  </div>
+  <div class="ctrl-group">
+    <button class="btn btn-xs" onclick="toggleEdit()">Edit fields</button>
+  </div>
+</section>
 
 <section class="two-col">
 
   <div class="col-main">
+    <div id="edit-form" class="edit-form hidden">
+      <h3>Edit task</h3>
+      <label>Title<input type="text" id="f-title" value="{{ task.title|e }}"></label>
+      <div class="inline-fields">
+        <label>Priority
+          <select id="f-priority">
+            {% for p in ['CRITICAL','HIGH','MEDIUM','LOW'] %}
+              <option value="{{ p }}" {% if task.priority == p %}selected{% endif %}>{{ p }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Subsystem<input type="text" id="f-subsystem" value="{{ task.subsystem or '' }}"></label>
+        <label>Type<input type="text" id="f-type" value="{{ task.type or '' }}"></label>
+      </div>
+      <label>Allowed files (one per line)<textarea id="f-allowed" rows="4">{{ task.allowed_files|join('\n') }}</textarea></label>
+      <label>Forbidden files (one per line)<textarea id="f-forbidden" rows="2">{{ task.forbidden_files|join('\n') }}</textarea></label>
+      <label>Acceptance<textarea id="f-acceptance" rows="4">{{ task.acceptance or '' }}</textarea></label>
+      <label>Evidence<textarea id="f-evidence" rows="3">{{ task.evidence or '' }}</textarea></label>
+      <label>Notes<textarea id="f-notes" rows="3">{{ task.notes or '' }}</textarea></label>
+      <div class="row-actions">
+        <button class="btn btn-accent" onclick="saveEdit()">Save changes</button>
+        <button class="btn btn-ghost" onclick="toggleEdit()">Cancel</button>
+      </div>
+    </div>
+
     <h3>Brief</h3>
     {% if brief_content %}
       <pre class="markdown">{{ brief_content }}</pre>
@@ -113,4 +169,79 @@
 
 </section>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TID = {{ task.task_id|tojson }};
+
+function toggleEdit() {
+  document.getElementById('edit-form').classList.toggle('hidden');
+}
+
+async function transitionTask() {
+  const status = document.getElementById('ctl-status').value;
+  const res = await postJSON(`/api/tasks/${TID}/transition`, {status});
+  if (res.ok && res.json.ok) {
+    toast(`${TID}: ${res.json.from} → ${res.json.to}`);
+    setTimeout(() => location.reload(), 400);
+  } else {
+    toast('Transition failed: ' + (res.json.error || res.status), false);
+  }
+}
+
+async function assignTask() {
+  const role = document.getElementById('ctl-role').value;
+  const res = await postJSON(`/api/tasks/${TID}/assign`, {assigned_role: role});
+  if (res.ok && res.json.ok) {
+    toast(`${TID} assigned: ${role || '(none)'}`);
+    setTimeout(() => location.reload(), 400);
+  } else {
+    toast('Assign failed: ' + (res.json.error || res.status), false);
+  }
+}
+
+async function exportTask(force) {
+  const res = await postJSON(`/api/tasks/${TID}/export`, {force: !!force});
+  const ex = (res.json && res.json.export) || {};
+  if (ex.ok) {
+    toast(`Exported → ${ex.path}`);
+  } else if (ex.error === 'conflict') {
+    toast(`Conflict on ${ex.path} — disk hash ${(ex.disk_sha256||'').slice(0,8)} vs db ${(ex.db_hash||'').slice(0,8)}. Use Force export to overwrite.`, false);
+  } else {
+    toast('Export failed: ' + (ex.error || res.status), false);
+  }
+}
+
+async function checkConflict() {
+  const r = await fetch(`/api/tasks/${TID}/conflict`);
+  const j = await r.json();
+  if (j.conflict) {
+    toast(`CONFLICT (${j.reason}): ${j.path}`, false);
+  } else {
+    toast(`Clean (${j.reason}) — ${j.path}`);
+  }
+}
+
+async function saveEdit() {
+  const payload = {
+    title: document.getElementById('f-title').value,
+    priority: document.getElementById('f-priority').value,
+    subsystem: document.getElementById('f-subsystem').value,
+    type: document.getElementById('f-type').value,
+    allowed_files: document.getElementById('f-allowed').value,
+    forbidden_files: document.getElementById('f-forbidden').value,
+    acceptance: document.getElementById('f-acceptance').value,
+    evidence: document.getElementById('f-evidence').value,
+    notes: document.getElementById('f-notes').value,
+  };
+  const res = await patchJSON(`/api/tasks/${TID}`, payload);
+  if (res.ok && res.json.ok) {
+    toast('Saved');
+    setTimeout(() => location.reload(), 400);
+  } else {
+    toast('Save failed: ' + (res.json.error || res.status), false);
+  }
+}
+</script>
 {% endblock %}

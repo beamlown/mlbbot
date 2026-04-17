@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}New Task · Control Plane{% endblock %}
+{% block content %}
+
+<a class="back" href="{{ url_for('tasks.board') }}">← Board</a>
+
+<header class="task-header">
+  <div class="task-head-left">
+    <h1 class="task-title">New task</h1>
+  </div>
+</header>
+
+<section class="edit-form new-task-form">
+  <label>Task ID (UPPERCASE, digits, underscore)
+    <input type="text" id="f-task_id" placeholder="E.G. DASHBOARD_FEATURE_001" autofocus>
+  </label>
+  <label>Title<input type="text" id="f-title" placeholder="One-line summary"></label>
+  <div class="inline-fields">
+    <label>Priority
+      <select id="f-priority">
+        {% for p in VALID_PRIORITIES %}
+          <option value="{{ p }}" {% if p == 'MEDIUM' %}selected{% endif %}>{{ p }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Status
+      <select id="f-status">
+        {% for s in VALID_STATUSES %}
+          <option value="{{ s }}" {% if s == 'QUEUED' %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Subsystem<input type="text" id="f-subsystem" placeholder="e.g. dashboard, parser, runner"></label>
+    <label>Type<input type="text" id="f-type" value="manual"></label>
+  </div>
+  <label>Assigned role
+    <select id="f-role">
+      <option value="">— unassigned —</option>
+      {% for key, info in ROLES.items() %}
+        <option value="{{ key }}">{{ info.display }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Allowed files (one per line)<textarea id="f-allowed" rows="4" placeholder="path/to/file.py"></textarea></label>
+  <label>Forbidden files (one per line)<textarea id="f-forbidden" rows="2"></textarea></label>
+  <label>Acceptance<textarea id="f-acceptance" rows="4" placeholder="Conditions for DONE…"></textarea></label>
+  <label>Notes<textarea id="f-notes" rows="3"></textarea></label>
+  <div class="row-actions">
+    <button class="btn btn-accent" onclick="createTask()">Create task</button>
+    <a class="btn btn-ghost" href="{{ url_for('tasks.board') }}">Cancel</a>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function createTask() {
+  const payload = {
+    task_id: document.getElementById('f-task_id').value.trim(),
+    title: document.getElementById('f-title').value.trim(),
+    priority: document.getElementById('f-priority').value,
+    status: document.getElementById('f-status').value,
+    subsystem: document.getElementById('f-subsystem').value,
+    type: document.getElementById('f-type').value,
+    assigned_role: document.getElementById('f-role').value,
+    allowed_files: document.getElementById('f-allowed').value,
+    forbidden_files: document.getElementById('f-forbidden').value,
+    acceptance: document.getElementById('f-acceptance').value,
+    notes: document.getElementById('f-notes').value,
+  };
+  if (!payload.task_id) { toast('task_id required', false); return; }
+  if (!payload.title) { toast('title required', false); return; }
+
+  const res = await postJSON('/api/tasks', payload);
+  if (res.ok && res.json.ok) {
+    toast(`Created ${res.json.task_id}`);
+    setTimeout(() => { location.href = `/tasks/${res.json.task_id}`; }, 400);
+  } else {
+    toast('Create failed: ' + (res.json.error || res.status) + (res.json.hint ? ' — ' + res.json.hint : ''), false);
+  }
+}
+</script>
+{% endblock %}

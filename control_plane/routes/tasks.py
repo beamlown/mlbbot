@@ -87,6 +87,17 @@ def board():
     )
 
 
+@bp.route("/tasks/new", methods=["GET"])
+def task_new():
+    from ..roles import ROLE_INFO as _ROLES
+    return render_template(
+        "task_new.html",
+        VALID_STATUSES=VALID_STATUSES,
+        VALID_PRIORITIES=VALID_PRIORITIES,
+        ROLES=_ROLES,
+    )
+
+
 @bp.route("/tasks/<task_id>", methods=["GET"])
 def task_detail(task_id: str):
     conn = get_conn()
