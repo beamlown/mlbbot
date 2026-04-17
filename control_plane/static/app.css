@@ -233,3 +233,148 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 .toast.show { opacity:1; transform: translateY(0); }
 .toast.ok { border-left: 3px solid var(--ok); }
 .toast.err { border-left: 3px solid var(--err); }
+
+/* --- Phase 3/4: workflow lanes + agent palette + live runs --- */
+
+/* Workflow board is 7 lanes wide — allow horizontal scroll. */
+.wf-board { grid-template-columns: repeat(7, minmax(240px, 1fr)); }
+
+:root {
+  --wf-ready:   #60a5fa;
+  --wf-run:     #4ade80;
+  --wf-review:  #fbbf24;
+  --wf-changes: #f87171;
+  --wf-done:    #94a3b8;
+  --wf-audit:   #f472b6;
+  --wf-arch:    #64748b;
+}
+
+.lane-wf-ready_for_worker   .lane-title { color: var(--wf-ready); }
+.lane-wf-running            .lane-title { color: var(--wf-run); }
+.lane-wf-awaiting_review    .lane-title { color: var(--wf-review); }
+.lane-wf-changes_requested  .lane-title { color: var(--wf-changes); }
+.lane-wf-done               .lane-title { color: var(--wf-done); }
+.lane-wf-audit_queue        .lane-title { color: var(--wf-audit); }
+.lane-wf-archived           .lane-title { color: var(--wf-arch); opacity:.75; }
+.lane-wf-archived { opacity:.75; }
+
+.chip-wf-ready_for_worker   { border-color: var(--wf-ready); color: var(--wf-ready); background: rgba(96,165,250,.1); }
+.chip-wf-running            { border-color: var(--wf-run);   color: var(--wf-run);   background: rgba(74,222,128,.12); }
+.chip-wf-awaiting_review    { border-color: var(--wf-review); color: var(--wf-review); background: rgba(251,191,36,.1); }
+.chip-wf-changes_requested  { border-color: var(--wf-changes); color: var(--wf-changes); background: rgba(248,113,113,.12); }
+.chip-wf-done               { border-color: var(--wf-done); color: var(--wf-done); background: rgba(148,163,184,.12); }
+.chip-wf-audit_queue        { border-color: var(--wf-audit); color: var(--wf-audit); background: rgba(244,114,182,.1); }
+.chip-wf-archived           { border-color: var(--wf-arch); color: var(--wf-arch); opacity:.7; }
+
+/* Agent palette above the board. */
+.agent-palette {
+  display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;
+  background: var(--panel); border:1px solid var(--border); border-radius:6px;
+  padding:.5rem .75rem; margin-bottom:.75rem;
+}
+.palette-label {
+  color: var(--muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.4px;
+  margin-right:.2rem;
+}
+.palette-hint { color: var(--muted); font-size:.75rem; font-style:italic; margin-left:auto; }
+
+.agent-chip {
+  display:inline-flex; align-items:center; gap:.35rem;
+  background: var(--panel-2); border:1px solid var(--border);
+  border-left: 3px solid var(--agent-color, var(--accent));
+  padding:.25rem .55rem; border-radius: 999px;
+  font-size:.8rem; cursor: grab; user-select:none;
+  transition: transform .1s, border-color .15s, box-shadow .15s;
+}
+.agent-chip:hover   { border-color: var(--agent-color, var(--accent)); box-shadow: 0 0 0 1px var(--agent-color, var(--accent)); }
+.agent-chip:active  { cursor: grabbing; transform: scale(.97); }
+.agent-icon { font-size:.95rem; line-height:1; }
+.agent-name { color: var(--fg); }
+
+/* Drag feedback on the board. */
+body.agent-dragging .card { transition: opacity .1s, box-shadow .1s; }
+body.agent-dragging .card-ineligible { opacity: .3; }
+body.agent-dragging .card-eligible   { box-shadow: 0 0 0 2px var(--wf-run); }
+.card-hover { box-shadow: 0 0 0 2px var(--accent) !important; }
+
+.card-dropzone {
+  display:none;
+  margin-top:.35rem; padding:.25rem .4rem; border:1px dashed var(--border);
+  border-radius:4px; font-size:.7rem; color: var(--muted); text-align:center;
+}
+body.agent-dragging .card-eligible .card-dropzone { display:block; border-color: var(--wf-run); color: var(--wf-run); }
+
+/* Running-lane card pulse. */
+.card-running { border-color: var(--wf-run) !important; }
+.running-pulse {
+  color: var(--wf-run); border-color: var(--wf-run);
+  animation: runpulse 1.4s ease-in-out infinite;
+}
+@keyframes runpulse {
+  0%,100% { opacity: .55; }
+  50%     { opacity: 1;   }
+}
+
+/* Task-detail agent palette — each agent offers a click-launch button. */
+.agent-launch-list {
+  display:flex; gap:.4rem; flex-wrap:wrap; margin:.5rem 0 .25rem;
+}
+.agent-launch {
+  display:inline-flex; align-items:center; gap:.35rem;
+  background: var(--panel-2); border:1px solid var(--border);
+  border-left: 3px solid var(--agent-color, var(--accent));
+  padding:.25rem .55rem; border-radius:999px; cursor:pointer;
+  font-size:.8rem;
+}
+.agent-launch:hover { border-color: var(--agent-color, var(--accent)); }
+.agent-launch[data-eligible="0"] { opacity:.55; }
+.agent-launch[data-eligible="0"]:hover::after {
+  content:" (not normally launched on this lane)"; color: var(--muted); font-size:.7rem;
+}
+.adapter-switch {
+  display:inline-flex; align-items:center; gap:.35rem; font-size:.75rem; color: var(--muted);
+  margin-left:.5rem;
+}
+.adapter-switch select {
+  background: var(--panel-2); color: var(--fg); border:1px solid var(--border);
+  padding:.15rem .3rem; border-radius:4px; font-size:.75rem;
+}
+
+/* Live-run pane on the task-detail page. */
+.live-run {
+  background: var(--panel); border:1px solid var(--border); border-radius:6px;
+  padding:.6rem .75rem; margin: .75rem 0 1rem;
+}
+.live-run.hidden { display:none; }
+.live-head {
+  display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
+  margin-bottom: .4rem;
+}
+.live-head .run-id {
+  font-family: ui-monospace, monospace; color: var(--muted); font-size:.75rem;
+}
+.live-head .live-spacer { flex:1; }
+.live-meta { color: var(--muted); font-size:.75rem; }
+.log-pane {
+  background: #0a0c12; color: #d7dbe3;
+  border:1px solid var(--border); border-radius:4px;
+  padding:.5rem .6rem; margin:0;
+  max-height: 42vh; overflow-y:auto;
+  white-space: pre-wrap; word-wrap:break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .78rem; line-height: 1.4;
+}
+.log-pane:empty::before {
+  content:"(waiting for output…)"; color: var(--muted); font-style:italic;
+}
+
+.pill-go {
+  background: rgba(74,222,128,.1); color: var(--ok); border-color: var(--ok);
+}
+.pill-go:hover { background: rgba(74,222,128,.2); }
+
+.run-summary {
+  background: var(--panel-2); border:1px solid var(--border); border-radius:4px;
+  padding:.35rem .5rem; font-size:.8rem; color: var(--muted);
+  display:flex; gap:.5rem; flex-wrap:wrap;
+}

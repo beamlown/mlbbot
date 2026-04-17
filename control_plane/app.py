@@ -16,7 +16,9 @@ from .routes.tasks import bp as tasks_bp
 from .routes.artifacts import bp as artifacts_bp
 from .routes.system import bp as system_bp
 from .routes.actions import bp as actions_bp
+from .routes.runs import bp as runs_bp
 from .roles import ROLE_INFO
+from .workflow import WORKFLOW_LANES, LANE_DISPLAY
 
 
 def create_app() -> Flask:
@@ -57,12 +59,15 @@ def create_app() -> Flask:
             "ACTING_ROLE": acting_role,
             "TASK_COUNTS": counts,
             "SETTINGS": SETTINGS,
+            "WORKFLOW_LANES": WORKFLOW_LANES,
+            "LANE_DISPLAY": LANE_DISPLAY,
         }
 
     app.register_blueprint(tasks_bp)
     app.register_blueprint(artifacts_bp)
     app.register_blueprint(system_bp)
     app.register_blueprint(actions_bp)
+    app.register_blueprint(runs_bp)
 
     @app.errorhandler(404)
     def _404(e):

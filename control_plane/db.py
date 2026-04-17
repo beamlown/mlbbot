@@ -149,7 +149,59 @@ CREATE TABLE IF NOT EXISTS import_log (
   artifacts_new  INTEGER DEFAULT 0,
   notes      TEXT
 );
+
+CREATE TABLE IF NOT EXISTS agent_profiles (
+  profile_id     TEXT PRIMARY KEY,
+  display        TEXT NOT NULL,
+  role           TEXT NOT NULL,
+  adapter        TEXT NOT NULL DEFAULT 'claude_cli',
+  model          TEXT,
+  color          TEXT,
+  icon           TEXT,
+  prompt_extra   TEXT,
+  allowed_states TEXT NOT NULL DEFAULT '[]',
+  enabled        INTEGER NOT NULL DEFAULT 1,
+  created_at     TEXT NOT NULL,
+  updated_at     TEXT NOT NULL
+);
 """
+
+
+_DEFAULT_AGENT_PROFILES = [
+    {
+        "profile_id": "haiku_worker",
+        "display": "Haiku · Worker",
+        "role": "HAIKU_WORKER",
+        "adapter": "claude_cli",
+        "model": "claude-haiku-4-5-20251001",
+        "color": "#a78bfa",
+        "icon": "🔨",
+        "prompt_extra": None,
+        "allowed_states": '["READY_FOR_WORKER","CHANGES_REQUESTED"]',
+    },
+    {
+        "profile_id": "sonnet_manager",
+        "display": "Sonnet · Manager / Reviewer",
+        "role": "SONNET_MANAGER",
+        "adapter": "claude_cli",
+        "model": "claude-sonnet-4-6",
+        "color": "#60a5fa",
+        "icon": "🧭",
+        "prompt_extra": None,
+        "allowed_states": '["AWAITING_REVIEW","CHANGES_REQUESTED"]',
+    },
+    {
+        "profile_id": "opus_auditor",
+        "display": "Opus · Auditor",
+        "role": "OPUS_AUDITOR",
+        "adapter": "claude_cli",
+        "model": "claude-opus-4-7",
+        "color": "#f472b6",
+        "icon": "🧠",
+        "prompt_extra": None,
+        "allowed_states": '["DONE","AUDIT_QUEUE","AWAITING_REVIEW"]',
+    },
+]
 
 
 def _connect(path: Path) -> sqlite3.Connection:
@@ -194,6 +246,28 @@ def init_db() -> None:
         conn.execute(
             "INSERT INTO schema_version(version, applied_at) VALUES (?, datetime('now'))",
             (1,),
+        )
+    _seed_agent_profiles()
+
+
+def _seed_agent_profiles() -> None:
+    from datetime import datetime, timezone
+    conn = get_conn()
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    for p in _DEFAULT_AGENT_PROFILES:
+        exists = conn.execute(
+            "SELECT 1 FROM agent_profiles WHERE profile_id=?", (p["profile_id"],)
+        ).fetchone()
+        if exists:
+            continue
+        conn.execute(
+            """INSERT INTO agent_profiles
+               (profile_id, display, role, adapter, model, color, icon,
+                prompt_extra, allowed_states, enabled, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,1,?,?)""",
+            (p["profile_id"], p["display"], p["role"], p["adapter"], p["model"],
+             p["color"], p["icon"], p["prompt_extra"], p["allowed_states"],
+             now, now),
         )
 
 
