@@ -107,9 +107,17 @@ def _load_result_text(task_id: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-_TLDR_ANCHOR_RX = re.compile(r"(?m)^\s*TL;DR\s*:\s*$")
+# TL;DR anchor is tolerant of markdown decoration because Opus renders
+# the contract as "**TL;DR:**" or "## TL;DR" about as often as bare
+# "TL;DR:". Whitespace inside the acronym is also allowed defensively.
+_TLDR_ANCHOR_RX = re.compile(
+    r"(?im)^\s*(?:#+\s*)?\*{0,2}\s*TL\s*;\s*DR\s*:?\s*\*{0,2}\s*$"
+)
 _BULLET_RX = re.compile(r"^\s*[-*]\s+(.+)$")
-_DECISION_RX = re.compile(r"(?im)^\s*DECISION\s*:\s*([A-Z_]+)(?:\s*[—\-:]\s*(.*))?$")
+_DECISION_RX = re.compile(
+    r"(?im)^\s*(?:#+\s*)?\*{0,2}\s*DECISION\s*:\s*([A-Z_]+)"
+    r"(?:\s*[—\-:]\s*(.*?))?\s*\*{0,2}\s*$"
+)
 
 
 def _glob_newest_review(patch_id: str, task_id: str) -> Path | None:
@@ -499,11 +507,15 @@ def resume_in_progress() -> int:
     resumed = 0
     for r in rows:
         pid = r["patch_id"]
-        # If a step run is already active, leave it alone.
-        active = any(
-            (rr.request.patch_review_meta or {}).get("patch_id") == pid
-            for rr in list(getattr(DISPATCHER, "_runs", {}).values())
-        )
+        # If a step run is already active, leave it alone. Take the
+        # dispatcher's lock — iterating its private runs dict at runtime
+        # without it would be a subtle concurrency landmine.
+        active = False
+        with DISPATCHER._lock:
+            for rr in DISPATCHER._runs.values():
+                if (rr.request.patch_review_meta or {}).get("patch_id") == pid:
+                    active = True
+                    break
         if active:
             continue
         patch = _load_patch(pid)
