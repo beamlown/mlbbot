@@ -444,6 +444,94 @@ body.agent-dragging .card-eligible .card-dropzone { display:block; border-color:
 .run-list li .chip.status-succeeded { background: rgba(74,222,128,.15);  color: var(--wf-done);    border-color: var(--wf-done); }
 .run-list li .chip.status-running   { background: rgba(56,189,248,.15);  color: var(--wf-run);     border-color: var(--wf-run); }
 
+/* ------------------------------------------------------------------
+   Phase D — patches / release queue
+   ------------------------------------------------------------------ */
+
+.patch-banner {
+  display: flex; align-items: center; gap: 1rem;
+  padding: .45rem .9rem; margin: 0 auto;
+  background: var(--panel); border: 1px solid var(--border);
+  border-left: 4px solid var(--wf-review);
+  font-size: .85rem;
+  max-width: 100%;
+}
+.patch-banner.patch-banner-empty { border-left-color: var(--wf-arch); opacity: .85; }
+.patch-banner.patch-banner-ready { border-left-color: var(--wf-done); }
+.patch-banner-left  { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.patch-banner-right { display: flex; align-items: center; gap: .4rem; margin-left: auto; }
+.patch-banner-label {
+  text-transform: uppercase; letter-spacing: .5px; color: var(--muted);
+  font-size: .7rem;
+}
+.patch-banner-version {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 700; color: var(--wf-done); text-decoration: none;
+}
+.patch-banner-version:hover { text-decoration: underline; }
+.patch-banner-count { color: var(--fg); }
+.patch-banner-muted { color: var(--muted); font-size: .75rem; }
+
+/* Patches page */
+.page-header h1 { margin: .5rem 0 .25rem; }
+.patch-section  { margin: 1.25rem 0; }
+.patch-section h2 { margin: 0 0 .5rem; font-size: 1.05rem; color: var(--fg); }
+
+.patch-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+  padding: .75rem 1rem; margin: .5rem 0;
+}
+.patch-card-pending { border-left: 4px solid var(--wf-done); }
+.patch-card-head {
+  display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+  margin-bottom: .4rem;
+}
+.patch-card-head .spacer { flex: 1; }
+.patch-version {
+  font-family: ui-monospace, monospace; font-weight: 700;
+  color: var(--wf-done); font-size: 1rem; text-decoration: none;
+}
+.patch-notes {
+  background: var(--panel-2); border-radius: 4px;
+  padding: .5rem .7rem; margin: .4rem 0; white-space: pre-wrap;
+  font-family: inherit; font-size: .85rem;
+}
+.patch-notes-editor {
+  width: 100%; background: var(--panel-2); color: var(--fg);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: .5rem .7rem; font: inherit; font-size: .85rem; resize: vertical;
+}
+.patch-task-list { list-style: none; padding: 0; margin: .3rem 0; }
+.patch-task-list li {
+  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+  padding: .3rem 0; border-bottom: 1px dashed var(--border);
+  font-size: .85rem;
+}
+.patch-task-list li:last-child { border-bottom: 0; }
+.patch-task-title { color: var(--fg); flex: 1; min-width: 0; }
+
+.patch-history { list-style: none; padding: 0; margin: 0; }
+.patch-history-row {
+  display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+  padding: .4rem .25rem; border-bottom: 1px solid var(--border);
+  font-size: .85rem;
+}
+.patch-history-title { color: var(--muted); font-style: italic; }
+
+/* Patch tag on DONE-lane cards: shows "v0.4.0 · pending" or "v0.3.0 · live". */
+.patch-tag {
+  font-family: ui-monospace, monospace; font-size: .68rem;
+  padding: .05rem .4rem; border-radius: 999px; border: 1px solid var(--border);
+}
+.patch-tag-pending {
+  color: var(--wf-review); border-color: var(--wf-review);
+  background: rgba(251,191,36,.1);
+}
+.patch-tag-shipped {
+  color: var(--wf-done); border-color: var(--wf-done);
+  background: rgba(74,222,128,.14);
+}
+
 .run-summary {
   background: var(--panel-2); border:1px solid var(--border); border-radius:4px;
   padding:.35rem .5rem; font-size:.8rem; color: var(--muted);

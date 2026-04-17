@@ -70,6 +70,12 @@
                 {% endif %}
                 {% if t.conflict %}<span class="meta conflict" title="External edit detected on TASK_{{ t.task_id }}.json">!conflict</span>{% endif %}
                 {% if lane == 'RUNNING' %}<span class="meta running-pulse">● running</span>{% endif %}
+                {% if t.patch_info %}
+                  <span class="meta patch-tag patch-tag-{{ t.patch_info.status|lower }}"
+                        title="Included in patch {{ t.patch_info.version }} ({{ t.patch_info.status }})">
+                    {{ t.patch_info.version }} · {{ 'live' if t.patch_info.status == 'SHIPPED' else 'pending' }}
+                  </span>
+                {% endif %}
               </div>
               {% if t.notes %}<div class="card-notes">{{ t.notes|truncate(140) }}</div>{% endif %}
             </a>

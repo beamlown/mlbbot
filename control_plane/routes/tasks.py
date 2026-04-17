@@ -57,10 +57,22 @@ def board():
         base_sql += " WHERE " + " AND ".join(filters)
     base_sql += " ORDER BY lane_order ASC, priority ASC, task_id ASC"
 
+    # Patch-version annotations so DONE-lane cards can show e.g.
+    # "v0.4.0 · awaiting relaunch" vs "v0.3.0 · live".
+    patch_map = {
+        r["patch_id"]: {"version": r["version"], "status": r["status"]}
+        for r in conn.execute(
+            "SELECT patch_id, version, status FROM patches"
+        ).fetchall()
+    }
+
     lanes: dict[str, list[dict]] = {lane: [] for lane in WORKFLOW_LANES}
     for row in conn.execute(base_sql, params).fetchall():
         d = _task_row_dict(row)
         d["workflow_state"] = derive_state(d)
+        pid = d.get("patch_id")
+        if pid and pid in patch_map:
+            d["patch_info"] = patch_map[pid]
         lanes.setdefault(d["workflow_state"], []).append(d)
 
     for lane, items in lanes.items():

@@ -374,6 +374,13 @@ def _capture_review(req, run, result, exit_code) -> tuple[tuple[str, str] | None
     new_status = None
     if decision == "APPROVED":
         new_status = "DONE"
+        # Bundle the newly-approved task into the current pending patch so
+        # the operator can see it in the "awaiting relaunch" release queue.
+        try:
+            from ..patches import assign_task
+            assign_task(task_id)
+        except Exception:
+            pass
     elif decision in ("CHANGES_REQUESTED", "FAIL"):
         new_status = "CHANGES_REQUESTED"
     return (art_id, "review"), new_status

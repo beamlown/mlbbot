@@ -164,6 +164,17 @@ CREATE TABLE IF NOT EXISTS agent_profiles (
   created_at     TEXT NOT NULL,
   updated_at     TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS patches (
+  patch_id    TEXT PRIMARY KEY,
+  version     TEXT NOT NULL UNIQUE,
+  status      TEXT NOT NULL DEFAULT 'PENDING',   -- PENDING | SHIPPED
+  title       TEXT,
+  notes       TEXT,
+  created_at  TEXT NOT NULL,
+  shipped_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_patches_status ON patches(status);
 """
 
 
@@ -259,6 +270,8 @@ def init_db() -> None:
         )
     # Forward-migrate agent_profiles with the gamification fields.
     _add_column_if_missing(conn, "agent_profiles", "tagline", "TEXT")
+    # Patch bundling — DONE tasks stack into a pending patch, shipped on relaunch.
+    _add_column_if_missing(conn, "tasks", "patch_id", "TEXT")
     _seed_agent_profiles()
 
 
