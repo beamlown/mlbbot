@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Board · Control Plane{% endblock %}
+{% block content %}
+
+<section class="filters">
+  <form method="get" class="filter-row">
+    <input type="search" name="q" value="{{ filter_q }}" placeholder="Search task_id or title…">
+    <select name="priority">
+      <option value="">priority: any</option>
+      {% for p in ['CRITICAL','HIGH','MEDIUM','LOW'] %}
+        <option value="{{ p }}" {% if filter_priority == p %}selected{% endif %}>{{ p }}</option>
+      {% endfor %}
+    </select>
+    <select name="subsystem">
+      <option value="">subsystem: any</option>
+      {% for s in subsystems %}
+        <option value="{{ s }}" {% if filter_subsystem == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn" type="submit">Apply</button>
+    <a class="btn btn-ghost" href="{{ url_for('tasks.board') }}">Reset</a>
+  </form>
+  <div class="counts">
+    {% for lane, count in lane_counts.items() %}
+      <span class="chip chip-{{ lane|lower }}">{{ lane }} · {{ count }}</span>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="board">
+  {% for lane in lane_order %}
+    {% set items = lanes[lane] or [] %}
+    <div class="lane lane-{{ lane|lower }}">
+      <header class="lane-header">
+        <span class="lane-title">{{ lane }}</span>
+        <span class="lane-count">{{ items|length }}</span>
+      </header>
+      <div class="lane-body">
+        {% for t in items %}
+          <a class="card priority-{{ (t.priority or 'MEDIUM')|lower }}" href="{{ url_for('tasks.task_detail', task_id=t.task_id) }}">
+            <div class="card-head">
+              <span class="tid">{{ t.task_id }}</span>
+              <span class="pri">{{ t.priority or 'MEDIUM' }}</span>
+            </div>
+            <div class="card-title">{{ t.title }}</div>
+            <div class="card-meta">
+              {% if t.subsystem %}<span class="meta">{{ t.subsystem }}</span>{% endif %}
+              {% if t.assigned_role %}<span class="meta role">{{ t.assigned_role }}</span>{% endif %}
+              {% if t.allowed_files and t.allowed_files|length > 0 %}
+                <span class="meta files" title="{{ t.allowed_files|join(', ') }}">files: {{ t.allowed_files|length }}</span>
+              {% endif %}
+            </div>
+            {% if t.notes %}<div class="card-notes">{{ t.notes|truncate(160) }}</div>{% endif %}
+          </a>
+        {% else %}
+          <div class="empty">no tasks</div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+</section>
+
+{% endblock %}

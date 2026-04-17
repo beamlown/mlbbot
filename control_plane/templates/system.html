@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}System{% endblock %}
+{% block content %}
+
+<header class="task-header">
+  <h1 class="task-title">Runtime / System</h1>
+</header>
+
+<section class="two-col">
+  <div class="col-main">
+    <h3>runtime/state.json</h3>
+    {% if state %}
+      <pre class="markdown">{{ state|tojson(indent=2) }}</pre>
+    {% else %}
+      <div class="empty">
+        No <code>sports_bot_v2/runtime/state.json</code> found in this checkout.
+        <p class="muted">Phase 5 will wire a live poll + config_hash + on/off toggle.</p>
+      </div>
+    {% endif %}
+  </div>
+  <aside class="col-side">
+    <h3>Launcher</h3>
+    {% if launcher_pid %}
+      <div>PID {{ launcher_pid }}</div>
+    {% else %}
+      <div class="empty">no launcher.pid</div>
+    {% endif %}
+
+    <h3>Bot</h3>
+    <div class="empty">on/off toggle — Phase 5</div>
+
+    <h3>Config hash</h3>
+    <div class="empty">config_hash tail — Phase 5</div>
+  </aside>
+</section>
+
+{% endblock %}
