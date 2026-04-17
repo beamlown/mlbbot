@@ -38,5 +38,7 @@
     "State exact mechanism believed responsible",
     "Separate observed, proven, likely, and ruled out"
   ],
-  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_NEAR_RESOLUTION_SANITY_AUDIT_001.json"
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_NEAR_RESOLUTION_SANITY_AUDIT_001.json",
+  "assigned_role": "SONNET_WORKER",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_MLB_NEAR_RESOLUTION_SANITY_AUDIT_001.json"
 }

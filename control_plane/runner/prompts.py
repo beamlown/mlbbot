@@ -32,13 +32,25 @@ _ROLE_FRAMING = {
         "You are the MANAGER. You may edit the task board, issue handoffs, "
         "and transition tasks. Do not execute worker code."
     ),
+    "SONNET_WORKER": (
+        "You are a WORKER. Read the HANDOFF carefully and produce the "
+        "requested change, restricted to the task's `allowed_files`. Do NOT "
+        "touch any path in `forbidden_files`. When done, WRITE your result "
+        "to BOT_BRIDGE/06_OUTBOX_FROM_WORKER/RESULT_<TASK>.json as a JSON "
+        "object containing at minimum {status, summary, files_changed[], "
+        "notes?, next_steps?}. `status` must be one of `ok` | `blocked` | "
+        "`fail`. This file is the authoritative result — the control plane "
+        "reads it directly."
+    ),
     "HAIKU_WORKER": (
         "You are a WORKER. Read the HANDOFF carefully and produce the "
         "requested change, restricted to the task's `allowed_files`. Do NOT "
-        "touch any path in `forbidden_files`. When done, emit a single "
-        "JSON block on stdout prefixed by `RESULT_JSON:` containing "
-        "{status, files_changed[], notes, next_steps?}. Also write "
-        "RESULT_<TASK>.json under BOT_BRIDGE/06_OUTBOX_FROM_WORKER/."
+        "touch any path in `forbidden_files`. When done, WRITE your result "
+        "to BOT_BRIDGE/06_OUTBOX_FROM_WORKER/RESULT_<TASK>.json as a JSON "
+        "object containing at minimum {status, summary, files_changed[], "
+        "notes?, next_steps?}. `status` must be one of `ok` | `blocked` | "
+        "`fail`. This file is the authoritative result — the control plane "
+        "reads it directly."
     ),
 }
 
@@ -67,6 +79,15 @@ def build_prompt(req) -> str:
     bridge_rel = str(SETTINGS.bridge_root.relative_to(SETTINGS.repo_root)) \
         if SETTINGS.bridge_root.is_relative_to(SETTINGS.repo_root) else str(SETTINGS.bridge_root)
 
+    # Inline the HANDOFF body directly. Workers previously drifted to
+    # unrelated tasks because they were free to read other HANDOFF_*.md
+    # files in the same inbox directory. Giving them the exact content
+    # here eliminates the need for a directory read entirely.
+    try:
+        handoff_text = brief_abs.read_text(encoding="utf-8")
+    except Exception as e:
+        handoff_text = f"(HANDOFF file could not be read: {e})"
+
     lines = [
         framing,
         "",
@@ -75,7 +96,6 @@ def build_prompt(req) -> str:
         f"Priority: {priority}",
         f"Subsystem: {subsystem}",
         f"BOT_BRIDGE root: {bridge_rel}",
-        f"HANDOFF: {brief_rel}  (absolute: {brief_abs})",
         "",
         "Acceptance:",
         acceptance,
@@ -88,10 +108,45 @@ def build_prompt(req) -> str:
         lines += [f"  - {f}" for f in forbidden]
     if req.extra_prompt:
         lines += ["", "Operator note:", req.extra_prompt]
-    lines += [
-        "",
-        "When you are done, print a final line prefixed by `RESULT_JSON:` "
-        "containing a JSON object with at minimum a `status` field "
-        "(`ok` | `blocked` | `fail`) and a `summary` field.",
-    ]
+    role_kind = ROLE_INFO.get(role).kind if role in ROLE_INFO else ""
+    if role_kind == "worker":
+        lines += [
+            "",
+            "=" * 70,
+            f"HANDOFF — {tid}  (your ONLY task; ignore all others)",
+            "=" * 70,
+            handoff_text.rstrip(),
+            "=" * 70,
+            "",
+            "ABSOLUTE RULES — obey these before anything else:",
+            f"  1. Your task is ONLY {tid}. Do not work on any other task.",
+            f"  2. Do NOT read any other HANDOFF_*.md file in 05_INBOX_FROM_MANAGER/.",
+            f"     The handoff above is the complete brief. Do not browse the inbox.",
+            f"  3. Write your result ONLY to RESULT_{tid}.json — no other filename.",
+            f"  4. If another task ID appears in your reasoning, stop and re-read "
+            f"the HANDOFF above. You may only produce output for {tid}.",
+            f"  5. If you cannot complete {tid} (unclear scope, missing info, "
+            f"blocked by something), write RESULT_{tid}.json with "
+            f"status='blocked' and explain. Do NOT substitute another task.",
+            "",
+            f"When done, write your verdict to "
+            f"BOT_BRIDGE/06_OUTBOX_FROM_WORKER/RESULT_{tid}.json as a single "
+            "JSON object: {status, summary, files_changed[], notes?, "
+            "next_steps?}. `status` is one of `ok` | `blocked` | `fail`. "
+            "The control plane reads that file as the canonical result — "
+            "you do not need to also print RESULT_JSON on stdout.",
+        ]
+    else:
+        lines += [
+            "",
+            "=" * 70,
+            f"HANDOFF — {tid}",
+            "=" * 70,
+            handoff_text.rstrip(),
+            "=" * 70,
+            "",
+            "When you are done, print a final line prefixed by `RESULT_JSON:` "
+            "containing a JSON object with at minimum a `status` field "
+            "(`ok` | `blocked` | `fail`) and a `summary` field.",
+        ]
     return "\n".join(lines)

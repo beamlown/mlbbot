@@ -6,7 +6,7 @@
   "track": "Track B — data foundation",
   "issued": "2026-04-12",
   "subsystem": "mlb_model data foundation / storage spec",
-  "status": "ACTIVE",
+  "status": "DONE",
   "objective": "Define the canonical storage/schema target for season-to-date MLB raw stats and the normalized rebuild-ready derivative layer so all later backfill and updater work can proceed without guessing.",
   "paper_only_note": "This is paper-only / observation-mode rebuild work. No live model implementation or strategy change is authorized from this task.",
   "allowed_files": [

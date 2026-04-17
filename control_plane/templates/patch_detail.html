@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ patch.version }} · patch{% endblock %}
+{% block content %}
+
+<a class="back" href="{{ url_for('patches.patches_index') }}">← Release queue</a>
+
+<header class="task-header">
+  <div class="task-head-left">
+    <h1 class="task-title">{{ patch.title or ('Patch ' ~ patch.version) }}</h1>
+    <code class="tid-big">{{ patch.version }}</code>
+  </div>
+  <div class="task-head-right">
+    {% if patch.status == 'PENDING' %}
+      <span class="chip chip-wf-awaiting_review">PENDING</span>
+    {% else %}
+      <span class="chip chip-wf-done">LIVE since {{ patch.shipped_at }}</span>
+    {% endif %}
+  </div>
+</header>
+
+<section class="patch-card">
+  <header class="patch-card-head">
+    <span class="muted">opened {{ patch.created_at }}</span>
+    {% if patch.shipped_at %}<span class="muted">shipped {{ patch.shipped_at }}</span>{% endif %}
+    <span class="spacer"></span>
+    {% if patch.status == 'PENDING' and tasks %}
+      <button class="btn btn-xs btn-accent" onclick="shipPatch(this)">Ship {{ patch.version }}</button>
+    {% endif %}
+  </header>
+
+  <h3>Patch notes</h3>
+  {% if patch.status == 'PENDING' %}
+    <textarea id="patch-notes-ta" class="patch-notes-editor" rows="6"
+              placeholder="Release notes — what's in this patch, why it matters.">{{ patch.notes or '' }}</textarea>
+    <div class="row-actions">
+      <button class="btn btn-xs" onclick="savePatchNotes('{{ patch.patch_id }}')">Save notes</button>
+    </div>
+  {% else %}
+    <pre class="patch-notes">{{ patch.notes or '(no notes)' }}</pre>
+  {% endif %}
+
+  <h3>Tasks in this patch ({{ tasks|length }})</h3>
+  {% if tasks %}
+    <ul class="patch-task-list">
+      {% for t in tasks %}
+        <li>
+          <a href="{{ url_for('tasks.task_detail', task_id=t.task_id) }}">
+            <code>{{ t.task_id }}</code>
+          </a>
+          <span class="patch-task-title">{{ t.title }}</span>
+          {% if t.subsystem %}<span class="chip">{{ t.subsystem }}</span>{% endif %}
+          <span class="chip priority-{{ (t.priority or 'MEDIUM')|lower }}">{{ t.priority or 'MEDIUM' }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="empty">No tasks yet.</div>
+  {% endif %}
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function savePatchNotes(patchId) {
+  const notes = document.getElementById('patch-notes-ta').value;
+  const res = await patchJSON(`/api/patches/${patchId}/notes`, {notes});
+  if (res.ok && res.json.ok) toast("Notes saved");
+  else toast("Save failed: " + (res.json.error || res.status), false);
+}
+</script>
+{% endblock %}

@@ -51,11 +51,20 @@ class RunDispatcher:
     """Singleton-per-process dispatcher. Holds live Popens + SSE subscribers."""
 
     LAST_LINES_BUFFER = 400
+    # Hard cap on concurrently-running worker/reviewer subprocesses across
+    # all roles. Protects the workstation from runaway fan-out (e.g. an
+    # operator fires off a dozen tasks or the auto-retry loop chains).
+    # Override via the `CONTROL_PLANE_MAX_CONCURRENT` env var.
+    MAX_CONCURRENT = int(os.environ.get("CONTROL_PLANE_MAX_CONCURRENT", "4"))
 
     def __init__(self) -> None:
         self._runs: dict[str, _ActiveRun] = {}
         self._lock = threading.RLock()
         self._finalize_cb: Callable[[_ActiveRun, int], None] | None = None
+
+    def active_count(self) -> int:
+        with self._lock:
+            return len(self._runs)
 
     # ------------------------------------------------------------------ lifecycle
 
@@ -74,6 +83,32 @@ class RunDispatcher:
         runs_dir.mkdir(parents=True, exist_ok=True)
         stdout_path = runs_dir / f"{req.run_id}.stdout.log"
         stderr_path = runs_dir / f"{req.run_id}.stderr.log"
+
+        # Hard concurrency cap. Record the run row so the UI can still show
+        # it in history, then mark it failed with a clear message instead
+        # of spawning another subprocess.
+        with self._lock:
+            active = len(self._runs)
+        if active >= self.MAX_CONCURRENT:
+            msg = (f"concurrency_limit_reached: {active}/{self.MAX_CONCURRENT} "
+                   f"runs already active. Wait for one to finish or raise "
+                   f"CONTROL_PLANE_MAX_CONCURRENT.")
+            conn.execute(
+                """INSERT INTO runs
+                   (run_id, task_id, role, adapter, status, cmdline, prompt_text,
+                    stdout_path, stderr_path, created_at, created_by,
+                    finished_at, exit_code, result_summary)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (req.run_id, req.task_id, req.role, req.adapter, "failed",
+                 " ".join(_shell_repr(a) for a in argv), prompt_text,
+                 str(stdout_path), str(stderr_path), now, req.created_by,
+                 now, -1, msg[:500]),
+            )
+            conn.execute(
+                "INSERT INTO run_logs(run_id, ts, stream, line) VALUES (?,?,?,?)",
+                (req.run_id, now, "meta", msg),
+            )
+            return self._row(req.run_id)
 
         conn.execute(
             """INSERT INTO runs

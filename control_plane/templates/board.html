@@ -24,6 +24,10 @@
     {% for lane, count in lane_counts.items() %}
       <span class="chip chip-wf-{{ lane|lower }}">{{ lane_display[lane] }} · {{ count }}</span>
     {% endfor %}
+    <label class="chip" style="cursor:pointer;user-select:none" title="Auto-reload the board every 5s. Pauses while you are typing or dragging.">
+      <input type="checkbox" id="auto-refresh-toggle" style="vertical-align:middle;margin-right:4px">
+      <span id="auto-refresh-label">auto-refresh: off</span>
+    </label>
   </div>
 </section>
 
@@ -35,7 +39,7 @@
          data-profile-id="{{ a.profile_id }}"
          data-allowed-states='{{ a.allowed_states|tojson }}'
          style="--agent-color: {{ a.color or '#8892a6' }}"
-         title="Role: {{ a.role }}&#10;Model: {{ a.model }}&#10;Eligible lanes: {{ a.allowed_states|join(', ') }}">
+         title="{{ a.display }}{% if a.tagline %} — {{ a.tagline }}{% endif %}&#10;Role: {{ a.role }}&#10;Model: {{ a.model }}&#10;Eligible lanes: {{ a.allowed_states|join(', ') }}">
       <span class="agent-icon">{{ a.icon or '●' }}</span>
       <span class="agent-name">{{ a.display }}</span>
     </div>
@@ -70,6 +74,12 @@
                 {% endif %}
                 {% if t.conflict %}<span class="meta conflict" title="External edit detected on TASK_{{ t.task_id }}.json">!conflict</span>{% endif %}
                 {% if lane == 'RUNNING' %}<span class="meta running-pulse">● running</span>{% endif %}
+                {% if t.patch_info %}
+                  <span class="meta patch-tag patch-tag-{{ t.patch_info.status|lower }}"
+                        title="Included in patch {{ t.patch_info.version }} ({{ t.patch_info.status }})">
+                    {{ t.patch_info.version }} · {{ 'live' if t.patch_info.status == 'SHIPPED' else 'pending' }}
+                  </span>
+                {% endif %}
               </div>
               {% if t.notes %}<div class="card-notes">{{ t.notes|truncate(140) }}</div>{% endif %}
             </a>
@@ -149,14 +159,50 @@
       toast(`launching ${name} on ${tid}…`);
       const res = await postJSON(`/api/tasks/${tid}/launch`, payload);
       if (res.ok && res.json.ok) {
-        toast(`run ${res.json.run.run_id} started`);
-        setTimeout(() => location.href = `/tasks/${tid}?watch=${res.json.run.run_id}`, 300);
+        // Stay on the board so the operator can keep dragging agents onto
+        // other tasks without having to navigate back. The task card link
+        // is still clickable for anyone who wants to watch this run live.
+        toast(`run ${res.json.run.run_id} started — click the card to watch`);
       } else {
         const j = res.json || {};
         toast(`launch failed: ${j.error || res.status}${j.detail ? ' — ' + j.detail : ''}`, false);
       }
     });
   });
+})();
+
+// Auto-refresh: reload the board every 5s when enabled. Pauses while the
+// user is typing in a filter/search input or mid drag-and-drop, so it
+// never interrupts active interaction.
+(function() {
+  const KEY = 'cp.board.autoRefresh';
+  const INTERVAL_MS = 5000;
+  const cb = document.getElementById('auto-refresh-toggle');
+  const label = document.getElementById('auto-refresh-label');
+  if (!cb || !label) return;
+
+  let timer = null;
+  function apply(on) {
+    label.textContent = 'auto-refresh: ' + (on ? 'on' : 'off');
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch (_) {}
+    if (timer) { clearInterval(timer); timer = null; }
+    if (on) {
+      timer = setInterval(() => {
+        const el = document.activeElement;
+        const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT');
+        const dragging = document.body.classList.contains('agent-dragging');
+        if (typing || dragging) return;
+        // Preserve query string (filters) so a refresh doesn't reset them.
+        window.location.reload();
+      }, INTERVAL_MS);
+    }
+  }
+
+  let initial = false;
+  try { initial = localStorage.getItem(KEY) === '1'; } catch (_) {}
+  cb.checked = initial;
+  apply(initial);
+  cb.addEventListener('change', () => apply(cb.checked));
 })();
 </script>
 {% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Patches · Release queue{% endblock %}
+{% block content %}
+
+<header class="page-header">
+  <h1>Patches</h1>
+  <p class="muted">
+    Tasks that reach <strong>Done</strong> stack into a pending patch.
+    Ship it when you relaunch the bot — it freezes, bumps the version,
+    and becomes part of the live history below.
+  </p>
+</header>
+
+<section class="patch-section">
+  <h2>Pending release
+    {% if pending %}<span class="chip chip-wf-awaiting_review">{{ pending.version }}</span>{% endif %}
+  </h2>
+
+  {% if pending %}
+    <div class="patch-card patch-card-pending">
+      <header class="patch-card-head">
+        <span class="patch-version">{{ pending.version }}</span>
+        <span class="chip chip-wf-awaiting_review">PENDING</span>
+        <span class="muted">opened {{ pending.created_at }}</span>
+        <span class="spacer"></span>
+        {% if pending_tasks %}
+          <button class="btn btn-xs btn-accent" onclick="shipPatch(this)">Ship {{ pending.version }}</button>
+        {% endif %}
+      </header>
+      {% if pending.notes %}<p class="patch-notes">{{ pending.notes }}</p>{% endif %}
+      {% if pending_tasks %}
+        <ul class="patch-task-list">
+          {% for t in pending_tasks %}
+            <li>
+              <a href="{{ url_for('tasks.task_detail', task_id=t.task_id) }}">
+                <code>{{ t.task_id }}</code>
+              </a>
+              <span class="patch-task-title">{{ t.title }}</span>
+              {% if t.subsystem %}<span class="chip">{{ t.subsystem }}</span>{% endif %}
+              <span class="chip priority-{{ (t.priority or 'MEDIUM')|lower }}">{{ t.priority or 'MEDIUM' }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty">
+          No approved tasks yet in this patch. Get a task through review
+          and it'll land here automatically.
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+</section>
+
+<section class="patch-section">
+  <h2>Shipped history</h2>
+  {% if shipped %}
+    <ul class="patch-history">
+      {% for p in shipped %}
+        <li class="patch-history-row">
+          <a class="patch-version" href="{{ url_for('patches.patch_detail', patch_id=p.patch_id) }}">{{ p.version }}</a>
+          <span class="chip chip-wf-done">LIVE</span>
+          <span class="muted">{{ p.task_count }} task{{ '' if p.task_count == 1 else 's' }}</span>
+          <span class="muted">shipped {{ p.shipped_at }}</span>
+          {% if p.title and p.title != 'Patch ' ~ p.version %}
+            <span class="patch-history-title">— {{ p.title }}</span>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="empty">No patches have shipped yet.</div>
+  {% endif %}
+</section>
+
+{% endblock %}

@@ -6,7 +6,7 @@
   "track": "Track B — alpha/strategy",
   "issued": "2026-04-11",
   "subsystem": "model / game-state freshness / recommendation timing",
-  "status": "BACKLOG — after tomorrow first-wave tasks",
+  "status": "QUEUED",
   "depends_on": "NEAR_RESOLUTION_CONFIDENCE_SANITY_AUDIT_001 (APPROVED)",
   "objective": "Determine whether score, inning, outs, and base-state data are stale, missing, lagging, or otherwise insufficient when recommendations are produced.",
   "context": {
@@ -58,5 +58,7 @@
   "rollback": "No rollback needed; read-only audit.",
   "restart_required": false,
   "restart_note": "None.",
-  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_GAME_STATE_FRESHNESS_AUDIT_001.json"
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_GAME_STATE_FRESHNESS_AUDIT_001.json",
+  "assigned_role": "SONNET_WORKER",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_GAME_STATE_FRESHNESS_AUDIT_001.json"
 }

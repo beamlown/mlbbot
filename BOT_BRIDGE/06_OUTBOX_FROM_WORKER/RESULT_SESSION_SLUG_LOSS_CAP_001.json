@@ -1,0 +1,34 @@
+{
+  "status": "ok",
+  "task_id": "SESSION_SLUG_LOSS_CAP_001",
+  "summary": "Added per-session dollar-loss cap per market slug. When cumulative loss on a slug reaches the threshold, new entries to that slug are banned for the rest of the session.",
+  "files_changed": [
+    "sports_bot_v2/bot_core.py"
+  ],
+  "env_var": {
+    "name": "MAX_SLUG_LOSS_USD",
+    "default": "0",
+    "description": "Per-slug dollar loss threshold. When cumulative closed-trade loss on a slug reaches this amount, slug is banned for rest of session. 0 = disabled."
+  },
+  "rejection_reason": "session_slug_loss_cap_exceeded:<slug> (already banned) OR session_slug_loss_cap_hit:<actual_loss><=<threshold> (just hit cap)",
+  "slug_loss_computation": {
+    "location": "bot_core.py bridge loop (pre-gate check after gap_stop bans)",
+    "method": "SQL: SELECT COALESCE(SUM(pnl_usd), 0) FROM trades WHERE market_slug = ? AND status = 'closed' AND pnl_usd < 0",
+    "tracking": "In-memory set _session_slug_loss_bans. Persisted to state.json as session_slug_loss_bans and restored on startup."
+  },
+  "py_compile": "PASS",
+  "restart_note": "Restart required. Global state (_session_slug_loss_bans) persisted/restored; loss tracking is session-scoped.",
+  "implementation_checklist": {
+    "env_var_loaded": "MAX_SLUG_LOSS_USD at line 109",
+    "global_state_added": [
+      "_session_slug_loss_bans: set (line 123)",
+      "MAX_SLUG_LOSS_USD: float (line 109)"
+    ],
+    "state_restoration": "Lines 406-411: restore session_slug_loss_bans from prior state.json",
+    "state_persistence": "Line 232: add session_slug_loss_bans list to state.json payload",
+    "bridge_gate_logic": "Lines 611-641: two-part check (already banned OR loss cap exceeded)",
+    "log_messages": "Info-level BRIDGE GATE REJECT with exact loss values"
+  },
+  "scope": "Narrow, gate-focused. No risk refactor, dashboard changes, or model changes.",
+  "testing_notes": "Enable via MAX_SLUG_LOSS_USD=<amount> in .env. Default 0 disables gate. Loss is computed from closed trades only. Loss bans are session-scoped and reset on restart."
+}

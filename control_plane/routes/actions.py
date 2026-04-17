@@ -225,6 +225,17 @@ def api_transition(task_id: str):
                 "UPDATE tasks SET status=?, updated_at=? WHERE task_id=?",
                 (new_status, now, tid),
             )
+    # Manual transition into DONE: bundle into the pending patch so the
+    # release queue reflects operator decisions, not just reviewer approvals.
+    # Transitioning OUT of DONE removes the task from a still-pending patch.
+    try:
+        from ..patches import assign_task, unassign_task
+        if new_status == "DONE":
+            assign_task(tid)
+        elif row["status"] == "DONE" and new_status != "DONE":
+            unassign_task(tid)
+    except Exception:
+        pass
     return jsonify({"ok": True, "from": row["status"], "to": new_status, **_touched(tid)})
 
 

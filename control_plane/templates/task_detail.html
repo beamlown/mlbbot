@@ -27,9 +27,12 @@
             data-profile-id="{{ a.profile_id }}"
             data-eligible="{{ '1' if a.eligible else '0' }}"
             title="Role: {{ a.role }}&#10;Adapter: {{ a.adapter }}&#10;Model: {{ a.model }}&#10;Eligible: {{ a.allowed_states|join(', ') }}">
-      <span class="agent-icon">{{ a.icon or '●' }}</span>
-      <span class="agent-name">{{ a.display }}</span>
-      {% if a.eligible %}<span class="pill-go">GO</span>{% endif %}
+      <span class="agent-top">
+        <span class="agent-icon">{{ a.icon or '●' }}</span>
+        <span class="agent-name">{{ a.display }}</span>
+        {% if a.eligible %}<span class="pill-go">GO</span>{% endif %}
+      </span>
+      {% if a.tagline %}<span class="agent-tagline">{{ a.tagline }}</span>{% endif %}
     </button>
   {% endfor %}
   <label class="adapter-switch">
@@ -83,6 +86,24 @@
   </header>
   <pre id="live-log" class="log-pane" aria-live="polite"></pre>
 </section>
+
+{% if result_card %}
+<section class="result-card result-{{ result_card.status_kind }}" aria-label="Latest worker result">
+  <div class="result-head">
+    <span class="result-status">{{ result_card.status }}</span>
+    {% if result_card.summary %}<span class="result-summary">{{ result_card.summary }}</span>{% endif %}
+  </div>
+  <div class="result-meta">
+    {% if result_card.role %}<code>{{ result_card.role }}</code>{% endif %}
+    {% if result_card.run_id %}· run <code>{{ result_card.run_id }}</code>{% endif %}
+    {% if result_card.captured_at %}· {{ result_card.captured_at }}{% endif %}
+    {% if result_card.files_changed %}
+      · {{ result_card.files_changed|length }} file{{ '' if result_card.files_changed|length == 1 else 's' }} changed
+    {% endif %}
+    · <a href="{{ url_for('artifacts.artifact_detail', artifact_id=result_card.artifact_id) }}">open full result</a>
+  </div>
+</section>
+{% endif %}
 
 <section class="two-col">
 
@@ -341,12 +362,23 @@ function openLive(runId) {
   es.addEventListener('end', () => {
     es.close();
     currentES = null;
-    toast('run finished — reloading task');
-    // Drop ?watch=<rid> before reload so we don't auto-resubscribe to
-    // the same finished run on the next page load (that loops).
+    // Strip ?watch=<rid> from the URL without navigating, so a manual
+    // refresh won't auto-resubscribe to this finished run, but the user
+    // can keep reading the log pane for as long as they want.
     const u = new URL(location.href);
-    u.searchParams.delete('watch');
-    setTimeout(() => { location.href = u.toString(); }, 800);
+    if (u.searchParams.has('watch')) {
+      u.searchParams.delete('watch');
+      history.replaceState({}, '', u.toString());
+    }
+    // Visibly mark the run as done and hide the cancel button; the
+    // sidebar's runs list will reflect the new state on the next
+    // natural reload.
+    const cancelBtn = document.getElementById('live-cancel-btn');
+    if (cancelBtn) cancelBtn.hidden = true;
+    if (statusEl && !statusEl.textContent.match(/succeeded|failed|cancel/i)) {
+      statusEl.textContent = 'finished';
+    }
+    toast('run finished');
   });
   es.onerror = () => {
     statusEl.textContent = 'stream error';

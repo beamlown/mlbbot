@@ -197,7 +197,55 @@ def finalize_run(run, exit_code: int) -> None:
     artifact_ids: list[tuple[str, str]] = []
 
     if task_id and kind == "worker" and exit_code == 0:
-        artifact_ids.append(_capture_worker(req, run, result))
+        aid, relation, resolved = _capture_worker(req, run, result)
+        artifact_ids.append((aid, relation))
+        # File-first contract means the canonical summary lives in the
+        # on-disk RESULT file, not stdout. Prefer it over the stdout parse.
+        if resolved:
+            disk_summary = resolved.get("summary")
+            if disk_summary:
+                summary = str(disk_summary)
+            elif resolved.get("status"):
+                summary = f"status={resolved.get('status')}"
+
+            # Auto-transition the task based on what the worker actually
+            # produced. `ok` → AWAITING_REVIEW so a reviewer picks it up.
+            # `fail` / `blocked` → route back to READY_FOR_WORKER with an
+            # updated HANDOFF that explains why the previous run failed, up
+            # to a retry cap. After the cap, park in CHANGES_REQUESTED so
+            # the operator decides the next move.
+            payload_status = (resolved.get("status") or "").lower()
+            if payload_status == "ok":
+                new_status = "AWAITING_REVIEW"
+            elif payload_status in ("fail", "blocked"):
+                # Zero-exit fails are not successes — keep the run row honest.
+                if payload_status == "fail":
+                    get_conn().execute(
+                        "UPDATE runs SET status='failed' WHERE run_id=?",
+                        (req.run_id,),
+                    )
+                # Count prior terminal-fail runs on this task (worker role).
+                prior_fails = get_conn().execute(
+                    """SELECT COUNT(*) c FROM runs
+                        WHERE task_id=? AND role=? AND status IN ('failed','cancelled')""",
+                    (task_id, req.role),
+                ).fetchone()["c"]
+                MAX_RETRIES = 3
+                if prior_fails < MAX_RETRIES:
+                    _append_retry_context_to_handoff(
+                        task_id=task_id,
+                        attempt=prior_fails,
+                        run=run,
+                        resolved=resolved,
+                    )
+                    # Board shows this via derive_state; keeping DB status
+                    # QUEUED matches BOT_BRIDGE's existing vocabulary and
+                    # lets `derive_state` route a retried task to
+                    # READY_FOR_WORKER (no RESULT artifact kind flip needed
+                    # because derive_state reads the RESULT payload status).
+                    new_status = "QUEUED"
+                else:
+                    new_status = "CHANGES_REQUESTED"
     elif task_id and kind in ("reviewer", "manager"):
         aid, new_status = _capture_review(req, run, result, exit_code)
         if aid:
@@ -239,17 +287,136 @@ def finalize_run(run, exit_code: int) -> None:
         pass
 
 
-def _capture_worker(req, run, result) -> tuple[str, str]:
-    """Worker run: write RESULT_<TASK>.json under 06_OUTBOX_FROM_WORKER."""
+def _append_retry_context_to_handoff(*, task_id: str, attempt: int,
+                                     run, resolved: dict) -> None:
+    """Append a RETRY CONTEXT section to the task's HANDOFF explaining why
+    the previous run failed, and clear the stale RESULT so the board
+    derives the task back to READY_FOR_WORKER for another pass.
+
+    `attempt` is the zero-indexed prior-fail count (so 0 on first retry).
+    """
+    # 1) Append retry context to the HANDOFF file.
+    brief_rel = (run.request.task or {}).get("brief_path") \
+        or f"05_INBOX_FROM_MANAGER/HANDOFF_{task_id}.md"
+    brief_abs = SETTINGS.bridge_root / Path(brief_rel)
+    try:
+        prior = brief_abs.read_text(encoding="utf-8") if brief_abs.exists() else ""
+    except Exception:
+        prior = ""
+    # Don't stack N copies of the retry section — replace if present.
+    marker = "\n\n---\n## RETRY CONTEXT (auto-generated"
+    if marker in prior:
+        prior = prior.split(marker, 1)[0].rstrip() + "\n"
+    summary = (resolved.get("summary") or "").strip()
+    status = (resolved.get("status") or "?").strip()
+    tail = ""
+    try:
+        tail = "\n".join(run.last_lines[-12:])
+    except Exception:
+        pass
+    retry_block = (
+        f"\n\n---\n## RETRY CONTEXT (auto-generated — attempt {attempt + 2})\n"
+        f"\n"
+        f"A previous run failed on this task. Before you start, read this:\n"
+        f"\n"
+        f"- prior status: `{status}`\n"
+        f"- prior summary: {summary or '(none)'}\n"
+        f"- prior run id: `{run.request.run_id}`\n"
+        f"\n"
+        f"### What went wrong\n"
+        f"The previous worker did not produce a RESULT for **{task_id}**. "
+        f"Common causes: (a) the worker drifted to a different task, "
+        f"(b) the worker never wrote `RESULT_{task_id}.json`, "
+        f"(c) the worker exited before completing the scope.\n"
+        f"\n"
+        f"### What to do differently this attempt\n"
+        f"1. Work ONLY on `{task_id}`. Ignore every other task name you see.\n"
+        f"2. Write your result to `BOT_BRIDGE/06_OUTBOX_FROM_WORKER/RESULT_{task_id}.json` "
+        f"and NO other file.\n"
+        f"3. If the scope is unclear, emit `status: blocked` with a specific question.\n"
+        f"   Do NOT substitute a different task you think you know.\n"
+        f"\n"
+        f"### Prior stdout tail (for diagnosis)\n"
+        f"```\n{tail.rstrip()[:1500]}\n```\n"
+    )
+    try:
+        brief_abs.parent.mkdir(parents=True, exist_ok=True)
+        brief_abs.write_text((prior.rstrip() + retry_block), encoding="utf-8")
+    except Exception:
+        pass
+
+    # 2) Clear the stale RESULT artifact so derive_state routes this task
+    # back to READY_FOR_WORKER rather than keeping it pinned in
+    # AWAITING_REVIEW / CHANGES_REQUESTED by a fail-stub artifact.
+    conn = get_conn()
+    rows = conn.execute(
+        """SELECT a.artifact_id, a.path FROM task_artifacts ta
+             JOIN artifacts a ON a.artifact_id = ta.artifact_id
+            WHERE ta.task_id=? AND a.kind='RESULT'""",
+        (task_id,),
+    ).fetchall()
+    for r in rows:
+        try:
+            p = SETTINGS.repo_root / Path(r["path"])
+            if p.exists():
+                p.unlink()
+        except Exception:
+            pass
+        conn.execute("DELETE FROM task_artifacts WHERE artifact_id=?", (r["artifact_id"],))
+        conn.execute("DELETE FROM artifacts WHERE artifact_id=?", (r["artifact_id"],))
+
+
+def _capture_worker(req, run, result) -> tuple[str, str, dict]:
+    """Worker run: canonicalize RESULT_<TASK>.json under 06_OUTBOX_FROM_WORKER.
+
+    Contract (file-first): the worker is expected to WRITE the result file
+    directly. This function treats an on-disk file written during this run
+    as canonical and never overwrites it. Stdout `RESULT_JSON:` is only
+    used as a fallback when the worker skipped the file write.
+    """
     task_id = req.task_id
-    payload = result or {"status": "ok", "summary": "(no RESULT_JSON emitted)"}
+    path = _outbox() / f"RESULT_{task_id}.json"
+
+    # Parse run start into a unix timestamp so we can tell a fresh file
+    # written by this run apart from a stale artifact from a prior run.
+    try:
+        start_ts = datetime.fromisoformat(run.started_at.replace("Z", "+00:00")).timestamp()
+    except Exception:
+        start_ts = 0.0
+
+    worker_wrote_file = False
+    payload: dict | None = None
+    if path.exists():
+        try:
+            file_mtime = path.stat().st_mtime
+        except Exception:
+            file_mtime = 0.0
+        # Small slop (2s) for clock/filesystem granularity.
+        if file_mtime + 2.0 >= start_ts:
+            try:
+                disk_payload = json.loads(path.read_text(encoding="utf-8"))
+                if isinstance(disk_payload, dict):
+                    payload = disk_payload
+                    worker_wrote_file = True
+            except Exception:
+                payload = None
+
+    if payload is None:
+        # Fall back to a RESULT_JSON line the worker printed to stdout.
+        if result:
+            payload = dict(result)
+        else:
+            # Neither channel produced a result — record an explicit failure
+            # rather than silently marking the run ok.
+            payload = {"status": "fail", "summary": "(no RESULT_JSON emitted and no RESULT file written)"}
+
     payload.setdefault("task_id", task_id)
     payload.setdefault("role", req.role)
     payload.setdefault("run_id", req.run_id)
     payload.setdefault("captured_at", _now_iso())
-    path = _outbox() / f"RESULT_{task_id}.json"
     body = json.dumps(payload, indent=2, ensure_ascii=False)
-    path.write_text(body, encoding="utf-8")
+    if not worker_wrote_file:
+        path.write_text(body, encoding="utf-8")
     art_id = _write_artifact_row(
         kind="RESULT",
         path=path,
@@ -264,7 +431,7 @@ def _capture_worker(req, run, result) -> tuple[str, str]:
         "UPDATE tasks SET result_path=?, updated_at=? WHERE task_id=?",
         (f"06_OUTBOX_FROM_WORKER/RESULT_{task_id}.json", _now_iso(), task_id),
     )
-    return art_id, "result"
+    return art_id, "result", payload
 
 
 def _capture_review(req, run, result, exit_code) -> tuple[tuple[str, str] | None, str | None]:
@@ -325,6 +492,13 @@ def _capture_review(req, run, result, exit_code) -> tuple[tuple[str, str] | None
     new_status = None
     if decision == "APPROVED":
         new_status = "DONE"
+        # Bundle the newly-approved task into the current pending patch so
+        # the operator can see it in the "awaiting relaunch" release queue.
+        try:
+            from ..patches import assign_task
+            assign_task(task_id)
+        except Exception:
+            pass
     elif decision in ("CHANGES_REQUESTED", "FAIL"):
         new_status = "CHANGES_REQUESTED"
     return (art_id, "review"), new_status

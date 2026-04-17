@@ -12,6 +12,7 @@ ROLES = (
     "OPUS_AUDITOR",
     "OPUS_REVIEWER",
     "SONNET_MANAGER",
+    "SONNET_WORKER",
     "HAIKU_WORKER",
 )
 
@@ -72,6 +73,19 @@ CAPABILITIES: dict[str, dict[str, bool]] = {
         "launch_run":          True,
         "mutate_settings":     True,
     },
+    "SONNET_WORKER": {
+        "read_any":            True,
+        "create_task":         False,
+        "edit_task":           False,
+        "transition_task":     False,
+        "assign_task":         False,
+        "write_spec":          False,
+        "write_audit":         False,
+        "write_review":        False,
+        "write_result":        True,
+        "launch_run":          False,
+        "mutate_settings":     False,
+    },
     "HAIKU_WORKER": {
         "read_any":            True,
         "create_task":         False,
@@ -101,6 +115,7 @@ ROLE_INFO: dict[str, RoleInfo] = {
     "OPUS_AUDITOR":   RoleInfo("OPUS_AUDITOR",   "Opus · Auditor",    "opus",   "auditor"),
     "OPUS_REVIEWER":  RoleInfo("OPUS_REVIEWER",  "Opus · Reviewer",   "opus",   "reviewer"),
     "SONNET_MANAGER": RoleInfo("SONNET_MANAGER", "Sonnet · Manager",  "sonnet", "manager"),
+    "SONNET_WORKER":  RoleInfo("SONNET_WORKER",  "Sonnet · Worker",   "sonnet", "worker"),
     "HAIKU_WORKER":   RoleInfo("HAIKU_WORKER",   "Haiku · Worker",    "haiku",  "worker"),
 }
 

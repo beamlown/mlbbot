@@ -1,0 +1,8 @@
+{
+  "task_id": "CLEAN_RUNTIME_WINDOW_AUDIT_001",
+  "status": "blocked",
+  "summary": "Audit deferred: clean runtime era (post-2026-04-11T10:57:33 UTC restart) has 0 trades opened. Deferred condition (n≥30) not met. Bot last traded 2026-04-11T05:00 UTC — pre-restart zombie-process trades. Clean era is running but inactive.",
+  "files_changed": [],
+  "notes": "Database verified using exact ISO 8601 timestamp filter: SELECT COUNT(*) FROM trades WHERE ts_open > '2026-04-11T10:57:33' = 0. Prior worker audit used date-level cutoff ('2026-04-11') which captured zombie-process trades from 00:00–05:00 UTC, before the 10:57:33 UTC clean restart. Current result corrects the timestamp but confirms no new trades have opened in the verified clean era.",
+  "next_steps": "Activate CLEAN_RUNTIME_WINDOW_AUDIT_001 once bot has opened ≥30 trades in the clean era. Re-run audit with same methodology (E1: avg_pnl_net > 0; E2: actual_WR > break_even_WR; E6: confidence monotonicity; E7: E1+E2 for conf≥0.65 + entry≥0.22) against new trade population."
+}

@@ -6,7 +6,7 @@
   "track": "Track B — calibration / confidence",
   "issued": "2026-04-11",
   "subsystem": "mlb_model confidence / outcome linkage",
-  "status": "QUEUED",
+  "status": "DONE",
   "depends_on": "MLB_MODEL_INPUT_PATH_AUDIT_001",
   "objective": "Determine whether the current confidence score is calibrated at all, inverted, noisy, or structurally disconnected from real outcomes, and define how it should be measured against realized results.",
   "paper_only_note": "This is paper-only / observation-mode work. No model implementation or live strategy change is authorized from this task.",

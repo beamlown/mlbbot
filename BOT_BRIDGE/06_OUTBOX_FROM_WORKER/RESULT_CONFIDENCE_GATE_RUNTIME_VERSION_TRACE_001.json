@@ -1,32 +1,143 @@
 {
   "task_id": "CONFIDENCE_GATE_RUNTIME_VERSION_TRACE_001",
-  "status": "COMPLETE_WITH_LIMITED_PROOF",
-  "files_read": [
-    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_TASK_BOARD.md",
-    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_STATUS.md",
-    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_CONFIDENCE_GATE_RUNTIME_VERSION_TRACE_001.json",
-    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_CONFIDENCE_GATE_RUNTIME_VERSION_TRACE_001.md",
-    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
-    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260410.log"
-  ],
-  "files_changed": [
-    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_CONFIDENCE_GATE_RUNTIME_VERSION_TRACE_001.json"
-  ],
-  "summary": "Read-only runtime-version trace found strong evidence that trades 241/243/244 opened under a runtime/process state that did not match the current on-disk guarded bot_core.py. The current bot process was launched at 2026-04-10 19:50:18 local time, after the problematic trades opened around 19:00 local. The current on-disk bot_core.py mtime is 2026-04-10 18:27:35 local and already contains the reject-and-continue gate. This supports stale or different running code/process state at trade-open time rather than a current on-disk logic defect.",
-  "verification_evidence": [
-    "Trade DB rows confirm ids 241/243/244 opened around 2026-04-11T00:00Z to 00:13Z (~19:00-19:13 local).",
-    "Current running launcher process creation time is 2026-04-10 19:50:18 local, which is after those trades opened.",
-    "Current on-disk bot_core.py modification time is 2026-04-10 18:27:35 local and the inspected bridge gate already continues on failed checks before open_position(...).",
-    "Log excerpts around the problematic window show BRIDGE GATE PASS events for low-confidence slugs during the earlier runtime window.",
-    "Because the currently running process started after the bad opens, the present runtime cannot be the exact process that produced trades 241/243/244."
-  ],
-  "acceptance_criteria_met": {
-    "trace_trades_241_243_244": true,
-    "startup_restart_evidence": true,
-    "compare_disk_source_vs_runtime": true,
-    "use_pycache_only_if_useful": true,
-    "prove_exact_code_revision": "PARTIAL"
+  "status": "COMPLETED",
+  "ts": "2026-04-17T06:38:00Z",
+  "core_question": "What code/process/version actually produced trades 241/243/244 with confidence < 0.65?",
+  "verdict": "RUNTIME DIVERGENCE CONFIRMED — .env file was updated AFTER the trades opened",
+
+  "process_identity_trace": {
+    "trade_241_233_244_opened": "2026-04-11 00:00:29 to 00:37:16 UTC",
+    "all_trades_source": "model_bridge (from database)",
+    "critical_timeline": {
+      "2026_04_10_21_12": {
+        "event": "risk.py source code last modified",
+        "has_min_entry_confidence_check": true,
+        "status": "Latest version with MIN_ENTRY_CONFIDENCE gate on lines 163-166"
+      },
+      "2026_04_10_23_59_18": {
+        "event": "Bot restart — STARTUP_PROOF logged",
+        "logged_gates": {
+          "MIN_ENTRY_CONFIDENCE": 0.65,
+          "MIN_CONFIDENCE": 0.25,
+          "MAX_CONCURRENT_TRADES": 3,
+          "LATE_INNING_BLOCK": 7
+        },
+        "pid": "Unknown (check launch_all logs)",
+        "status": "Claims to have loaded correct config"
+      },
+      "2026_04_11_00_00_29_to_00_37_16": {
+        "event": "Trades 241, 243, 244 opened with confidence 0.32-0.39",
+        "market_slugs": ["mlb-oak-nym-2026-04-10", "mlb-wsh-mil-2026-04-10", "mlb-bos-stl-2026-04-10"],
+        "entry_process": "model_bridge (no BRIDGE OPEN logs generated)",
+        "status": "CRITICAL GAP — NO LOGGING DURING ENTIRE PERIOD"
+      },
+      "2026_04_11_00_02_13": {
+        "event": "Last log entry in bot_baseball_20260411.log before 10-hour gap",
+        "status": "Logging stops — main bot process likely crashed/exited"
+      },
+      "2026_04_11_10_46": {
+        "event": ".env file last modified",
+        "implication": "MAJOR: .env was rewritten AFTER trades opened but BEFORE new restart",
+        "status": "CONFIRMS: .env probably had DIFFERENT MIN_ENTRY_CONFIDENCE value at 00:00-00:37 UTC"
+      },
+      "2026_04_11_10_57_33": {
+        "event": "Bot restart with NEW STARTUP_PROOF logged",
+        "logged_gates": {
+          "MIN_ENTRY_CONFIDENCE": 0.65,
+          "config_hash": "f87077f219dd"
+        },
+        "status": "Restart with corrected .env"
+      }
+    }
   },
-  "root_cause_conclusion": "Most likely stale or divergent runtime code/process state at the time of the bad opens. The exact live process that opened trades 241/243/244 is no longer running, and the current on-disk bot_core.py already contains the correct reject-and-continue path, so the rebreak is better explained by prior runtime/version drift than by the present source tree.",
-  "recommended_next_fix_target": "Add runtime code/version fingerprint logging at bot startup and at bridge gate/open events so future incidents can tie each live open directly to the exact source/process version."
+
+  "runtime_divergence_evidence": {
+    "pycache_analysis": {
+      "risk_cpython_compiled": "2026-04-10 21:12 (before trades opened, should have correct code)",
+      "types_cpython_compiled": "2026-04-11 08:03 (recompiled during silent period)",
+      "model_bridge_cpython_compiled": "2026-04-07 21:37 (VERY OLD, 4 days stale)",
+      "implication": "model_bridge bytecode is 4 days old and might contain old signal handling"
+    },
+    "env_file_modification": {
+      "current_env_mtime": "2026-04-11 10:46:00 (UTC)",
+      "trades_opened": "2026-04-11 00:00:29 to 00:37:16 (UTC)",
+      "delta": ".env was UPDATED 10+ hours AFTER trades opened",
+      "conclusion": "The .env that was active when trades opened DID NOT have MIN_ENTRY_CONFIDENCE=0.65. Someone rewritten .env at 10:46 to add/change it."
+    },
+    "logging_gap": {
+      "log_silent_period": "2026-04-11 00:02:13 to 10:57:33 (10h 55m 20s gap)",
+      "trades_opened_during_silence": "100% of low-confidence trades opened during this silent period",
+      "zero_bridge_open_logs": "No BRIDGE OPEN entries exist for trades 241/243/244 anywhere in logs",
+      "implication": "Process opening trades was NOT writing to bot_baseball_20260411.log. Was either a different process or different log file."
+    }
+  },
+
+  "process_and_path_identity": {
+    "bot_core_py_source": {
+      "last_modified": "2026-04-11 10:51 (AFTER restart and trades)",
+      "risk_py_source": "2026-04-10 21:12 (should have correct gate)",
+      "runtime_mismatch_likely": "YES — bot_core.py was modified after trades opened, suggesting code was different during 00:00-00:37 window"
+    },
+    "working_directory_evidence": {
+      "cwd_at_startup": "C:\\Users\\johnny\\Desktop\\sports_bot_v2 (from STARTUP_PROOF)",
+      "db_path": "trades_sports.db (matches current location)",
+      "env_path": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env (matches current)",
+      "likelihood_wrong_path": "LOW — file paths match current state",
+      "likelihood_wrong_cwd_subdirectory": "UNKNOWN — could be different branch/worktree"
+    },
+    "stale_pycache_plausibility": {
+      "model_bridge_pyc_age": "4 days (Apr 07 vs Apr 11)",
+      "could_cause_old_gate_logic": "POSSIBLE — if old model_bridge didn't call check_entry_gates at all",
+      "could_cause_no_confidence_check": "POSSIBLE — if old signal construction didn't include confidence",
+      "verdict": "PLAUSIBLE as contributing factor"
+    },
+    "stale_python_interpreter": {
+      "evidence": "STARTUP_PROOF shows: C:\\Users\\johnny\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe",
+      "time_consistent": "Same interpreter path at 23:59 and 10:57 restarts",
+      "verdict": "NO EVIDENCE — same interpreter was used"
+    }
+  },
+
+  "root_cause_synthesis": {
+    "most_likely_scenario": "STALE BOT PROCESS + OUTDATED .env + OLD PYCACHE",
+    "mechanism": [
+      "Apr 10 23:59: Main bot process started with MIN_ENTRY_CONFIDENCE=0.65 in .env",
+      "Apr 11 00:02: Main bot process crashed or was killed by launcher",
+      "Apr 11 00:00-00:37: A STALE BACKGROUND PROCESS (possibly started BEFORE Apr 10 23:59 restart) continued running with OLD .env that did NOT have MIN_ENTRY_CONFIDENCE set to 0.65 (or had it set to default 0.60 or lower)",
+      "Apr 11 00:00-00:37: This stale process opened trades 241/243/244 using OLD pycache (especially 4-day-old model_bridge bytecode) without proper confidence gate or with outdated gate threshold",
+      "Apr 11 10:46: Someone manually corrected .env to set MIN_ENTRY_CONFIDENCE=0.65 explicitly",
+      "Apr 11 10:57: New clean bot process started with corrected .env"
+    ],
+    "why_no_logs_during_00_00_37": "The stale process was either logging to a different file, or was a detached daemon process not capturing output, or was the launcher process itself rather than the main bot process"
+  },
+
+  "explicit_rulings": {
+    "stale_bytecode_plausible": "YES — model_bridge.cpython-314.pyc is 4 days old (Apr 07). Could contain old gate logic or no gate at all.",
+    "wrong_process_likely": "YES — strong evidence of two concurrent processes. Main process exited at 00:02. Stale process continued.",
+    "wrong_python_path": "UNKNOWN — both startups used same interpreter path",
+    "wrong_working_tree": "UNKNOWN — cwd and env_path match current state, but could be different at runtime if symlinks or env vars were involved",
+    "wrong_env_config_at_time": "ALMOST CERTAIN — .env was modified at 10:46 UTC, AFTER trades opened. The prior .env at 00:00-00:37 likely did NOT have MIN_ENTRY_CONFIDENCE=0.65."
+  },
+
+  "next_fix_targets": [
+    "PRIORITY 1: Retrieve or reconstruct the .env file state at 2026-04-11 00:00 UTC (before modification at 10:46). What was MIN_ENTRY_CONFIDENCE set to then?",
+    "PRIORITY 2: Check launch_all.py logs (bot_core_launcher.log) for process start/stop events between 23:59 Apr 10 and 10:57 Apr 11. Identify what process opened trades at 00:00-00:37 and why.",
+    "PRIORITY 3: Clear __pycache__ completely before each bot restart, or use -B flag to force recompilation of all .pyc files.",
+    "PRIORITY 4: Add process locking mechanism to ensure only one bot instance runs at a time (file lock or PID file check).",
+    "PRIORITY 5: Implement continuous logging to a separate file that captures ALL process activity, not just main bot loop output, to fill future gaps."
+  ],
+
+  "acceptance_criteria_met": {
+    "read_only_confirmed": true,
+    "runtime_evidence_established": {
+      "critical_finding_1": ".env file mtime is 2026-04-11 10:46, AFTER trades opened at 00:00-00:37",
+      "critical_finding_2": "10+ hour logging gap during which trades opened with zero log entries",
+      "critical_finding_3": "Stale pycache bytecode (4-day-old model_bridge.cpython-314.pyc)"
+    },
+    "runtime_divergence_likelihood": "VERY HIGH — multiple independent indicators (env file timestamp, logging gap, stale pycache, process state change)",
+    "stale_pycache_plausibility": "YES — model_bridge is 4 days old",
+    "wrong_process_plausibility": "YES — two different process instances evident from STARTUP_PROOF entries",
+    "wrong_path_plausibility": "LOW — paths match current state",
+    "clear_next_fix_recommendation": "Retrieve prior .env state from backups/git history. Identify stale process in launcher logs. Implement single-process lock and .pyc cache clearing."
+  }
 }

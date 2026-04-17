@@ -12,6 +12,7 @@
     <a href="{{ url_for('tasks.board') }}" class="brand">BOT_BRIDGE · Control Plane</a>
     <nav class="nav">
       <a href="{{ url_for('tasks.board') }}">Board</a>
+      <a href="{{ url_for('patches.patches_index') }}">Patches</a>
       <a href="{{ url_for('artifacts.list_artifacts') }}">Artifacts</a>
       <a href="{{ url_for('system.system_page') }}">System</a>
     </nav>
@@ -41,6 +42,29 @@
     <button class="btn btn-xs" onclick="reimport(this)">Re-import</button>
   </div>
 </header>
+
+{% if PENDING_PATCH %}
+<section class="patch-banner {% if PENDING_PATCH.task_count > 0 %}patch-banner-ready{% else %}patch-banner-empty{% endif %}">
+  <div class="patch-banner-left">
+    <span class="patch-banner-label">Pending release</span>
+    <a class="patch-banner-version" href="{{ url_for('patches.patch_detail', patch_id=PENDING_PATCH.patch_id) }}">
+      {{ PENDING_PATCH.version }}
+    </a>
+    <span class="patch-banner-count">
+      {{ PENDING_PATCH.task_count }} task{{ '' if PENDING_PATCH.task_count == 1 else 's' }} awaiting relaunch
+    </span>
+    {% if PENDING_PATCH.last_shipped_version %}
+      <span class="patch-banner-muted">live: {{ PENDING_PATCH.last_shipped_version }}</span>
+    {% endif %}
+  </div>
+  <div class="patch-banner-right">
+    <a class="btn btn-xs btn-ghost" href="{{ url_for('patches.patches_index') }}">Release queue →</a>
+    {% if PENDING_PATCH.task_count > 0 %}
+      <button class="btn btn-xs btn-accent" onclick="shipPatch(this)" title="Freeze this patch and start a new one">Ship {{ PENDING_PATCH.version }}</button>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
 
 <main class="page">
 {% block content %}{% endblock %}
@@ -129,6 +153,27 @@ async function setActingRole(role) {
     toast("Acting role: " + role);
   } else {
     toast("Failed to set role", false);
+  }
+}
+
+async function shipPatch(btn) {
+  if (!confirm("Ship this patch? This freezes the current pending release, bumps the version, and starts a new pending patch.")) return;
+  btn.disabled = true;
+  const txt = btn.textContent;
+  btn.textContent = "…shipping";
+  try {
+    const res = await postJSON('/api/patches/ship', {});
+    if (res.ok && res.json.ok) {
+      toast("Shipped " + res.json.shipped.version + " → next " + res.json.next_pending.version);
+      setTimeout(() => location.reload(), 600);
+    } else {
+      toast((res.json && res.json.detail) || "Ship failed: " + (res.status), false);
+    }
+  } catch (e) {
+    toast("Ship failed: " + e, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = txt;
   }
 }
 </script>

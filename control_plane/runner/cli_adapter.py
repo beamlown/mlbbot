@@ -40,8 +40,13 @@ class ClaudeCliAdapter:
         # spawn-error path produces a useful log line pointing at /system.
         binpath = resolved.path or "claude"
 
+        # `--permission-mode bypassPermissions` is required for --print mode
+        # to actually use tools: without it, the non-interactive child can't
+        # prompt the operator for approval and returns a plain-text "please
+        # enable permissions" message instead of doing the work.
         args = [
             "--print",
+            "--permission-mode", "bypassPermissions",
             "--output-format", "text",
             "--model", model,
             prompt_text,

@@ -17,6 +17,7 @@ from .routes.artifacts import bp as artifacts_bp
 from .routes.system import bp as system_bp
 from .routes.actions import bp as actions_bp
 from .routes.runs import bp as runs_bp
+from .routes.patches import bp as patches_bp
 from .roles import ROLE_INFO
 from .workflow import WORKFLOW_LANES, LANE_DISPLAY
 
@@ -74,6 +75,43 @@ def create_app() -> Flask:
             "ok": bool(resolved.path),
             "source": resolved.source,
         }
+        # Release banner context: show the current pending patch (if any)
+        # plus the last shipped version. We only read here — we do NOT
+        # auto-create a pending patch on every page render; creation
+        # happens lazily when the /patches page is visited or when a
+        # task is actually approved.
+        pending_patch_banner = None
+        try:
+            _pending_row = conn.execute(
+                "SELECT * FROM patches WHERE status='PENDING' "
+                "ORDER BY created_at ASC LIMIT 1"
+            ).fetchone()
+            _last_shipped = conn.execute(
+                "SELECT version, shipped_at FROM patches WHERE status='SHIPPED' "
+                "ORDER BY shipped_at DESC LIMIT 1"
+            ).fetchone()
+            if _pending_row is not None:
+                _pending_count = conn.execute(
+                    "SELECT COUNT(*) AS n FROM tasks WHERE patch_id=?",
+                    (_pending_row["patch_id"],),
+                ).fetchone()["n"]
+                pending_patch_banner = {
+                    "patch_id": _pending_row["patch_id"],
+                    "version": _pending_row["version"],
+                    "task_count": _pending_count,
+                    "last_shipped_version": _last_shipped["version"] if _last_shipped else None,
+                    "last_shipped_at":      _last_shipped["shipped_at"] if _last_shipped else None,
+                }
+            elif _last_shipped is not None:
+                pending_patch_banner = {
+                    "patch_id": None,
+                    "version": "v(next)",
+                    "task_count": 0,
+                    "last_shipped_version": _last_shipped["version"],
+                    "last_shipped_at":      _last_shipped["shipped_at"],
+                }
+        except Exception:
+            pending_patch_banner = None
         return {
             "ROLE_INFO": ROLE_INFO,
             "ACTING_ROLE": acting_role,
@@ -82,6 +120,7 @@ def create_app() -> Flask:
             "WORKFLOW_LANES": WORKFLOW_LANES,
             "LANE_DISPLAY": LANE_DISPLAY,
             "CLAUDE_STATUS": claude_status,
+            "PENDING_PATCH": pending_patch_banner,
         }
 
     app.register_blueprint(tasks_bp)
@@ -89,6 +128,7 @@ def create_app() -> Flask:
     app.register_blueprint(system_bp)
     app.register_blueprint(actions_bp)
     app.register_blueprint(runs_bp)
+    app.register_blueprint(patches_bp)
 
     @app.errorhandler(404)
     def _404(e):

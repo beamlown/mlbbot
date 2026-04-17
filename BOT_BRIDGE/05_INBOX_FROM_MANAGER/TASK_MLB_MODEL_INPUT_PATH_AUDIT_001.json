@@ -1,49 +1,19 @@
 {
   "task_id": "MLB_MODEL_INPUT_PATH_AUDIT_001",
-  "title": "Trace exactly what features and game/market context reach the model and recommendation layer today",
-  "priority": "HIGH",
   "type": "read-only audit",
-  "track": "Track B — model audit",
+  "priority": "HIGH",
+  "status": "DONE",
   "issued": "2026-04-11",
   "subsystem": "mlb_model feature flow / recommendation path",
-  "status": "ACTIVE",
-  "objective": "Determine exactly what features, game-state fields, and market-state fields reach the current model and recommendation layer, and identify which expected context is missing, dropped, or unused.",
-  "paper_only_note": "This is paper-only / observation-mode work. No model implementation or live strategy change is authorized from this task.",
+  "title": "Trace exactly what features and game/market context reach the model and recommendation layer today",
   "allowed_files": [
     "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
     "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
     "C:\\Users\\johnny\\Desktop\\mlb_model\\sports\\mlb\\**",
     "C:\\Users\\johnny\\Desktop\\mlb_model\\core\\**"
   ],
-  "allowed_subsystems": [
-    "recommendation generation path",
-    "feature ingestion path",
-    "live game-state path",
-    "market-state path",
-    "bridge pass-through into sports_bot_v2"
-  ],
-  "forbidden_actions": [
-    "Edit any code",
-    "Retrain any model",
-    "Change runtime configs",
-    "Broad repo sweep outside the model input path"
-  ],
-  "required_work": [
-    "1. Identify the exact feature/context fields available to the model at inference time.",
-    "2. Trace which fields survive into the recommendation object and bridge layer.",
-    "3. Identify any expected fields that are missing, compressed, stale-risk, or dropped before recommendation output.",
-    "4. Separate model inputs from post-model metadata and bridge-only fields."
-  ],
-  "acceptance_criteria": [
-    "Exact feature/context inventory at the model boundary",
-    "Exact path from source state to recommendation output",
-    "Clear missing-context list",
-    "No files modified"
-  ],
-  "verification": [
-    "Quote exact code regions where core features are assembled",
-    "State which fields are model inputs vs recommendation metadata vs bridge pass-through",
-    "State what key context is absent or degraded"
-  ],
-  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_MODEL_INPUT_PATH_AUDIT_001.json"
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_MLB_MODEL_INPUT_PATH_AUDIT_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- Exact feature/context inventory at the model boundary\n- Exact path from source state to recommendation output\n- Clear missing-context list\n- No files modified"
 }

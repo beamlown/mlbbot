@@ -6,7 +6,7 @@
   "track": "Track B — data foundation",
   "issued": "2026-04-11",
   "subsystem": "mlb_model data foundation / historical artifacts",
-  "status": "ACTIVE",
+  "status": "DONE",
   "objective": "Produce a complete inventory of all MLB-related data already available for model rebuilding, including coverage, storage locations, schema shape, and obvious gaps.",
   "paper_only_note": "This is paper-only / observation-mode work. No model implementation or live strategy change is authorized from this task.",
   "allowed_files": [
