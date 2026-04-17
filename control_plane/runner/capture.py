@@ -242,7 +242,11 @@ def finalize_run(run, exit_code: int) -> None:
 def _capture_worker(req, run, result) -> tuple[str, str]:
     """Worker run: write RESULT_<TASK>.json under 06_OUTBOX_FROM_WORKER."""
     task_id = req.task_id
-    payload = result or {"status": "ok", "summary": "(no RESULT_JSON emitted)"}
+    # When the worker fails to emit a RESULT_JSON tail line, treat the run as
+    # a failure rather than silently stamping status=ok. A missing RESULT_JSON
+    # means we have no machine-readable verdict — "ok" would auto-transition
+    # the task to AWAITING_REVIEW as if work had succeeded.
+    payload = result or {"status": "fail", "summary": "(no RESULT_JSON emitted)"}
     payload.setdefault("task_id", task_id)
     payload.setdefault("role", req.role)
     payload.setdefault("run_id", req.run_id)
