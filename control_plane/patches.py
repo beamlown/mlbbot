@@ -48,11 +48,22 @@ def _next_version(prev: str | None) -> str:
 
 
 def _latest_shipped_version() -> str | None:
-    row = get_conn().execute(
+    """Return the latest shipped version that actually parses as semver.
+
+    A non-semver version (e.g. smoke-test artifacts like 'v0.0.0-smoke')
+    would bounce _next_version back to its default 'v0.1.0' — which then
+    collides with the pre-existing v0.1.0 row on INSERT. Filter to valid
+    semver so the version cursor is monotonic regardless of what junk
+    shipped on the side.
+    """
+    rows = get_conn().execute(
         "SELECT version FROM patches WHERE status='SHIPPED' "
-        "ORDER BY shipped_at DESC LIMIT 1"
-    ).fetchone()
-    return row["version"] if row else None
+        "ORDER BY shipped_at DESC"
+    ).fetchall()
+    for r in rows:
+        if _SEMVER_RX.match((r["version"] or "").strip()):
+            return r["version"]
+    return None
 
 
 def ensure_pending_patch() -> dict:

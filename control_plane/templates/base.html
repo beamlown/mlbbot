@@ -50,9 +50,13 @@
 <section class="patch-banner {% if PENDING_PATCH.task_count > 0 %}patch-banner-ready{% else %}patch-banner-empty{% endif %}">
   <div class="patch-banner-left">
     <span class="patch-banner-label">Pending release</span>
-    <a class="patch-banner-version" href="{{ url_for('patches.patch_detail', patch_id=PENDING_PATCH.patch_id) }}">
-      {{ PENDING_PATCH.version }}
-    </a>
+    {% if PENDING_PATCH.patch_id %}
+      <a class="patch-banner-version" href="{{ url_for('patches.patch_detail', patch_id=PENDING_PATCH.patch_id) }}">
+        {{ PENDING_PATCH.version }}
+      </a>
+    {% else %}
+      <span class="patch-banner-version">{{ PENDING_PATCH.version }}</span>
+    {% endif %}
     <span class="patch-banner-count">
       {{ PENDING_PATCH.task_count }} task{{ '' if PENDING_PATCH.task_count == 1 else 's' }} awaiting relaunch
     </span>
@@ -62,7 +66,7 @@
   </div>
   <div class="patch-banner-right">
     <a class="btn btn-xs btn-ghost" href="{{ url_for('patches.patches_index') }}">Release queue →</a>
-    {% if PENDING_PATCH.task_count > 0 %}
+    {% if PENDING_PATCH.task_count > 0 and PENDING_PATCH.patch_id %}
       <button class="btn btn-xs btn-accent" onclick="shipPatch(this)" title="Freeze this patch and start a new one">Ship {{ PENDING_PATCH.version }}</button>
     {% endif %}
   </div>
