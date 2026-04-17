@@ -341,12 +341,23 @@ function openLive(runId) {
   es.addEventListener('end', () => {
     es.close();
     currentES = null;
-    toast('run finished — reloading task');
-    // Drop ?watch=<rid> before reload so we don't auto-resubscribe to
-    // the same finished run on the next page load (that loops).
+    // Strip ?watch=<rid> from the URL without navigating, so a manual
+    // refresh won't auto-resubscribe to this finished run, but the user
+    // can keep reading the log pane for as long as they want.
     const u = new URL(location.href);
-    u.searchParams.delete('watch');
-    setTimeout(() => { location.href = u.toString(); }, 800);
+    if (u.searchParams.has('watch')) {
+      u.searchParams.delete('watch');
+      history.replaceState({}, '', u.toString());
+    }
+    // Visibly mark the run as done and hide the cancel button; the
+    // sidebar's runs list will reflect the new state on the next
+    // natural reload.
+    const cancelBtn = document.getElementById('live-cancel-btn');
+    if (cancelBtn) cancelBtn.hidden = true;
+    if (statusEl && !statusEl.textContent.match(/succeeded|failed|cancel/i)) {
+      statusEl.textContent = 'finished';
+    }
+    toast('run finished');
   });
   es.onerror = () => {
     statusEl.textContent = 'stream error';
