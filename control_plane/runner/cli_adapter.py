@@ -1,14 +1,19 @@
 """Local `claude` CLI adapter.
 
-Launches the Claude Code CLI with `claude -p "<prompt>" --model <id>` in
-non-interactive mode. Relies on the operator already being logged in
-(`claude login`) — we deliberately do NOT handle credentials here.
+Launches the Claude Code CLI with `claude --print --output-format text
+--model <id> "<prompt>"` in non-interactive mode. Relies on the operator
+already being logged in (`claude login`) — we deliberately do NOT handle
+credentials here.
+
+Binary discovery goes through `bin_resolver.resolve_current()` so Windows
+users don't have to set an env var; the /system page lets them override
+the path from the UI.
 """
 from __future__ import annotations
 
-from ..config import SETTINGS
 from ..roles import ROLE_INFO
 from .base import Adapter, RunRequest
+from .bin_resolver import resolve_current, wrap_for_platform
 from .prompts import build_prompt
 
 
@@ -29,13 +34,16 @@ class ClaudeCliAdapter:
     def build_argv(self, req: RunRequest, prompt_text: str) -> list[str]:
         info = ROLE_INFO.get(req.role)
         model = _FAMILY_MODEL.get(info.family if info else "", "claude-sonnet-4-6")
-        # `--print` = non-interactive; `--output-format=text` keeps stdout
-        # flat so our line pump can stream it. No session resume — every
-        # run is fresh.
-        return [
-            SETTINGS.claude_bin,
+
+        resolved = resolve_current()
+        # If resolution failed, still emit a sentinel argv so the dispatcher's
+        # spawn-error path produces a useful log line pointing at /system.
+        binpath = resolved.path or "claude"
+
+        args = [
             "--print",
             "--output-format", "text",
             "--model", model,
             prompt_text,
         ]
+        return wrap_for_platform(binpath, args)

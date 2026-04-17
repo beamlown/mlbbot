@@ -39,6 +39,17 @@ def create_app() -> Flask:
             report.tasks_seen, report.tasks_new,
             report.artifacts_new, len(report.errors or []),
         )
+        # Log the resolved claude binary so the operator can see at startup
+        # whether the CLI adapter is going to work without visiting /system.
+        from .runner.bin_resolver import resolve_current
+        _r = resolve_current()
+        if _r.path:
+            app.logger.info("claude_bin: resolved=%s (source=%s)", _r.path, _r.source)
+        else:
+            app.logger.warning(
+                "claude_bin: NOT FOUND — claude_cli adapter will fail. "
+                "Set the path at /system or CONTROL_PLANE_CLAUDE_BIN=..."
+            )
 
     # Make role list and settings available to every template.
     @app.context_processor
@@ -54,6 +65,15 @@ def create_app() -> Flask:
                 "SELECT status, COUNT(*) AS n FROM tasks GROUP BY status"
             ).fetchall()
         }
+        # Cheap health probe (no subprocess) so the top bar can warn when
+        # the claude binary can't be found.
+        from .runner.bin_resolver import resolve_current
+        resolved = resolve_current()
+        claude_status = {
+            "resolved_path": resolved.path or "",
+            "ok": bool(resolved.path),
+            "source": resolved.source,
+        }
         return {
             "ROLE_INFO": ROLE_INFO,
             "ACTING_ROLE": acting_role,
@@ -61,6 +81,7 @@ def create_app() -> Flask:
             "SETTINGS": SETTINGS,
             "WORKFLOW_LANES": WORKFLOW_LANES,
             "LANE_DISPLAY": LANE_DISPLAY,
+            "CLAUDE_STATUS": claude_status,
         }
 
     app.register_blueprint(tasks_bp)

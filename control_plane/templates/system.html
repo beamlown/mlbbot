@@ -8,13 +8,83 @@
 
 <section class="two-col">
   <div class="col-main">
+    <h3>Claude CLI binary</h3>
+    <div class="claude-bin-panel">
+      <div class="claude-bin-head">
+        <span class="chip {% if claude_info.ok %}chip-active{% else %}chip-blocked{% endif %}">
+          {% if claude_info.ok %}healthy{% else %}not working{% endif %}
+        </span>
+        <span class="muted">platform: <code>{{ claude_info.platform }}</code></span>
+        <span class="muted">source: <code>{{ claude_info.source }}</code></span>
+      </div>
+
+      <table class="table claude-bin-table">
+        <tr>
+          <th>Resolved path</th>
+          <td><code id="cb-resolved">{{ claude_info.resolved_path or '(none found)' }}</code></td>
+        </tr>
+        <tr>
+          <th>Version (from <code>--version</code>)</th>
+          <td><code id="cb-version">{{ claude_info.version or '—' }}</code></td>
+        </tr>
+        <tr>
+          <th>DB override (persisted)</th>
+          <td><code>{{ claude_info.override_path or '(unset)' }}</code></td>
+        </tr>
+        <tr>
+          <th>Env var <code>{{ claude_info.env_var_name }}</code></th>
+          <td><code>{{ claude_info.env_var_value or '(unset)' }}</code></td>
+        </tr>
+        <tr>
+          <th>PATH lookup (<code>which claude</code>)</th>
+          <td><code>{{ claude_info.which_claude or '(not on PATH)' }}</code></td>
+        </tr>
+        {% if claude_info.error %}
+        <tr>
+          <th>Error</th>
+          <td><code class="err-text">{{ claude_info.error }}</code></td>
+        </tr>
+        {% endif %}
+      </table>
+
+      <details class="claude-bin-candidates">
+        <summary>Candidate paths tried ({{ claude_info.candidates_tried|length }})</summary>
+        <ul class="file-list">
+          {% for c in claude_info.candidates_tried %}
+            <li><code>{{ c }}</code></li>
+          {% endfor %}
+        </ul>
+      </details>
+
+      <div class="edit-form" style="margin-top:1rem;">
+        <h3>Override path</h3>
+        <p class="muted">
+          Leave blank and save to clear the override (auto-discovery takes over).
+          On Windows the path usually ends in <code>claude.cmd</code>; the
+          control plane will wrap <code>.cmd</code> / <code>.bat</code> files
+          with <code>cmd.exe /c</code> automatically.
+        </p>
+        <label>
+          Absolute path to the <code>claude</code> binary
+          <input type="text" id="cb-input"
+                 value="{{ claude_info.override_path }}"
+                 placeholder="C:\Users\you\AppData\Roaming\npm\claude.cmd">
+        </label>
+        <div class="row-actions">
+          <button class="btn btn-accent" onclick="saveClaudeBin()">Save + test</button>
+          <button class="btn" onclick="testClaudeBin()">Test current</button>
+          <button class="btn btn-ghost" onclick="clearClaudeBin()">Clear override</button>
+        </div>
+        <div id="cb-result" class="run-summary" style="margin-top:.6rem; display:none;"></div>
+      </div>
+    </div>
+
     <h3>runtime/state.json</h3>
     {% if state %}
       <pre class="markdown">{{ state|tojson(indent=2) }}</pre>
     {% else %}
       <div class="empty">
         No <code>sports_bot_v2/runtime/state.json</code> found in this checkout.
-        <p class="muted">Phase 5 will wire a live poll + config_hash + on/off toggle.</p>
       </div>
     {% endif %}
   </div>
@@ -34,4 +104,53 @@
   </aside>
 </section>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+function _renderClaudeResult(j, isErr) {
+  const box = document.getElementById('cb-result');
+  box.style.display = 'flex';
+  box.classList.toggle('err', !!isErr);
+  const parts = [];
+  if (j.ok) parts.push('✓ ok');
+  if (j.claude && j.claude.resolved_path) parts.push('path: ' + j.claude.resolved_path);
+  if (j.path) parts.push('path: ' + j.path);
+  if (j.version) parts.push('version: ' + j.version);
+  if (j.claude && j.claude.version) parts.push('version: ' + j.claude.version);
+  if (j.error) parts.push('error: ' + j.error);
+  if (j.detail) parts.push('detail: ' + j.detail);
+  box.textContent = parts.join('  ·  ');
+}
+
+async function saveClaudeBin() {
+  const path = document.getElementById('cb-input').value.trim();
+  const res = await postJSON('/api/system/claude-bin', {path});
+  _renderClaudeResult(res.json, !res.ok);
+  if (res.ok) {
+    toast('claude binary saved');
+    setTimeout(() => location.reload(), 600);
+  } else {
+    toast('failed: ' + (res.json.detail || res.json.error || res.status), false);
+  }
+}
+
+async function testClaudeBin() {
+  const path = document.getElementById('cb-input').value.trim();
+  const res = await postJSON('/api/system/claude-bin/test', {path});
+  _renderClaudeResult(res.json, !res.json.ok);
+  toast(res.json.ok ? 'claude --version ok' : ('test failed: ' + (res.json.error || '?')),
+        !!res.json.ok);
+}
+
+async function clearClaudeBin() {
+  const res = await postJSON('/api/system/claude-bin', {path: ''});
+  if (res.ok) {
+    toast('override cleared');
+    setTimeout(() => location.reload(), 400);
+  } else {
+    toast('clear failed', false);
+  }
+}
+</script>
 {% endblock %}
