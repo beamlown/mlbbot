@@ -150,6 +150,42 @@ def task_detail(task_id: str):
                 brief_content = art["content"]
                 break
 
+    # Pull the most recent RESULT artifact so the detail page can render
+    # a prominent status card ("ok / fail / blocked" + summary) above the
+    # brief, without the operator having to open the artifact.
+    result_card = None
+    result_link = next((lk for lk in links if lk["relation"] == "result"), None)
+    if result_link:
+        art = conn.execute(
+            "SELECT content, mtime FROM artifacts WHERE artifact_id=?",
+            (result_link["artifact_id"],),
+        ).fetchone()
+        try:
+            payload = json.loads(art["content"]) if art and art["content"] else {}
+        except Exception:
+            payload = {}
+        if isinstance(payload, dict):
+            status_raw = str(payload.get("status") or "").lower()
+            if status_raw in ("ok", "success", "succeeded", "pass"):
+                card_kind = "ok"
+            elif status_raw in ("fail", "failed", "error"):
+                card_kind = "fail"
+            elif status_raw in ("blocked", "block", "pending"):
+                card_kind = "blocked"
+            else:
+                card_kind = "ok" if status_raw else "unknown"
+            result_card = {
+                "status": payload.get("status") or "unknown",
+                "status_kind": card_kind,
+                "summary": payload.get("summary") or result_link["summary"],
+                "run_id": payload.get("run_id"),
+                "role": payload.get("role"),
+                "captured_at": payload.get("captured_at"),
+                "artifact_id": result_link["artifact_id"],
+                "files_changed": payload.get("files_changed") or [],
+                "next_steps": payload.get("next_steps") or payload.get("next_fix_targets") or [],
+            }
+
     runs = conn.execute(
         "SELECT * FROM runs WHERE task_id=? ORDER BY created_at DESC LIMIT 20",
         (task["task_id"],),
@@ -182,6 +218,7 @@ def task_detail(task_id: str):
         runs=[dict(r) for r in runs],
         reviews=[dict(r) for r in reviews],
         agents=agents,
+        result_card=result_card,
         VALID_STATUSES=VALID_STATUSES,
     )
 

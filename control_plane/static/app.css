@@ -240,12 +240,14 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 .wf-board { grid-template-columns: repeat(7, minmax(240px, 1fr)); }
 
 :root {
-  --wf-ready:   #60a5fa;
-  --wf-run:     #4ade80;
-  --wf-review:  #fbbf24;
-  --wf-changes: #f87171;
-  --wf-done:    #94a3b8;
-  --wf-audit:   #f472b6;
+  /* Red = still needs work, Yellow = reviewing, Green = done.
+     Runs are cyan (in-flight). Archived stays muted gray. */
+  --wf-ready:   #f87171;   /* red — work orders still to do */
+  --wf-run:     #38bdf8;   /* cyan — in flight */
+  --wf-review:  #fbbf24;   /* yellow — awaiting review */
+  --wf-changes: #fb923c;   /* orange — needs rework */
+  --wf-done:    #4ade80;   /* green — shipped or live */
+  --wf-audit:   #f472b6;   /* pink — audit queue */
   --wf-arch:    #64748b;
 }
 
@@ -258,13 +260,23 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 .lane-wf-archived           .lane-title { color: var(--wf-arch); opacity:.75; }
 .lane-wf-archived { opacity:.75; }
 
-.chip-wf-ready_for_worker   { border-color: var(--wf-ready); color: var(--wf-ready); background: rgba(96,165,250,.1); }
-.chip-wf-running            { border-color: var(--wf-run);   color: var(--wf-run);   background: rgba(74,222,128,.12); }
-.chip-wf-awaiting_review    { border-color: var(--wf-review); color: var(--wf-review); background: rgba(251,191,36,.1); }
-.chip-wf-changes_requested  { border-color: var(--wf-changes); color: var(--wf-changes); background: rgba(248,113,113,.12); }
-.chip-wf-done               { border-color: var(--wf-done); color: var(--wf-done); background: rgba(148,163,184,.12); }
-.chip-wf-audit_queue        { border-color: var(--wf-audit); color: var(--wf-audit); background: rgba(244,114,182,.1); }
-.chip-wf-archived           { border-color: var(--wf-arch); color: var(--wf-arch); opacity:.7; }
+.chip-wf-ready_for_worker   { border-color: var(--wf-ready);   color: var(--wf-ready);   background: rgba(248,113,113,.12); }
+.chip-wf-running            { border-color: var(--wf-run);     color: var(--wf-run);     background: rgba(56,189,248,.12); }
+.chip-wf-awaiting_review    { border-color: var(--wf-review);  color: var(--wf-review);  background: rgba(251,191,36,.12); }
+.chip-wf-changes_requested  { border-color: var(--wf-changes); color: var(--wf-changes); background: rgba(251,146,60,.12); }
+.chip-wf-done               { border-color: var(--wf-done);    color: var(--wf-done);    background: rgba(74,222,128,.14); }
+.chip-wf-audit_queue        { border-color: var(--wf-audit);   color: var(--wf-audit);   background: rgba(244,114,182,.12); }
+.chip-wf-archived           { border-color: var(--wf-arch);    color: var(--wf-arch);    opacity:.7; }
+
+/* Lane cards get a colored left accent keyed to the lane so the board
+   scans red → yellow → green at a glance. */
+.lane-wf-ready_for_worker  { border-left: 4px solid var(--wf-ready); }
+.lane-wf-running           { border-left: 4px solid var(--wf-run); }
+.lane-wf-awaiting_review   { border-left: 4px solid var(--wf-review); }
+.lane-wf-changes_requested { border-left: 4px solid var(--wf-changes); }
+.lane-wf-done              { border-left: 4px solid var(--wf-done); }
+.lane-wf-audit_queue       { border-left: 4px solid var(--wf-audit); }
+.lane-wf-archived          { border-left: 4px solid var(--wf-arch); }
 
 /* Agent palette above the board. */
 .agent-palette {
@@ -372,6 +384,65 @@ body.agent-dragging .card-eligible .card-dropzone { display:block; border-color:
   background: rgba(74,222,128,.1); color: var(--ok); border-color: var(--ok);
 }
 .pill-go:hover { background: rgba(74,222,128,.2); }
+
+/* ------------------------------------------------------------------
+   Phase C — agent personalities + result card
+   ------------------------------------------------------------------ */
+
+/* Agent palette: bigger chip, per-agent theme, tagline beneath. */
+.agent-launch {
+  flex-direction: column; align-items: flex-start;
+  gap: .15rem; padding: .5rem .75rem; border-radius: 10px;
+  min-width: 180px; border-left-width: 4px;
+}
+.agent-launch .agent-top {
+  display: inline-flex; align-items: center; gap: .4rem;
+  font-weight: 600; font-size: .9rem;
+}
+.agent-launch .agent-icon { font-size: 1.1rem; }
+.agent-launch .agent-tagline {
+  color: var(--muted); font-size: .72rem; line-height: 1.25;
+  font-style: italic; max-width: 22ch;
+}
+.agent-launch[data-eligible="1"] { box-shadow: 0 0 0 1px var(--agent-color, var(--accent)) inset; }
+.agent-launch[data-eligible="0"]:hover::after { content: ""; }  /* kill the old tooltip noise */
+.agent-launch[data-eligible="0"] .agent-tagline::after {
+  content: "  · not eligible for this lane";
+  color: var(--muted); opacity: .7;
+}
+.agent-launch .pill-go {
+  margin-left: auto; align-self: flex-end;
+  font-size: .65rem; padding: .05rem .4rem;
+}
+
+/* Task-detail: prominent result card at the top so the operator can
+   see at a glance whether the last run passed or failed and why. */
+.result-card {
+  display: flex; flex-direction: column; gap: .35rem;
+  background: var(--panel); border: 1px solid var(--border);
+  border-left: 4px solid var(--status-color, var(--muted));
+  border-radius: 8px;
+  padding: .65rem .85rem; margin: .5rem 0 .75rem;
+}
+.result-card.result-ok      { --status-color: var(--wf-done); }
+.result-card.result-fail    { --status-color: var(--wf-changes); }
+.result-card.result-blocked { --status-color: var(--wf-review); }
+.result-card .result-head {
+  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+}
+.result-card .result-status {
+  font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+  color: var(--status-color, var(--fg));
+}
+.result-card .result-summary { color: var(--fg); }
+.result-card .result-meta   { color: var(--muted); font-size: .75rem; }
+.result-card .result-meta code { background: transparent; }
+
+/* Run list: exit codes + summaries pop more. */
+.run-list .run-summary { color: var(--fg); font-size: .82rem; }
+.run-list li .chip.status-failed    { background: rgba(251,146,60,.15); color: var(--wf-changes); border-color: var(--wf-changes); }
+.run-list li .chip.status-succeeded { background: rgba(74,222,128,.15);  color: var(--wf-done);    border-color: var(--wf-done); }
+.run-list li .chip.status-running   { background: rgba(56,189,248,.15);  color: var(--wf-run);     border-color: var(--wf-run); }
 
 .run-summary {
   background: var(--panel-2); border:1px solid var(--border); border-radius:4px;

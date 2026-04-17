@@ -170,34 +170,37 @@ CREATE TABLE IF NOT EXISTS agent_profiles (
 _DEFAULT_AGENT_PROFILES = [
     {
         "profile_id": "haiku_worker",
-        "display": "Haiku · Worker",
+        "display": "Haiku",
         "role": "HAIKU_WORKER",
         "adapter": "claude_cli",
         "model": "claude-haiku-4-5-20251001",
         "color": "#a78bfa",
         "icon": "🔨",
+        "tagline": "The Apprentice — fast hands, tight scope, makes the change and gets out.",
         "prompt_extra": None,
         "allowed_states": '["READY_FOR_WORKER","CHANGES_REQUESTED"]',
     },
     {
         "profile_id": "sonnet_manager",
-        "display": "Sonnet · Manager / Reviewer",
+        "display": "Sonnet",
         "role": "SONNET_MANAGER",
         "adapter": "claude_cli",
         "model": "claude-sonnet-4-6",
         "color": "#60a5fa",
         "icon": "🧭",
+        "tagline": "The Steward — reads the room, weighs the work, signs off or sends it back.",
         "prompt_extra": None,
         "allowed_states": '["AWAITING_REVIEW","CHANGES_REQUESTED"]',
     },
     {
         "profile_id": "opus_auditor",
-        "display": "Opus · Auditor",
+        "display": "Opus",
         "role": "OPUS_AUDITOR",
         "adapter": "claude_cli",
         "model": "claude-opus-4-7",
         "color": "#f472b6",
         "icon": "🧠",
+        "tagline": "The Oracle — deep read, sharp eyes, surfaces what others missed.",
         "prompt_extra": None,
         "allowed_states": '["DONE","AUDIT_QUEUE","AWAITING_REVIEW"]',
     },
@@ -237,6 +240,13 @@ def tx() -> Iterator[sqlite3.Connection]:
         raise
 
 
+def _add_column_if_missing(conn: sqlite3.Connection, table: str, column: str, decl: str) -> None:
+    """SQLite-friendly equivalent of ADD COLUMN IF NOT EXISTS."""
+    cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+    if column not in cols:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+
+
 def init_db() -> None:
     """Run the DDL idempotently and stamp schema_version if empty."""
     conn = get_conn()
@@ -247,6 +257,8 @@ def init_db() -> None:
             "INSERT INTO schema_version(version, applied_at) VALUES (?, datetime('now'))",
             (1,),
         )
+    # Forward-migrate agent_profiles with the gamification fields.
+    _add_column_if_missing(conn, "agent_profiles", "tagline", "TEXT")
     _seed_agent_profiles()
 
 
@@ -259,15 +271,33 @@ def _seed_agent_profiles() -> None:
             "SELECT 1 FROM agent_profiles WHERE profile_id=?", (p["profile_id"],)
         ).fetchone()
         if exists:
+            # Fill in the tagline for pre-migration profiles without touching
+            # operator-edited fields. This keeps the gamification bits fresh
+            # across updates while leaving model/color/etc. alone.
+            if p.get("tagline"):
+                conn.execute(
+                    "UPDATE agent_profiles SET tagline=? WHERE profile_id=? AND (tagline IS NULL OR tagline='')",
+                    (p["tagline"], p["profile_id"]),
+                )
+            # Also refresh display/icon if they still match the old seed so
+            # the UI picks up the new short names (Haiku/Sonnet/Opus) without
+            # overwriting an operator-customised label.
+            if p.get("display"):
+                conn.execute(
+                    "UPDATE agent_profiles SET display=? "
+                    "WHERE profile_id=? AND display IN (?, ?, ?)",
+                    (p["display"], p["profile_id"],
+                     "Haiku · Worker", "Sonnet · Manager / Reviewer", "Opus · Auditor"),
+                )
             continue
         conn.execute(
             """INSERT INTO agent_profiles
-               (profile_id, display, role, adapter, model, color, icon,
+               (profile_id, display, role, adapter, model, color, icon, tagline,
                 prompt_extra, allowed_states, enabled, created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,1,?,?)""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?)""",
             (p["profile_id"], p["display"], p["role"], p["adapter"], p["model"],
-             p["color"], p["icon"], p["prompt_extra"], p["allowed_states"],
-             now, now),
+             p["color"], p["icon"], p.get("tagline"), p["prompt_extra"],
+             p["allowed_states"], now, now),
         )
 
 

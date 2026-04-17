@@ -35,7 +35,7 @@
          data-profile-id="{{ a.profile_id }}"
          data-allowed-states='{{ a.allowed_states|tojson }}'
          style="--agent-color: {{ a.color or '#8892a6' }}"
-         title="Role: {{ a.role }}&#10;Model: {{ a.model }}&#10;Eligible lanes: {{ a.allowed_states|join(', ') }}">
+         title="{{ a.display }}{% if a.tagline %} — {{ a.tagline }}{% endif %}&#10;Role: {{ a.role }}&#10;Model: {{ a.model }}&#10;Eligible lanes: {{ a.allowed_states|join(', ') }}">
       <span class="agent-icon">{{ a.icon or '●' }}</span>
       <span class="agent-name">{{ a.display }}</span>
     </div>
