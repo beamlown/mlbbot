@@ -22,36 +22,59 @@
   </form>
   <div class="counts">
     {% for lane, count in lane_counts.items() %}
-      <span class="chip chip-{{ lane|lower }}">{{ lane }} · {{ count }}</span>
+      <span class="chip chip-wf-{{ lane|lower }}">{{ lane_display[lane] }} · {{ count }}</span>
     {% endfor %}
   </div>
 </section>
 
-<section class="board">
+<section class="agent-palette" aria-label="Agent palette">
+  <span class="palette-label">Agents</span>
+  {% for a in agents %}
+    <div class="agent-chip"
+         draggable="true"
+         data-profile-id="{{ a.profile_id }}"
+         data-allowed-states='{{ a.allowed_states|tojson }}'
+         style="--agent-color: {{ a.color or '#8892a6' }}"
+         title="Role: {{ a.role }}&#10;Model: {{ a.model }}&#10;Eligible lanes: {{ a.allowed_states|join(', ') }}">
+      <span class="agent-icon">{{ a.icon or '●' }}</span>
+      <span class="agent-name">{{ a.display }}</span>
+    </div>
+  {% endfor %}
+  <span class="palette-hint">drag onto a task →</span>
+</section>
+
+<section class="board wf-board">
   {% for lane in lane_order %}
     {% set items = lanes[lane] or [] %}
-    <div class="lane lane-{{ lane|lower }}">
+    <div class="lane lane-wf-{{ lane|lower }}" data-lane="{{ lane }}">
       <header class="lane-header">
-        <span class="lane-title">{{ lane }}</span>
+        <span class="lane-title">{{ lane_display[lane] }}</span>
         <span class="lane-count">{{ items|length }}</span>
       </header>
-      <div class="lane-body">
+      <div class="lane-body" data-lane="{{ lane }}">
         {% for t in items %}
-          <a class="card priority-{{ (t.priority or 'MEDIUM')|lower }}" href="{{ url_for('tasks.task_detail', task_id=t.task_id) }}">
-            <div class="card-head">
-              <span class="tid">{{ t.task_id }}</span>
-              <span class="pri">{{ t.priority or 'MEDIUM' }}</span>
-            </div>
-            <div class="card-title">{{ t.title }}</div>
-            <div class="card-meta">
-              {% if t.subsystem %}<span class="meta">{{ t.subsystem }}</span>{% endif %}
-              {% if t.assigned_role %}<span class="meta role">{{ t.assigned_role }}</span>{% endif %}
-              {% if t.allowed_files and t.allowed_files|length > 0 %}
-                <span class="meta files" title="{{ t.allowed_files|join(', ') }}">files: {{ t.allowed_files|length }}</span>
-              {% endif %}
-            </div>
-            {% if t.notes %}<div class="card-notes">{{ t.notes|truncate(160) }}</div>{% endif %}
-          </a>
+          <div class="card priority-{{ (t.priority or 'MEDIUM')|lower }}{% if t.conflict %} card-conflict{% endif %}{% if lane == 'RUNNING' %} card-running{% endif %}"
+               data-task-id="{{ t.task_id }}"
+               data-workflow-state="{{ t.workflow_state }}">
+            <a class="card-link" href="{{ url_for('tasks.task_detail', task_id=t.task_id) }}">
+              <div class="card-head">
+                <span class="tid">{{ t.task_id }}</span>
+                <span class="pri">{{ t.priority or 'MEDIUM' }}</span>
+              </div>
+              <div class="card-title">{{ t.title }}</div>
+              <div class="card-meta">
+                {% if t.subsystem %}<span class="meta">{{ t.subsystem }}</span>{% endif %}
+                {% if t.assigned_role %}<span class="meta role">{{ t.assigned_role }}</span>{% endif %}
+                {% if t.allowed_files and t.allowed_files|length > 0 %}
+                  <span class="meta files" title="{{ t.allowed_files|join(', ') }}">files: {{ t.allowed_files|length }}</span>
+                {% endif %}
+                {% if t.conflict %}<span class="meta conflict" title="External edit detected on TASK_{{ t.task_id }}.json">!conflict</span>{% endif %}
+                {% if lane == 'RUNNING' %}<span class="meta running-pulse">● running</span>{% endif %}
+              </div>
+              {% if t.notes %}<div class="card-notes">{{ t.notes|truncate(140) }}</div>{% endif %}
+            </a>
+            <div class="card-dropzone" data-dropzone="1">drop an agent here</div>
+          </div>
         {% else %}
           <div class="empty">no tasks</div>
         {% endfor %}
@@ -60,4 +83,80 @@
   {% endfor %}
 </section>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Native HTML5 drag-and-drop: agent-chip → task-card
+(function() {
+  let dragging = null;
+
+  document.querySelectorAll('.agent-chip').forEach(chip => {
+    chip.addEventListener('dragstart', (e) => {
+      dragging = {
+        profile_id: chip.dataset.profileId,
+        allowed_states: JSON.parse(chip.dataset.allowedStates || '[]'),
+        display: chip.querySelector('.agent-name').textContent.trim(),
+      };
+      e.dataTransfer.effectAllowed = 'copy';
+      e.dataTransfer.setData('text/plain', dragging.profile_id);
+      document.body.classList.add('agent-dragging');
+      // Highlight eligible cards.
+      document.querySelectorAll('.card[data-workflow-state]').forEach(card => {
+        const st = card.dataset.workflowState;
+        if (dragging.allowed_states.includes(st)) {
+          card.classList.add('card-eligible');
+        } else {
+          card.classList.add('card-ineligible');
+        }
+      });
+    });
+    chip.addEventListener('dragend', () => {
+      dragging = null;
+      document.body.classList.remove('agent-dragging');
+      document.querySelectorAll('.card').forEach(c => {
+        c.classList.remove('card-eligible', 'card-ineligible', 'card-hover');
+      });
+    });
+  });
+
+  document.querySelectorAll('.card[data-task-id]').forEach(card => {
+    card.addEventListener('dragover', (e) => {
+      if (!dragging) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      card.classList.add('card-hover');
+    });
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('card-hover');
+    });
+    card.addEventListener('drop', async (e) => {
+      if (!dragging) return;
+      e.preventDefault();
+      const tid = card.dataset.taskId;
+      const state = card.dataset.workflowState;
+      const profile = dragging.profile_id;
+      const name = dragging.display;
+      card.classList.remove('card-hover');
+
+      const ineligible = !dragging.allowed_states.includes(state);
+      if (ineligible && !confirm(`${name} is not normally launched on a "${state}" task.\nLaunch anyway?`)) {
+        return;
+      }
+      const payload = {profile_id: profile};
+      if (ineligible) payload.force = true;
+
+      toast(`launching ${name} on ${tid}…`);
+      const res = await postJSON(`/api/tasks/${tid}/launch`, payload);
+      if (res.ok && res.json.ok) {
+        toast(`run ${res.json.run.run_id} started`);
+        setTimeout(() => location.href = `/tasks/${tid}?watch=${res.json.run.run_id}`, 300);
+      } else {
+        const j = res.json || {};
+        toast(`launch failed: ${j.error || res.status}${j.detail ? ' — ' + j.detail : ''}`, false);
+      }
+    });
+  });
+})();
+</script>
 {% endblock %}

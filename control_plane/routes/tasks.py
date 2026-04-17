@@ -8,6 +8,7 @@ from flask import Blueprint, abort, jsonify, render_template, request
 from ..db import get_conn
 from ..models import LANES, VALID_PRIORITIES, VALID_STATUSES
 from ..bridge.importer import import_bot_bridge
+from ..workflow import WORKFLOW_LANES, LANE_DISPLAY, derive_state
 
 
 bp = Blueprint("tasks", __name__)
@@ -40,7 +41,6 @@ def board():
     priority = (request.args.get("priority") or "").upper() or None
     subsystem = (request.args.get("subsystem") or "").strip() or None
 
-    lanes: dict[str, list[dict]] = {lane: [] for lane in LANES}
     base_sql = "SELECT * FROM tasks"
     params: list = []
     filters: list[str] = []
@@ -57,16 +57,18 @@ def board():
         base_sql += " WHERE " + " AND ".join(filters)
     base_sql += " ORDER BY lane_order ASC, priority ASC, task_id ASC"
 
+    lanes: dict[str, list[dict]] = {lane: [] for lane in WORKFLOW_LANES}
     for row in conn.execute(base_sql, params).fetchall():
         d = _task_row_dict(row)
-        lane = d["status"] if d["status"] in LANES else "QUEUED"
-        lanes[lane].append(d)
+        d["workflow_state"] = derive_state(d)
+        lanes.setdefault(d["workflow_state"], []).append(d)
 
-    # Sort each lane by priority then lane_order within lane.
     for lane, items in lanes.items():
         items.sort(key=lambda t: (PRIORITY_ORDER.get(t.get("priority", "MEDIUM"), 2),
                                   t.get("lane_order", 0),
                                   t["task_id"]))
+
+    lane_counts = {lane: len(items) for lane, items in lanes.items()}
 
     subsystems = [
         r["subsystem"] for r in conn.execute(
@@ -75,15 +77,40 @@ def board():
         ).fetchall()
     ]
 
+    # Agent palette — seeded profiles used by the drag-to-launch UI.
+    agents = []
+    for r in conn.execute(
+        "SELECT * FROM agent_profiles WHERE enabled=1 ORDER BY created_at"
+    ).fetchall():
+        d = dict(r)
+        try:
+            d["allowed_states"] = json.loads(d.get("allowed_states") or "[]")
+        except Exception:
+            d["allowed_states"] = []
+        agents.append(d)
+
     return render_template(
         "board.html",
         lanes=lanes,
-        lane_order=LANES,
-        lane_counts=_lane_counts(conn),
+        lane_order=WORKFLOW_LANES,
+        lane_display=LANE_DISPLAY,
+        lane_counts=lane_counts,
         subsystems=subsystems,
         filter_q=q,
         filter_priority=priority or "",
         filter_subsystem=subsystem or "",
+        agents=agents,
+    )
+
+
+@bp.route("/tasks/new", methods=["GET"])
+def task_new():
+    from ..roles import ROLE_INFO as _ROLES
+    return render_template(
+        "task_new.html",
+        VALID_STATUSES=VALID_STATUSES,
+        VALID_PRIORITIES=VALID_PRIORITIES,
+        ROLES=_ROLES,
     )
 
 
@@ -133,6 +160,20 @@ def task_detail(task_id: str):
         (task["task_id"],),
     ).fetchall()
 
+    task["workflow_state"] = derive_state(task)
+
+    agents = []
+    for r in conn.execute(
+        "SELECT * FROM agent_profiles WHERE enabled=1 ORDER BY created_at"
+    ).fetchall():
+        d = dict(r)
+        try:
+            d["allowed_states"] = json.loads(d.get("allowed_states") or "[]")
+        except Exception:
+            d["allowed_states"] = []
+        d["eligible"] = task["workflow_state"] in d["allowed_states"]
+        agents.append(d)
+
     return render_template(
         "task_detail.html",
         task=task,
@@ -140,6 +181,7 @@ def task_detail(task_id: str):
         brief_content=brief_content,
         runs=[dict(r) for r in runs],
         reviews=[dict(r) for r in reviews],
+        agents=agents,
         VALID_STATUSES=VALID_STATUSES,
     )
 

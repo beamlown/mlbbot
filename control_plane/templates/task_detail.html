@@ -6,20 +6,112 @@
 
 <header class="task-header">
   <div class="task-head-left">
-    <h1 class="task-title">{{ task.title }}</h1>
+    <h1 class="task-title" id="f-title-view">{{ task.title }}</h1>
     <code class="tid-big">{{ task.task_id }}</code>
   </div>
   <div class="task-head-right">
-    <span class="chip chip-{{ (task.status or 'PENDING')|lower }}">{{ task.status }}</span>
-    <span class="chip priority-{{ (task.priority or 'MEDIUM')|lower }}">{{ task.priority }}</span>
-    {% if task.subsystem %}<span class="chip">{{ task.subsystem }}</span>{% endif %}
-    {% if task.assigned_role %}<span class="chip role">{{ task.assigned_role }}</span>{% endif %}
+    <span class="chip chip-wf-{{ task.workflow_state|lower }}" id="workflow-chip">{{ task.workflow_state }}</span>
+    <span class="chip chip-{{ (task.status or 'PENDING')|lower }}" id="status-chip">{{ task.status }}</span>
+    <span class="chip priority-{{ (task.priority or 'MEDIUM')|lower }}" id="priority-chip">{{ task.priority }}</span>
+    {% if task.subsystem %}<span class="chip" id="subsystem-chip">{{ task.subsystem }}</span>{% endif %}
+    {% if task.assigned_role %}<span class="chip role" id="role-chip">{{ task.assigned_role }}</span>{% endif %}
+    {% if task.conflict %}<span class="chip chip-conflict" title="External edit detected on TASK file">!conflict</span>{% endif %}
   </div>
 </header>
+
+<section class="agent-palette" aria-label="Launch agent">
+  <span class="palette-label">Launch on this task</span>
+  {% for a in agents %}
+    <button class="agent-chip agent-launch {% if not a.eligible %}agent-ineligible{% endif %}"
+            style="--agent-color: {{ a.color or '#8892a6' }}"
+            data-profile-id="{{ a.profile_id }}"
+            data-eligible="{{ '1' if a.eligible else '0' }}"
+            title="Role: {{ a.role }}&#10;Adapter: {{ a.adapter }}&#10;Model: {{ a.model }}&#10;Eligible: {{ a.allowed_states|join(', ') }}">
+      <span class="agent-icon">{{ a.icon or '●' }}</span>
+      <span class="agent-name">{{ a.display }}</span>
+      {% if a.eligible %}<span class="pill-go">GO</span>{% endif %}
+    </button>
+  {% endfor %}
+  <label class="adapter-switch">
+    adapter
+    <select id="launch-adapter">
+      <option value="">(profile default)</option>
+      <option value="claude_cli">claude_cli</option>
+      <option value="echo">echo (test)</option>
+    </select>
+  </label>
+</section>
+
+<section class="controls-bar">
+  <div class="ctrl-group">
+    <label>Status</label>
+    <select id="ctl-status">
+      {% for s in VALID_STATUSES %}
+        <option value="{{ s }}" {% if task.status == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-xs" onclick="transitionTask()">Apply</button>
+  </div>
+  <div class="ctrl-group">
+    <label>Assign</label>
+    <select id="ctl-role">
+      <option value="">— unassigned —</option>
+      {% for key, info in ROLE_INFO.items() %}
+        <option value="{{ key }}" {% if task.assigned_role == key %}selected{% endif %}>{{ info.display }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-xs" onclick="assignTask()">Save</button>
+  </div>
+  <div class="ctrl-group">
+    <button class="btn btn-xs" onclick="exportTask(false)">Export</button>
+    <button class="btn btn-xs btn-ghost" onclick="checkConflict()">Check conflict</button>
+    <button class="btn btn-xs btn-danger" onclick="exportTask(true)">Force export</button>
+  </div>
+  <div class="ctrl-group">
+    <button class="btn btn-xs" onclick="toggleEdit()">Edit fields</button>
+  </div>
+</section>
+
+<section class="live-run" id="live-run" {% if not request.args.get('watch') %}hidden{% endif %}>
+  <header class="live-head">
+    <span class="chip" id="live-status">—</span>
+    <code id="live-run-id">{{ request.args.get('watch') or '' }}</code>
+    <span id="live-meta" class="muted"></span>
+    <span class="live-spacer"></span>
+    <button class="btn btn-xs btn-danger" id="live-cancel-btn" onclick="cancelRun()">Cancel</button>
+    <button class="btn btn-xs btn-ghost" onclick="closeLive()">Close</button>
+  </header>
+  <pre id="live-log" class="log-pane" aria-live="polite"></pre>
+</section>
 
 <section class="two-col">
 
   <div class="col-main">
+    <div id="edit-form" class="edit-form hidden">
+      <h3>Edit task</h3>
+      <label>Title<input type="text" id="f-title" value="{{ task.title|e }}"></label>
+      <div class="inline-fields">
+        <label>Priority
+          <select id="f-priority">
+            {% for p in ['CRITICAL','HIGH','MEDIUM','LOW'] %}
+              <option value="{{ p }}" {% if task.priority == p %}selected{% endif %}>{{ p }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Subsystem<input type="text" id="f-subsystem" value="{{ task.subsystem or '' }}"></label>
+        <label>Type<input type="text" id="f-type" value="{{ task.type or '' }}"></label>
+      </div>
+      <label>Allowed files (one per line)<textarea id="f-allowed" rows="4">{{ task.allowed_files|join('\n') }}</textarea></label>
+      <label>Forbidden files (one per line)<textarea id="f-forbidden" rows="2">{{ task.forbidden_files|join('\n') }}</textarea></label>
+      <label>Acceptance<textarea id="f-acceptance" rows="4">{{ task.acceptance or '' }}</textarea></label>
+      <label>Evidence<textarea id="f-evidence" rows="3">{{ task.evidence or '' }}</textarea></label>
+      <label>Notes<textarea id="f-notes" rows="3">{{ task.notes or '' }}</textarea></label>
+      <div class="row-actions">
+        <button class="btn btn-accent" onclick="saveEdit()">Save changes</button>
+        <button class="btn btn-ghost" onclick="toggleEdit()">Cancel</button>
+      </div>
+    </div>
+
     <h3>Brief</h3>
     {% if brief_content %}
       <pre class="markdown">{{ brief_content }}</pre>
@@ -87,12 +179,17 @@
           <li>
             <span class="chip status-{{ r.status|lower }}">{{ r.status }}</span>
             <span class="run-role">{{ r.role }}</span>
-            <span class="run-ts">{{ r.created_at }}</span>
+            <code class="run-id">{{ r.run_id }}</code>
+            <div class="run-summary">{{ r.result_summary or '' }}</div>
+            <div class="run-meta"><span class="run-ts">{{ r.created_at }}</span>
+              {% if r.exit_code is not none %}<span>exit={{ r.exit_code }}</span>{% endif %}
+              <a class="btn btn-xs btn-ghost" href="?watch={{ r.run_id }}">watch</a>
+            </div>
           </li>
         {% endfor %}
       </ul>
     {% else %}
-      <div class="empty">no runs (Phase 3)</div>
+      <div class="empty">no runs yet — drag an agent onto this task</div>
     {% endif %}
 
     <h3>Reviews</h3>
@@ -107,10 +204,172 @@
         {% endfor %}
       </ul>
     {% else %}
-      <div class="empty">no reviews (Phase 4)</div>
+      <div class="empty">no reviews yet</div>
     {% endif %}
   </aside>
 
 </section>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TID = {{ task.task_id|tojson }};
+let currentRunId = {{ request.args.get('watch')|tojson if request.args.get('watch') else 'null' }};
+let currentES = null;
+
+function toggleEdit() {
+  document.getElementById('edit-form').classList.toggle('hidden');
+}
+
+async function transitionTask() {
+  const status = document.getElementById('ctl-status').value;
+  const res = await postJSON(`/api/tasks/${TID}/transition`, {status});
+  if (res.ok && res.json.ok) {
+    toast(`${TID}: ${res.json.from} → ${res.json.to}`);
+    setTimeout(() => location.reload(), 300);
+  } else {
+    toast('Transition failed: ' + (res.json.error || res.status), false);
+  }
+}
+
+async function assignTask() {
+  const role = document.getElementById('ctl-role').value;
+  const res = await postJSON(`/api/tasks/${TID}/assign`, {assigned_role: role});
+  if (res.ok && res.json.ok) {
+    toast(`${TID} assigned: ${role || '(none)'}`);
+    setTimeout(() => location.reload(), 300);
+  } else {
+    toast('Assign failed: ' + (res.json.error || res.status), false);
+  }
+}
+
+async function exportTask(force) {
+  const res = await postJSON(`/api/tasks/${TID}/export`, {force: !!force});
+  const ex = (res.json && res.json.export) || {};
+  if (ex.ok) toast(`Exported → ${ex.path}`);
+  else if (ex.error === 'conflict')
+    toast(`Conflict — Force to overwrite (${(ex.disk_sha256||'').slice(0,8)} vs ${(ex.db_hash||'').slice(0,8)})`, false);
+  else toast('Export failed: ' + (ex.error || res.status), false);
+}
+
+async function checkConflict() {
+  const r = await fetch(`/api/tasks/${TID}/conflict`);
+  const j = await r.json();
+  toast(j.conflict ? `CONFLICT (${j.reason})` : `Clean`, !j.conflict);
+}
+
+async function saveEdit() {
+  const payload = {
+    title: document.getElementById('f-title').value,
+    priority: document.getElementById('f-priority').value,
+    subsystem: document.getElementById('f-subsystem').value,
+    type: document.getElementById('f-type').value,
+    allowed_files: document.getElementById('f-allowed').value,
+    forbidden_files: document.getElementById('f-forbidden').value,
+    acceptance: document.getElementById('f-acceptance').value,
+    evidence: document.getElementById('f-evidence').value,
+    notes: document.getElementById('f-notes').value,
+  };
+  const res = await patchJSON(`/api/tasks/${TID}`, payload);
+  if (res.ok && res.json.ok) { toast('Saved'); setTimeout(() => location.reload(), 300); }
+  else toast('Save failed: ' + (res.json.error || res.status), false);
+}
+
+// ---------- Agent launch ----------
+document.querySelectorAll('.agent-launch').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const profile = btn.dataset.profileId;
+    const eligible = btn.dataset.eligible === '1';
+    const label = btn.querySelector('.agent-name').textContent.trim();
+    if (!eligible && !confirm(`${label} is not eligible for this task state. Force-launch?`)) return;
+    const payload = {profile_id: profile};
+    if (!eligible) payload.force = true;
+    const adapter = document.getElementById('launch-adapter').value;
+    if (adapter) payload.adapter = adapter;
+    toast(`launching ${label}…`);
+    const res = await postJSON(`/api/tasks/${TID}/launch`, payload);
+    if (res.ok && res.json.ok) {
+      const rid = res.json.run.run_id;
+      toast(`run ${rid} started`);
+      openLive(rid);
+    } else {
+      const j = res.json || {};
+      toast(`launch failed: ${j.error || res.status}${j.detail ? ' — ' + j.detail : ''}`, false);
+    }
+  });
+});
+
+function openLive(runId) {
+  currentRunId = runId;
+  const sec = document.getElementById('live-run');
+  const pane = document.getElementById('live-log');
+  const ridEl = document.getElementById('live-run-id');
+  const statusEl = document.getElementById('live-status');
+  const metaEl = document.getElementById('live-meta');
+  sec.hidden = false;
+  pane.textContent = '';
+  ridEl.textContent = runId;
+  statusEl.textContent = 'connecting…';
+  statusEl.className = 'chip';
+  metaEl.textContent = '';
+  if (currentES) try { currentES.close(); } catch (_) {}
+  const es = new EventSource(`/api/runs/${runId}/stream`);
+  currentES = es;
+
+  es.addEventListener('status', (e) => {
+    try {
+      const d = JSON.parse(e.data);
+      statusEl.textContent = d.status || '—';
+      statusEl.className = 'chip status-' + (d.status || 'unknown').toLowerCase();
+      const bits = [];
+      if (d.role) bits.push('role=' + d.role);
+      if (d.adapter) bits.push('adapter=' + d.adapter);
+      if (d.pid) bits.push('pid=' + d.pid);
+      if (d.exit_code !== null && d.exit_code !== undefined) bits.push('exit=' + d.exit_code);
+      metaEl.textContent = bits.join(' · ');
+    } catch (_) {}
+  });
+  es.addEventListener('log', (e) => {
+    try {
+      const d = JSON.parse(e.data);
+      const prefix = d.stream === 'stderr' ? '! ' : d.stream === 'meta' ? '· ' : '  ';
+      pane.textContent += prefix + d.line + '\n';
+      pane.scrollTop = pane.scrollHeight;
+    } catch (_) {}
+  });
+  es.addEventListener('end', () => {
+    es.close();
+    currentES = null;
+    toast('run finished — reloading task');
+    // Drop ?watch=<rid> before reload so we don't auto-resubscribe to
+    // the same finished run on the next page load (that loops).
+    const u = new URL(location.href);
+    u.searchParams.delete('watch');
+    setTimeout(() => { location.href = u.toString(); }, 800);
+  });
+  es.onerror = () => {
+    statusEl.textContent = 'stream error';
+    statusEl.className = 'chip chip-blocked';
+  };
+}
+
+function closeLive() {
+  if (currentES) { try { currentES.close(); } catch (_) {} currentES = null; }
+  document.getElementById('live-run').hidden = true;
+  currentRunId = null;
+  // Drop the watch param.
+  const u = new URL(location.href);
+  u.searchParams.delete('watch');
+  history.replaceState({}, '', u);
+}
+
+async function cancelRun() {
+  if (!currentRunId) return;
+  const res = await postJSON(`/api/runs/${currentRunId}/cancel`, {});
+  toast(res.json && res.json.ok ? `cancel signal sent` : `cancel failed`, !!(res.json && res.json.ok));
+}
+
+if (currentRunId) openLive(currentRunId);
+</script>
 {% endblock %}
