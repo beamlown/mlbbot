@@ -1,5 +1,5 @@
 # CLAUDE_STATUS.md — Manager Status Snapshot
-## Last reconciled: 2026-04-12 — hydration-gap fix reviewed. Pitcher/bullpen hydration completion is now the active data-foundation task.
+## Last reconciled: 2026-04-12 — pitcher/bullpen hydration build reviewed. Chunked/resumable hydration completion is now the active data-foundation task.
 
 ---
 
@@ -24,19 +24,19 @@
 ---
 
 ## Review routing update
-MLB_BACKFILL_HYDRATION_GAP_FIX_001 received CHANGES REQUESTED.
+MLB_PITCHER_BULLPEN_HYDRATION_BUILD_001 received CHANGES REQUESTED.
 
 Why:
-- manifest truthfulness improved
-- completed-season boundary corrected to 2026-03-25 through 2026-04-11
-- representative MLB Stats API check proved pitcher data is available upstream
-- but pitcher_game_logs still not populated
-- bullpen_context still not populated
+- bounded pitcher/bullpen hydration was attempted
+- process was terminated with SIGKILL before completion
+- no trustworthy final canonical counts can be claimed
+- updater must remain queued
 
 Result:
-- this is now a remaining implementation gap, not a source-unavailable gap
-- do not promote the daily updater yet
-- run one narrow completion task for pitcher/bullpen hydration
+- switch to a chunked/resumable hydration completion task
+- keep the same canonical foundation target
+- keep the same completed-season-to-date boundary
+- do not promote the updater yet
 
 ---
 
@@ -44,7 +44,7 @@ Result:
 
 | task_id | type | purpose |
 |---------|------|---------|
-| MLB_PITCHER_BULLPEN_HYDRATION_BUILD_001 | code-writing task | Populate pitcher_game_logs and bullpen_context in the canonical 2026 MLB foundation while preserving the corrected completed-season boundary. |
+| MLB_PITCHER_BULLPEN_HYDRATION_CHUNKED_BUILD_001 | code-writing task | Complete pitcher_game_logs and bullpen_context hydration using a chunked/resumable approach that can finish reliably and report trustworthy counts. |
 
 ---
 
@@ -59,7 +59,7 @@ Result:
 
 ## Rebuild-track guidance
 1. Keep the canonical storage/schema target unchanged
-2. Complete pitcher and bullpen hydration in the backfill foundation
+2. Complete pitcher and bullpen hydration with a chunk-safe path
 3. Only then promote the daily updater
 4. Do not move into model implementation until the data foundation is complete and accepted
 
@@ -70,4 +70,4 @@ Result:
 - No speculative feature-engineering tasks
 - No model implementation before the data foundation is complete
 - No live-strategy tuning from contaminated history
-- No updater activation before pitcher/bullpen hydration is complete
+- No updater activation before trustworthy pitcher/bullpen hydration counts exist

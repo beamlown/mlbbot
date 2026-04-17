@@ -2,7 +2,7 @@
   "load_type": "backfill",
   "season": 2026,
   "source_api": "MLB Stats API",
-  "run_ts": "2026-04-12T16:42:27.319049+00:00",
+  "run_ts": "2026-04-12T17:53:28.875573+00:00",
   "status": "success",
   "date_window": {
     "start": "2026-03-25",
@@ -21,5 +21,29 @@
     "normalized_pitcher_game_logs": 1931,
     "normalized_game_state_features": 3984
   },
-  "source_unavailable": []
+  "source_unavailable": [],
+  "chunked_hydration": {
+    "enabled": true,
+    "progress_artifact": "C:\\Users\\johnny\\Desktop\\mlb_model\\data\\foundation\\mlb_statsapi\\season=2026\\metadata\\pitcher_bullpen_hydration_progress_20260412.json",
+    "processed_dates": [
+      "2026-03-25",
+      "2026-03-26",
+      "2026-03-27",
+      "2026-03-28",
+      "2026-03-29",
+      "2026-03-30",
+      "2026-03-31",
+      "2026-04-01",
+      "2026-04-02",
+      "2026-04-03",
+      "2026-04-04",
+      "2026-04-05",
+      "2026-04-06",
+      "2026-04-07",
+      "2026-04-08",
+      "2026-04-09",
+      "2026-04-10",
+      "2026-04-11"
+    ]
+  }
 }

@@ -1,5 +1,5 @@
 # CLAUDE_TASK_BOARD.md — Manager Task Board
-## Last updated: 2026-04-12 — hydration-gap review routed. MLB_BACKFILL_HYDRATION_GAP_FIX_001 received CHANGES REQUESTED. MLB_PITCHER_BULLPEN_HYDRATION_BUILD_001 is ACTIVE. MLB_DAILY_PREV_DAY_UPDATER_BUILD_001 stays QUEUED. Paper-only / observation mode remains in force.
+## Last updated: 2026-04-12 — pitcher/bullpen hydration review routed. MLB_PITCHER_BULLPEN_HYDRATION_BUILD_001 received CHANGES REQUESTED. MLB_PITCHER_BULLPEN_HYDRATION_CHUNKED_BUILD_001 is ACTIVE. MLB_DAILY_PREV_DAY_UPDATER_BUILD_001 stays QUEUED. Paper-only / observation mode remains in force.
 
 ---
 
@@ -17,7 +17,7 @@
 
 | task_id | title | priority | subsystem | allowed_files | notes |
 |---------|-------|----------|-----------|---------------|-------|
-| MLB_PITCHER_BULLPEN_HYDRATION_BUILD_001 | Populate pitcher_game_logs and bullpen_context in the canonical 2026 MLB foundation | HIGH | mlb_model pitcher/bullpen hydration completion | mlb_model/scripts/**, canonical foundation paths, MLB_STATS_FOUNDATION_SPEC_001.md | Narrow completion task. Paper-only / observation mode. |
+| MLB_PITCHER_BULLPEN_HYDRATION_CHUNKED_BUILD_001 | Complete pitcher and bullpen hydration with a chunked/resumable build path | HIGH | mlb_model pitcher/bullpen hydration completion | mlb_model/scripts/**, canonical foundation paths, MLB_STATS_FOUNDATION_SPEC_001.md | Narrow chunk-safe completion task. Paper-only / observation mode. |
 
 ---
 

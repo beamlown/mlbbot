@@ -1,0 +1,49 @@
+{
+  "task_id": "MLB_PITCHER_BULLPEN_HYDRATION_CHUNKED_BUILD_001",
+  "title": "Complete pitcher and bullpen hydration with a chunked/resumable build path",
+  "priority": "HIGH",
+  "type": "code-writing task",
+  "track": "Track B — data foundation",
+  "issued": "2026-04-12",
+  "subsystem": "mlb_model pitcher/bullpen hydration completion",
+  "status": "ACTIVE",
+  "objective": "Populate pitcher_game_logs and bullpen_context in the canonical 2026 foundation using a chunked or resumable approach that avoids full-run termination, preserves the approved foundation spec, and reports final trustworthy counts.",
+  "paper_only_note": "This remains paper-only / observation-mode rebuild work. No model implementation or strategy change is authorized from this task.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\scripts\\**",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\data\\foundation\\mlb_statsapi\\season=2026\\**",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\MLB_STATS_FOUNDATION_SPEC_001.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_PITCHER_BULLPEN_HYDRATION_BUILD_001.json"
+  ],
+  "forbidden_actions": [
+    "Start the daily updater",
+    "Patch recommendation or model logic",
+    "Redesign the storage spec",
+    "Widen into unrelated data/model tasks",
+    "Broad repo sweep outside the hydration path"
+  ],
+  "required_work": [
+    "1. Implement a chunked or resumable pitcher/bullpen hydration path within the canonical 2026 foundation.",
+    "2. Preserve the corrected completed-season-to-date boundary.",
+    "3. Populate trustworthy pitcher_game_logs counts.",
+    "4. Populate trustworthy bullpen_context counts.",
+    "5. Update manifest/status/counts so they reflect final trustworthy completion.",
+    "6. If true source-unavailable gaps remain, record them explicitly rather than silently omitting them."
+  ],
+  "acceptance_criteria": [
+    "pitcher_game_logs is populated with trustworthy final counts",
+    "bullpen_context is populated with trustworthy final counts",
+    "build is chunk-safe or resumable",
+    "coverage boundary remains completed season-to-date only",
+    "manifest truthfully reflects final counts/status",
+    "No unrelated files modified"
+  ],
+  "verification": [
+    "Show final pitcher_game_logs count",
+    "Show final bullpen_context count",
+    "Show completed-season boundary",
+    "State how chunking/resume safety works",
+    "State any remaining explicit source-unavailable cases"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_PITCHER_BULLPEN_HYDRATION_CHUNKED_BUILD_001.json"
+}
