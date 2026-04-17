@@ -22,7 +22,8 @@ from typing import Callable
 
 from ..config import SETTINGS
 from ..db import get_conn
-from .base import LogEvent, RunRequest
+from ..roles import ROLE_INFO
+from .base import LogEvent, RunRequest, passthrough_transform
 
 
 # Sentinel pushed into subscriber queues when the run is finished.
@@ -31,6 +32,45 @@ _END_SENTINEL = object()
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _pid_alive(pid: int | None) -> bool:
+    """Return True iff a process with this PID is currently alive.
+
+    Used by the startup reaper to tell a truly-running row from a
+    crash-orphaned one. The parent dispatcher that recorded the row
+    is gone (this process is a fresh start), so we can't inspect a
+    Popen — we have to ask the OS.
+    """
+    if not pid or pid <= 0:
+        return False
+    import sys
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            from ctypes import wintypes
+        except Exception:
+            return True  # can't check → assume alive (safer than false-reap)
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        STILL_ACTIVE = 259
+        k = ctypes.windll.kernel32
+        h = k.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, int(pid))
+        if not h:
+            return False
+        try:
+            code = wintypes.DWORD()
+            ok = k.GetExitCodeProcess(h, ctypes.byref(code))
+            if not ok:
+                return False
+            return code.value == STILL_ACTIVE
+        finally:
+            k.CloseHandle(h)
+    else:
+        try:
+            os.kill(int(pid), 0)
+            return True
+        except (ProcessLookupError, OSError):
+            return False
 
 
 @dataclass
@@ -45,17 +85,25 @@ class _ActiveRun:
     started_at: str
     last_lines: list[str]        # rolling buffer (last N stdout lines) for result parsing
     lock: threading.Lock
+    # Transform each raw stdout line into zero-or-more display lines.
+    # stderr is always passthrough (plain-text warnings from the child).
+    stdout_transform: Callable[[str], list[str]] = passthrough_transform
 
 
 class RunDispatcher:
     """Singleton-per-process dispatcher. Holds live Popens + SSE subscribers."""
 
     LAST_LINES_BUFFER = 400
-    # Hard cap on concurrently-running worker/reviewer subprocesses across
-    # all roles. Protects the workstation from runaway fan-out (e.g. an
-    # operator fires off a dozen tasks or the auto-retry loop chains).
-    # Override via the `CONTROL_PLANE_MAX_CONCURRENT` env var.
-    MAX_CONCURRENT = int(os.environ.get("CONTROL_PLANE_MAX_CONCURRENT", "4"))
+    # Per-family concurrency caps. Each claude subprocess holds ~300–500 MB
+    # of RAM, so the limits are RAM-first rather than CPU-first. One slow
+    # Opus review must not starve three Haiku workers; the caps are per
+    # family so fan-out is fair across model tiers. Overrides:
+    #   CONTROL_PLANE_CAP_OPUS, _SONNET, _HAIKU
+    FAMILY_CAPS: dict[str, int] = {
+        "opus":   int(os.environ.get("CONTROL_PLANE_CAP_OPUS",   "1")),
+        "sonnet": int(os.environ.get("CONTROL_PLANE_CAP_SONNET", "2")),
+        "haiku":  int(os.environ.get("CONTROL_PLANE_CAP_HAIKU",  "3")),
+    }
 
     def __init__(self) -> None:
         self._runs: dict[str, _ActiveRun] = {}
@@ -66,6 +114,48 @@ class RunDispatcher:
         with self._lock:
             return len(self._runs)
 
+    def active_by_family(self) -> dict[str, int]:
+        """Count currently-running subprocesses grouped by model family."""
+        counts: dict[str, int] = {f: 0 for f in self.FAMILY_CAPS}
+        with self._lock:
+            for run in self._runs.values():
+                info = ROLE_INFO.get(run.request.role)
+                fam = info.family if info else None
+                if fam in counts:
+                    counts[fam] += 1
+        return counts
+
+    def reap_zombies(self) -> int:
+        """Clean up runs whose PID is gone but whose DB row still says running.
+
+        Called once at startup: when the server crashed or was restarted
+        while a subprocess was live, the waiter thread never finalized the
+        row. Without sweeping, those rows accumulate and the board shows
+        ghost "running" tasks forever.
+        """
+        conn = get_conn()
+        rows = conn.execute(
+            "SELECT run_id, pid FROM runs WHERE status='running'"
+        ).fetchall()
+        reaped = 0
+        now = _now_iso()
+        for r in rows:
+            pid = r["pid"] if hasattr(r, "keys") else r[1]
+            rid = r["run_id"] if hasattr(r, "keys") else r[0]
+            if _pid_alive(pid):
+                continue
+            conn.execute(
+                "UPDATE runs SET status='failed', finished_at=?, exit_code=-1, "
+                "result_summary=? WHERE run_id=? AND status='running'",
+                (now, "reaper: pid gone", rid),
+            )
+            conn.execute(
+                "INSERT INTO run_logs(run_id, ts, stream, line) VALUES (?,?,?,?)",
+                (rid, now, "meta", f"reaper: pid {pid} gone at startup"),
+            )
+            reaped += 1
+        return reaped
+
     # ------------------------------------------------------------------ lifecycle
 
     def set_finalize(self, cb: Callable[[_ActiveRun, int], None]) -> None:
@@ -75,7 +165,8 @@ class RunDispatcher:
     # ------------------------------------------------------------------ launch
 
     def launch(self, req: RunRequest, argv: list[str], prompt_text: str,
-               cwd: Path | None = None) -> dict:
+               cwd: Path | None = None,
+               stdout_transform: Callable[[str], list[str]] | None = None) -> dict:
         """Start the subprocess and the pump threads. Returns DB row dict."""
         conn = get_conn()
         now = _now_iso()
@@ -84,15 +175,21 @@ class RunDispatcher:
         stdout_path = runs_dir / f"{req.run_id}.stdout.log"
         stderr_path = runs_dir / f"{req.run_id}.stderr.log"
 
-        # Hard concurrency cap. Record the run row so the UI can still show
-        # it in history, then mark it failed with a clear message instead
-        # of spawning another subprocess.
+        # Per-family concurrency cap. Record the run row so the UI can still
+        # show it in history, then mark it failed with a structured prefix
+        # (`cap_hit:`) that routes/runs.py turns into a 429 response.
+        info = ROLE_INFO.get(req.role)
+        family = info.family if info else None
+        cap = self.FAMILY_CAPS.get(family, 0) if family else 0
         with self._lock:
-            active = len(self._runs)
-        if active >= self.MAX_CONCURRENT:
-            msg = (f"concurrency_limit_reached: {active}/{self.MAX_CONCURRENT} "
-                   f"runs already active. Wait for one to finish or raise "
-                   f"CONTROL_PLANE_MAX_CONCURRENT.")
+            active_family = sum(
+                1 for r in self._runs.values()
+                if ROLE_INFO.get(r.request.role)
+                and ROLE_INFO[r.request.role].family == family
+            ) if family else 0
+        if family and active_family >= cap:
+            msg = (f"cap_hit: family={family} active={active_family} cap={cap} "
+                   f"(override with CONTROL_PLANE_CAP_{family.upper()})")
             conn.execute(
                 """INSERT INTO runs
                    (run_id, task_id, role, adapter, status, cmdline, prompt_text,
@@ -182,6 +279,7 @@ class RunDispatcher:
             started_at=started_at,
             last_lines=[],
             lock=threading.Lock(),
+            stdout_transform=stdout_transform or passthrough_transform,
         )
 
         t_out = threading.Thread(target=self._pump, args=(active, "stdout"), daemon=True)
@@ -265,18 +363,27 @@ class RunDispatcher:
         disk = run.stdout_path if stream == "stdout" else run.stderr_path
         if pipe is None:
             return
+        # stdout goes through the adapter's transformer (e.g. JSON events →
+        # human lines). stderr is always passthrough — it's plain text from
+        # the child and must never be fed to a JSON parser.
+        transform = run.stdout_transform if stream == "stdout" else passthrough_transform
         try:
             with disk.open("a", encoding="utf-8") as fh:
                 for raw in pipe:
                     line = raw.rstrip("\r\n")
-                    fh.write(line + "\n")
-                    fh.flush()
-                    self._emit(run.run_id, stream, line)
-                    if stream == "stdout":
-                        with run.lock:
-                            run.last_lines.append(line)
-                            if len(run.last_lines) > self.LAST_LINES_BUFFER:
-                                del run.last_lines[: len(run.last_lines) - self.LAST_LINES_BUFFER]
+                    try:
+                        display_lines = transform(line)
+                    except Exception as e:
+                        display_lines = [line, f"[transform-error] {e!r}"]
+                    for out in display_lines:
+                        fh.write(out + "\n")
+                        fh.flush()
+                        self._emit(run.run_id, stream, out)
+                        if stream == "stdout":
+                            with run.lock:
+                                run.last_lines.append(out)
+                                if len(run.last_lines) > self.LAST_LINES_BUFFER:
+                                    del run.last_lines[: len(run.last_lines) - self.LAST_LINES_BUFFER]
         except Exception as e:
             self._emit(run.run_id, "meta", f"[pump-{stream}-error] {e!r}")
 

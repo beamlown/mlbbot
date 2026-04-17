@@ -29,6 +29,18 @@ bp = Blueprint("runs", __name__)
 # Wire up dispatcher callbacks once at import.
 DISPATCHER.set_finalize(finalize_run)
 
+# Startup reaper: any `runs` row still marked `running` whose PID is no
+# longer alive is a crash-orphan — mark it failed so the board doesn't
+# show ghost running tasks across server restarts.
+try:
+    _reaped = DISPATCHER.reap_zombies()
+    if _reaped:
+        import logging
+        logging.getLogger(__name__).info("startup reaper: %d zombie runs swept", _reaped)
+except Exception:
+    # Never fail module import because the reaper hiccupped.
+    pass
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -149,16 +161,28 @@ def api_launch(task_id: str):
     prompt_text = adapter.build_prompt(req)
     argv = adapter.build_argv(req, prompt_text)
 
-    row = DISPATCHER.launch(req, argv, prompt_text)
+    # If the adapter offers structured-stream translation (e.g. stream-json
+    # events → human lines), hand it to the dispatcher so run_logs + SSE
+    # + the on-disk transcript all see the readable form.
+    stdout_transform = getattr(adapter, "transform_stdout_line", None)
+    row = DISPATCHER.launch(req, argv, prompt_text,
+                            stdout_transform=stdout_transform)
 
-    # If the adapter couldn't even spawn (binary missing, perm denied, etc.)
-    # the dispatcher already marked the run row failed and wrote a stderr
-    # log line. Return that to the client so the UI shows a toast instead
-    # of redirecting to ?watch=<rid> and looping.
+    # Two distinct failure paths land as status=failed with a structured
+    # prefix in result_summary:
+    #   cap_hit:    family concurrency cap reached → 429 (retryable)
+    #   spawn_error / other → 500 (likely misconfiguration)
     if (row or {}).get("status") == "failed":
+        summary = (row.get("result_summary") or "")
+        if summary.startswith("cap_hit:"):
+            return jsonify({
+                "ok": False, "error": "cap_hit",
+                "detail": summary[:500],
+                "run": row, "adapter": adapter_name,
+            }), 429
         return jsonify({
             "ok": False, "error": "spawn_failed",
-            "detail": (row.get("result_summary") or "")[:500],
+            "detail": summary[:500],
             "run": row, "adapter": adapter_name,
         }), 500
 
