@@ -231,7 +231,7 @@ class RunDispatcher:
                 cwd=str(cwd or SETTINGS.repo_root),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                stdin=subprocess.DEVNULL,
+                stdin=subprocess.PIPE,
                 text=True,
                 bufsize=1,       # line-buffered
                 env=env,
@@ -260,6 +260,28 @@ class RunDispatcher:
                 (req.run_id, now, "meta", hint),
             )
             return self._row(req.run_id)
+
+        # Deliver the prompt via stdin. Windows cmd.exe caps argv at 8191
+        # chars; once the HANDOFF body is inlined, a positional prompt
+        # truncates and the child receives only the role framing. stdin
+        # has no such limit. We write from a daemon thread so a very large
+        # prompt hitting a full pipe buffer never stalls this launch path.
+        def _feed_stdin(p: subprocess.Popen, text: str, run_id: str) -> None:
+            try:
+                if p.stdin is not None:
+                    p.stdin.write(text)
+            except Exception as e:
+                self._emit(run_id, "meta", f"[stdin-write-error] {e!r}")
+            finally:
+                try:
+                    if p.stdin is not None:
+                        p.stdin.close()
+                except Exception:
+                    pass
+        threading.Thread(
+            target=_feed_stdin, args=(popen, prompt_text, req.run_id),
+            daemon=True, name=f"stdin-{req.run_id}",
+        ).start()
 
         started_at = _now_iso()
         conn.execute(

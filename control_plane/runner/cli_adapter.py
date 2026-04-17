@@ -152,13 +152,17 @@ class ClaudeCliAdapter:
         # prompt the operator for approval and returns a plain-text "please
         # enable permissions" message instead of doing the work.
         # `stream-json` requires `--verbose` when combined with `--print`.
+        # Prompt is delivered via stdin (see dispatcher.launch): cmd.exe on
+        # Windows caps its command line at 8191 chars, so a positional prompt
+        # gets silently truncated once the inlined HANDOFF body pushes past
+        # that limit. stdin has no such cap; claude --print reads from it
+        # when no positional prompt is given.
         args = [
             "--print",
             "--permission-mode", "bypassPermissions",
             "--output-format", "stream-json",
             "--verbose",
             "--model", model,
-            prompt_text,
         ]
         return wrap_for_platform(binpath, args)
 
