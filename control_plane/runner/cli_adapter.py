@@ -127,7 +127,21 @@ def transform_stream_line(raw: str) -> list[str]:
         err = "ok" if not ev.get("is_error") else f"err({ev.get('api_error_status')})"
         dur = ev.get("duration_ms")
         turns = ev.get("num_turns")
-        return [f"[done] {err} duration={dur}ms turns={turns}"]
+        out_lines = [f"[done] {err} duration={dur}ms turns={turns}"]
+        # Surface token + cost so patch-review audits can see real spend.
+        usage = ev.get("usage") or {}
+        in_tok = usage.get("input_tokens")
+        out_tok = usage.get("output_tokens")
+        cache_r = usage.get("cache_read_input_tokens")
+        cost = ev.get("total_cost_usd")
+        if any(v is not None for v in (in_tok, out_tok, cost)):
+            parts = []
+            if in_tok  is not None: parts.append(f"input={in_tok}")
+            if out_tok is not None: parts.append(f"output={out_tok}")
+            if cache_r is not None: parts.append(f"cache_read={cache_r}")
+            if cost    is not None: parts.append(f"cost_usd={cost:.4f}")
+            out_lines.append("[usage] " + " ".join(parts))
+        return out_lines
     # Unknown event — emit a compact tag rather than the full JSON.
     return [f"[{et or 'event'}]"]
 
