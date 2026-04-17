@@ -175,6 +175,29 @@ CREATE TABLE IF NOT EXISTS patches (
   shipped_at  TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_patches_status ON patches(status);
+
+-- patch_reviews: orchestrator state for a per-task-sequential Opus review
+-- of a whole patch. One row per (patch_id) — status advances pending →
+-- in_progress → done|failed. `current_index` points at the next step to
+-- launch; `summaries_json` is an array of TL;DR bullets carried forward
+-- into each subsequent step's prompt; `run_ids_json` records the Opus
+-- run per step for audit; `failed_steps_json` marks steps skipped due to
+-- non-zero exit so synthesis can flag them.
+CREATE TABLE IF NOT EXISTS patch_reviews (
+  patch_id          TEXT PRIMARY KEY,
+  status            TEXT NOT NULL DEFAULT 'pending',
+  current_index     INTEGER NOT NULL DEFAULT 0,
+  total_steps       INTEGER NOT NULL DEFAULT 0,
+  summaries_json    TEXT NOT NULL DEFAULT '[]',
+  run_ids_json      TEXT NOT NULL DEFAULT '[]',
+  failed_steps_json TEXT NOT NULL DEFAULT '[]',
+  synthesis_run_id  TEXT,
+  final_decision    TEXT,
+  started_at        TEXT NOT NULL,
+  finished_at       TEXT,
+  FOREIGN KEY (patch_id) REFERENCES patches(patch_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_patch_reviews_status ON patch_reviews(status);
 """
 
 
@@ -214,6 +237,35 @@ _DEFAULT_AGENT_PROFILES = [
         "tagline": "The Oracle — deep read, sharp eyes, surfaces what others missed.",
         "prompt_extra": None,
         "allowed_states": '["DONE","AUDIT_QUEUE","AWAITING_REVIEW"]',
+    },
+    {
+        # Sole Opus gate before ship. Launched from the patch detail view
+        # via POST /api/patches/<pid>/review; not attached to any task lane.
+        "profile_id": "opus_patch_reviewer",
+        "display": "Opus · Patch",
+        "role": "OPUS_PATCH_REVIEWER",
+        "adapter": "claude_cli",
+        "model": "claude-opus-4-7",
+        "color": "#fb7185",
+        "icon": "📜",
+        "tagline": "The Magistrate — reads the whole patch, one task at a time, then renders the verdict.",
+        "prompt_extra": None,
+        "allowed_states": "[]",
+    },
+    {
+        # Cheap semantic gate auto-launched after a worker RESULT passes the
+        # deterministic structural check. Not user-selectable in the task
+        # launch dropdown; the dispatcher spawns it directly.
+        "profile_id": "sonnet_triage",
+        "display": "Sonnet · Triage",
+        "role": "SONNET_TRIAGE",
+        "adapter": "claude_cli",
+        "model": "claude-sonnet-4-6",
+        "color": "#34d399",
+        "icon": "🔎",
+        "tagline": "The Gatekeeper — one question, one answer: did the worker do what was asked?",
+        "prompt_extra": None,
+        "allowed_states": "[]",
     },
 ]
 
@@ -272,6 +324,17 @@ def init_db() -> None:
     _add_column_if_missing(conn, "agent_profiles", "tagline", "TEXT")
     # Patch bundling — DONE tasks stack into a pending patch, shipped on relaunch.
     _add_column_if_missing(conn, "tasks", "patch_id", "TEXT")
+    # Patch-review ordering (manual reorder from patch detail UI).
+    _add_column_if_missing(conn, "tasks", "patch_order", "INTEGER NOT NULL DEFAULT 0")
+    # "Why stuck" signal + dependency-based parking.
+    _add_column_if_missing(conn, "tasks", "blocked_on", "TEXT")
+    _add_column_if_missing(conn, "tasks", "block_reason", "TEXT")
+    _add_column_if_missing(conn, "tasks", "blocked_at", "TEXT")
+    # JSON-encoded meta tagging a run as part of a patch-review step.
+    # Shape: {"patch_id": "PATCH_X", "step": 3, "total": 7} for a per-task
+    # step, or {"patch_id": "PATCH_X", "synthesis": true} for the final.
+    # capture.py reads this to route the finalize hook to the orchestrator.
+    _add_column_if_missing(conn, "runs", "patch_review_meta", "TEXT")
     _seed_agent_profiles()
 
 

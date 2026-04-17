@@ -48,11 +48,22 @@ def _next_version(prev: str | None) -> str:
 
 
 def _latest_shipped_version() -> str | None:
-    row = get_conn().execute(
+    """Return the latest shipped version that actually parses as semver.
+
+    A non-semver version (e.g. smoke-test artifacts like 'v0.0.0-smoke')
+    would bounce _next_version back to its default 'v0.1.0' — which then
+    collides with the pre-existing v0.1.0 row on INSERT. Filter to valid
+    semver so the version cursor is monotonic regardless of what junk
+    shipped on the side.
+    """
+    rows = get_conn().execute(
         "SELECT version FROM patches WHERE status='SHIPPED' "
-        "ORDER BY shipped_at DESC LIMIT 1"
-    ).fetchone()
-    return row["version"] if row else None
+        "ORDER BY shipped_at DESC"
+    ).fetchall()
+    for r in rows:
+        if _SEMVER_RX.match((r["version"] or "").strip()):
+            return r["version"]
+    return None
 
 
 def ensure_pending_patch() -> dict:
@@ -207,9 +218,14 @@ def get_patch(patch_id: str) -> dict | None:
 
 
 def tasks_in_patch(patch_id: str) -> list[dict]:
+    # Sort by review order (manual drag from patch detail) first, then
+    # recency. block_reason/blocked_on surface on the patch_detail
+    # template so the operator sees why a task can't be reviewed yet.
     rows = get_conn().execute(
-        "SELECT task_id, title, status, priority, subsystem, updated_at "
-        "FROM tasks WHERE patch_id=? ORDER BY updated_at DESC",
+        "SELECT task_id, title, status, priority, subsystem, updated_at, "
+        "patch_order, blocked_on, block_reason, blocked_at "
+        "FROM tasks WHERE patch_id=? "
+        "ORDER BY patch_order ASC, updated_at DESC",
         (patch_id,),
     ).fetchall()
     return [dict(r) for r in rows]

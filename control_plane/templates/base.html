@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <title>{% block title %}Control Plane · BOT_BRIDGE{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;600&display=swap">
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
 <body>
@@ -47,9 +50,13 @@
 <section class="patch-banner {% if PENDING_PATCH.task_count > 0 %}patch-banner-ready{% else %}patch-banner-empty{% endif %}">
   <div class="patch-banner-left">
     <span class="patch-banner-label">Pending release</span>
-    <a class="patch-banner-version" href="{{ url_for('patches.patch_detail', patch_id=PENDING_PATCH.patch_id) }}">
-      {{ PENDING_PATCH.version }}
-    </a>
+    {% if PENDING_PATCH.patch_id %}
+      <a class="patch-banner-version" href="{{ url_for('patches.patch_detail', patch_id=PENDING_PATCH.patch_id) }}">
+        {{ PENDING_PATCH.version }}
+      </a>
+    {% else %}
+      <span class="patch-banner-version">{{ PENDING_PATCH.version }}</span>
+    {% endif %}
     <span class="patch-banner-count">
       {{ PENDING_PATCH.task_count }} task{{ '' if PENDING_PATCH.task_count == 1 else 's' }} awaiting relaunch
     </span>
@@ -59,7 +66,7 @@
   </div>
   <div class="patch-banner-right">
     <a class="btn btn-xs btn-ghost" href="{{ url_for('patches.patches_index') }}">Release queue →</a>
-    {% if PENDING_PATCH.task_count > 0 %}
+    {% if PENDING_PATCH.task_count > 0 and PENDING_PATCH.patch_id %}
       <button class="btn btn-xs btn-accent" onclick="shipPatch(this)" title="Freeze this patch and start a new one">Ship {{ PENDING_PATCH.version }}</button>
     {% endif %}
   </div>
@@ -77,6 +84,17 @@
 </footer>
 
 <div id="toast-root"></div>
+
+<div id="confirm-modal" class="confirm-modal" role="dialog" aria-modal="true">
+  <div class="confirm-modal-body">
+    <h4 id="confirm-title">Confirm</h4>
+    <p id="confirm-body">Are you sure?</p>
+    <div class="confirm-modal-actions">
+      <button class="btn btn-xs" id="confirm-cancel">Cancel</button>
+      <button class="btn btn-xs btn-danger" id="confirm-ok">Confirm</button>
+    </div>
+  </div>
+</div>
 
 <script>
 function toast(msg, ok=true) {
@@ -98,6 +116,79 @@ async function postJSON(url, body) {
   let j = {};
   try { j = await r.json(); } catch (_) {}
   return {ok: r.ok, status: r.status, json: j};
+}
+
+async function deleteJSON(url) {
+  const r = await fetch(url, {method: 'DELETE'});
+  let j = {};
+  try { j = await r.json(); } catch (_) {}
+  return {ok: r.ok, status: r.status, json: j};
+}
+
+/* Themed confirm dialog: returns a Promise<boolean>. */
+function confirmDialog(title, body) {
+  return new Promise((resolve) => {
+    const m = document.getElementById('confirm-modal');
+    document.getElementById('confirm-title').textContent = title || 'Confirm';
+    document.getElementById('confirm-body').textContent = body || 'Are you sure?';
+    const ok = document.getElementById('confirm-ok');
+    const cancel = document.getElementById('confirm-cancel');
+    const finish = (val) => {
+      m.classList.remove('open');
+      ok.removeEventListener('click', onOk);
+      cancel.removeEventListener('click', onCancel);
+      resolve(val);
+    };
+    const onOk = () => finish(true);
+    const onCancel = () => finish(false);
+    ok.addEventListener('click', onOk);
+    cancel.addEventListener('click', onCancel);
+    m.classList.add('open');
+  });
+}
+
+/* Delete a task with confirmation. Callable from any page. */
+async function deleteTask(taskId, opts) {
+  const ok = await confirmDialog(
+    'Delete ' + taskId + '?',
+    'This removes the task and its artifacts/reviews. History of shipped patches is preserved. This cannot be undone.',
+  );
+  if (!ok) return;
+  const res = await deleteJSON('/api/tasks/' + taskId);
+  if (res.ok && res.json.ok) {
+    toast('deleted ' + taskId);
+    if (opts && opts.onDelete) opts.onDelete();
+    else setTimeout(() => location.reload(), 500);
+  } else {
+    const j = res.json || {};
+    toast('delete failed: ' + (j.error || res.status) + (j.detail ? ' — ' + j.detail : ''), false);
+  }
+}
+
+/* Park / unpark a task. */
+async function parkTask(taskId, opts) {
+  opts = opts || {};
+  const body = {};
+  if (opts.blocked_on) body.blocked_on = opts.blocked_on;
+  if (opts.reason)     body.reason = opts.reason;
+  const res = await postJSON('/api/tasks/' + taskId + '/park', body);
+  if (res.ok && res.json.ok) {
+    toast(taskId + ' parked');
+    if (opts.onDone) opts.onDone();
+    else setTimeout(() => location.reload(), 400);
+  } else {
+    toast('park failed: ' + (res.json.error || res.status), false);
+  }
+}
+async function unparkTask(taskId, opts) {
+  const res = await deleteJSON('/api/tasks/' + taskId + '/park');
+  if (res.ok && res.json.ok) {
+    toast(taskId + ' unparked');
+    if (opts && opts.onDone) opts.onDone();
+    else setTimeout(() => location.reload(), 400);
+  } else {
+    toast('unpark failed: ' + (res.json.error || res.status), false);
+  }
 }
 
 async function patchJSON(url, body) {

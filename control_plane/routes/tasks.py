@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 
 from flask import Blueprint, abort, jsonify, render_template, request
 
@@ -9,6 +10,10 @@ from ..db import get_conn
 from ..models import LANES, VALID_PRIORITIES, VALID_STATUSES
 from ..bridge.importer import import_bot_bridge
 from ..workflow import WORKFLOW_LANES, LANE_DISPLAY, derive_state
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 bp = Blueprint("tasks", __name__)
@@ -296,3 +301,92 @@ def api_import_status():
     if row is None:
         return jsonify({"ran": False})
     return jsonify({"ran": True, **dict(row)})
+
+
+# ---------------------------------------------------------------------------
+# Park / unblock — "why stuck" signal + optional dependency parking.
+#
+# block_reason: free text, "why the task is currently stuck". Populated by
+#   capture.py when a worker/reviewer/triage/structural path fails. Shown
+#   on the board card so the operator stops blind-retrying.
+# blocked_on:   optional task_id of the dependency. When that task reaches
+#   DONE, the auto-unblock hook clears both fields.
+# Launch guard: runs.py refuses to start a run on a task with EITHER field
+#   set, unless force=true.
+# ---------------------------------------------------------------------------
+
+@bp.route("/api/tasks/<task_id>/park", methods=["POST"])
+def api_task_park(task_id: str):
+    body = request.get_json(silent=True) or {}
+    blocked_on = (body.get("blocked_on") or "").strip().upper() or None
+    reason = (body.get("reason") or "").strip()
+    if not blocked_on and not reason:
+        return jsonify({"ok": False, "error": "need blocked_on or reason"}), 400
+
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT task_id FROM tasks WHERE task_id=?", (task_id.upper(),),
+    ).fetchone()
+    if row is None:
+        return jsonify({"ok": False, "error": "task_not_found"}), 404
+
+    if blocked_on:
+        dep = conn.execute(
+            "SELECT task_id FROM tasks WHERE task_id=?", (blocked_on,),
+        ).fetchone()
+        if dep is None:
+            return jsonify({"ok": False, "error": "blocker_not_found",
+                            "detail": f"no such task {blocked_on}"}), 404
+        if blocked_on == task_id.upper():
+            return jsonify({"ok": False, "error": "cannot_self_block"}), 400
+
+    now = _now_iso()
+    display_reason = reason or f"parked behind {blocked_on}"
+    conn.execute(
+        "UPDATE tasks SET blocked_on=?, block_reason=?, blocked_at=?, updated_at=? "
+        "WHERE task_id=?",
+        (blocked_on, display_reason[:500], now, now, task_id.upper()),
+    )
+    return jsonify({
+        "ok": True, "task_id": task_id.upper(),
+        "blocked_on": blocked_on, "block_reason": display_reason,
+    })
+
+
+@bp.route("/api/tasks/<task_id>/park", methods=["DELETE"])
+def api_task_unpark(task_id: str):
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT task_id FROM tasks WHERE task_id=?", (task_id.upper(),),
+    ).fetchone()
+    if row is None:
+        return jsonify({"ok": False, "error": "task_not_found"}), 404
+    now = _now_iso()
+    conn.execute(
+        "UPDATE tasks SET blocked_on=NULL, block_reason=NULL, blocked_at=NULL, "
+        "updated_at=? WHERE task_id=?",
+        (now, task_id.upper()),
+    )
+    return jsonify({"ok": True, "task_id": task_id.upper()})
+
+
+# Hard delete — used by the dashboard trash button. Refuses if the task
+# has already shipped in a patch (history must remain auditable). Cascade
+# drops task_artifacts + reviews via FK ON DELETE CASCADE.
+@bp.route("/api/tasks/<task_id>", methods=["DELETE"])
+def api_task_delete(task_id: str):
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT t.task_id, t.patch_id, p.status AS patch_status "
+        "FROM tasks t LEFT JOIN patches p ON p.patch_id = t.patch_id "
+        "WHERE t.task_id=?", (task_id.upper(),),
+    ).fetchone()
+    if row is None:
+        return jsonify({"ok": False, "error": "task_not_found"}), 404
+    if row["patch_status"] == "SHIPPED":
+        return jsonify({
+            "ok": False, "error": "task_shipped",
+            "detail": f"task is part of shipped patch {row['patch_id']}; history retained",
+        }), 409
+    conn.execute("DELETE FROM tasks WHERE task_id=?", (task_id.upper(),))
+    return jsonify({"ok": True, "deleted": task_id.upper()})

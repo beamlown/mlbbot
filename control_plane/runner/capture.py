@@ -45,6 +45,7 @@ from ..bridge.task_board_md import regenerate_board_md
 
 
 _RESULT_RX = re.compile(r"^\s*RESULT_JSON:\s*(\{.*\})\s*$")
+_TRIAGE_RX = re.compile(r"^\s*TRIAGE:\s*(yes|no)\b\s*(.*)$", re.IGNORECASE)
 
 
 def _sha(b: bytes) -> str:
@@ -56,6 +57,104 @@ def _rel(p: Path) -> str:
         return str(p.relative_to(SETTINGS.repo_root)).replace("\\", "/")
     except ValueError:
         return str(p).replace("\\", "/")
+
+
+def _norm_path(p: str) -> str:
+    """Collapse a path to forward-slash form for set comparison."""
+    return (p or "").strip().replace("\\", "/").lstrip("./")
+
+
+def _set_block(task_id: str, reason: str, *, blocked_on: str | None = None) -> None:
+    """Populate the 'why stuck' signal on a task row.
+
+    `block_reason` alone means the task is stuck for a content reason
+    (structural failure, semantic triage fail, reviewer CR). `blocked_on`
+    is additionally set when a specific task_id is the dependency blocker
+    (used for auto-unblock on that dependency shipping).
+    """
+    now = _now_iso()
+    if blocked_on:
+        get_conn().execute(
+            "UPDATE tasks SET blocked_on=?, block_reason=?, blocked_at=?, updated_at=? "
+            "WHERE task_id=?",
+            (blocked_on, reason[:500], now, now, task_id),
+        )
+    else:
+        get_conn().execute(
+            "UPDATE tasks SET block_reason=?, blocked_at=?, updated_at=? WHERE task_id=?",
+            (reason[:500], now, now, task_id),
+        )
+
+
+def _clear_block(task_id: str) -> None:
+    """Clear both block signals — call when the task is unblocked or succeeds."""
+    now = _now_iso()
+    get_conn().execute(
+        "UPDATE tasks SET blocked_on=NULL, block_reason=NULL, blocked_at=NULL, "
+        "updated_at=? WHERE task_id=?",
+        (now, task_id),
+    )
+
+
+def _auto_unblock_dependents(finished_task_id: str) -> None:
+    """When a task lands DONE, clear block fields on any task parked behind it.
+
+    Only touches rows where `blocked_on` equals the finished task_id so
+    free-text `block_reason`-only rows (structural/triage failures) stay
+    stuck until their own root cause is addressed.
+    """
+    now = _now_iso()
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT task_id FROM tasks WHERE blocked_on=?", (finished_task_id,),
+    ).fetchall()
+    for r in rows:
+        tid = r["task_id"]
+        conn.execute(
+            "UPDATE tasks SET blocked_on=NULL, block_reason=NULL, blocked_at=NULL, "
+            "updated_at=? WHERE task_id=?",
+            (now, tid),
+        )
+
+
+def _structural_gate(task: dict | None, payload: dict) -> str | None:
+    """Deterministic gate between worker RESULT and semantic triage.
+
+    Returns None on pass, or a one-line failure reason on fail. Checks:
+      - files_changed is a list
+      - every files_changed entry is in allowed_files (if allowed is non-empty)
+      - no files_changed entry is in forbidden_files
+      - status == 'ok' (anything else is handled upstream)
+    """
+    task = task or {}
+    allowed = task.get("allowed_files") or []
+    forbidden = task.get("forbidden_files") or []
+    if isinstance(allowed, str):
+        try: allowed = json.loads(allowed)
+        except Exception: allowed = []
+    if isinstance(forbidden, str):
+        try: forbidden = json.loads(forbidden)
+        except Exception: forbidden = []
+
+    files_changed = payload.get("files_changed")
+    if not isinstance(files_changed, list):
+        return "RESULT is missing files_changed (must be a list)"
+
+    allowed_set = {_norm_path(p) for p in allowed if isinstance(p, str)}
+    forbidden_set = {_norm_path(p) for p in forbidden if isinstance(p, str)}
+    changed_set = {_norm_path(p) for p in files_changed if isinstance(p, str)}
+
+    if forbidden_set:
+        violated = sorted(changed_set & forbidden_set)
+        if violated:
+            return f"files_changed touches forbidden_files: {violated[:3]}"
+
+    if allowed_set:
+        out_of_scope = sorted(changed_set - allowed_set)
+        if out_of_scope:
+            return f"files_changed contains paths not in allowed_files: {out_of_scope[:3]}"
+
+    return None
 
 
 def _parse_result_json(lines: list[str]) -> dict | None:
@@ -216,7 +315,28 @@ def finalize_run(run, exit_code: int) -> None:
             # the operator decides the next move.
             payload_status = (resolved.get("status") or "").lower()
             if payload_status == "ok":
-                new_status = "AWAITING_REVIEW"
+                # Structural gate: deterministic check on the RESULT shape.
+                # Failures here block the task with a specific reason instead
+                # of sending a malformed RESULT on to the semantic triage.
+                gate_reason = _structural_gate(req.task, resolved)
+                if gate_reason:
+                    _set_block(task_id, f"structural: {gate_reason}")
+                    new_status = "CHANGES_REQUESTED"
+                else:
+                    # Gate passed — clear any stale block and auto-fire the
+                    # semantic triage. Task sits in AWAITING_REVIEW while
+                    # triage runs; _capture_triage will advance to DONE on
+                    # yes or CHANGES_REQUESTED on no.
+                    _clear_block(task_id)
+                    new_status = "AWAITING_REVIEW"
+                    try:
+                        from .triage import launch_triage
+                        launch_triage(task_id, req.run_id)
+                    except Exception as e:
+                        import logging
+                        logging.getLogger(__name__).warning(
+                            "triage launch hook failed for %s: %r", task_id, e,
+                        )
             elif payload_status in ("fail", "blocked"):
                 # Zero-exit fails are not successes — keep the run row honest.
                 if payload_status == "fail":
@@ -245,11 +365,29 @@ def finalize_run(run, exit_code: int) -> None:
                     # because derive_state reads the RESULT payload status).
                     new_status = "QUEUED"
                 else:
+                    # Retry cap hit — surface a specific block reason so the
+                    # operator sees why we stopped trying and doesn't launch
+                    # this task again without addressing the root cause.
+                    worker_reason = (resolved.get("notes")
+                                     or resolved.get("summary")
+                                     or f"worker returned status={payload_status}")
+                    _set_block(
+                        task_id,
+                        f"retry cap hit ({MAX_RETRIES}): {worker_reason}",
+                    )
                     new_status = "CHANGES_REQUESTED"
     elif task_id and kind in ("reviewer", "manager"):
         aid, new_status = _capture_review(req, run, result, exit_code)
         if aid:
             artifact_ids.append(aid)
+    elif task_id and kind == "triage":
+        # Sonnet triage: yes → DONE + auto-assign to pending patch; no →
+        # CHANGES_REQUESTED + block_reason from the triage's reason text.
+        new_status = _capture_triage(req, run, exit_code)
+    elif kind == "patch_reviewer":
+        # Route to the patch-review orchestrator based on the run's
+        # patch_review_meta (stored on the runs row at launch time).
+        _route_patch_review(req, run, exit_code)
     elif task_id and kind in ("auditor", "architect"):
         artifact_ids.append(_capture_audit(req, run, result, kind))
 
@@ -267,6 +405,9 @@ def finalize_run(run, exit_code: int) -> None:
             "UPDATE tasks SET status=?, updated_at=? WHERE task_id=?",
             (new_status, _now_iso(), task_id),
         )
+        # Auto-unblock: any task parked behind this one is now unparked.
+        if new_status == "DONE":
+            _auto_unblock_dependents(task_id)
         try:
             from ..bridge.exporter import export_task
             export_task(task_id)
@@ -492,6 +633,9 @@ def _capture_review(req, run, result, exit_code) -> tuple[tuple[str, str] | None
     new_status = None
     if decision == "APPROVED":
         new_status = "DONE"
+        # Approval clears any prior block reason. If a task depended on this
+        # one (blocked_on=task_id), the auto-unblock hook will fire below.
+        _clear_block(task_id)
         # Bundle the newly-approved task into the current pending patch so
         # the operator can see it in the "awaiting relaunch" release queue.
         try:
@@ -501,7 +645,77 @@ def _capture_review(req, run, result, exit_code) -> tuple[tuple[str, str] | None
             pass
     elif decision in ("CHANGES_REQUESTED", "FAIL"):
         new_status = "CHANGES_REQUESTED"
+        # Populate the "why stuck" signal from the reviewer's own output:
+        # prefer RESULT.summary, fall back to the decision name.
+        rsum = (result or {}).get("summary") if result else None
+        reason = rsum or f"{decision} (see REVIEW_{task_id}.md)"
+        _set_block(task_id, f"reviewer: {reason}")
     return (art_id, "review"), new_status
+
+
+def _route_patch_review(req, run, exit_code) -> None:
+    """Look up patch_review_meta on the runs row and dispatch."""
+    row = get_conn().execute(
+        "SELECT patch_review_meta FROM runs WHERE run_id=?", (req.run_id,),
+    ).fetchone()
+    if row is None or not row["patch_review_meta"]:
+        import logging
+        logging.getLogger(__name__).warning(
+            "patch-review run %s has no meta — skipping orchestrator dispatch",
+            req.run_id,
+        )
+        return
+    try:
+        meta = json.loads(row["patch_review_meta"])
+    except Exception:
+        return
+    from . import patch_review as pr_mod
+    patch_id = meta.get("patch_id")
+    if not patch_id:
+        return
+    if meta.get("synthesis"):
+        pr_mod.on_synthesis_finish(patch_id, req.run_id, exit_code)
+    else:
+        pr_mod.on_step_finish(
+            patch_id,
+            int(meta.get("step") or 0),
+            int(meta.get("total") or 0),
+            req.run_id, exit_code,
+        )
+
+
+def _capture_triage(req, run, exit_code) -> str | None:
+    """Parse `TRIAGE: yes|no — reason` from the Sonnet triage run's stdout.
+
+    Returns the new task status. On yes: DONE (and auto-assign to patch).
+    On no or unparseable: CHANGES_REQUESTED + block_reason populated.
+    """
+    task_id = req.task_id
+    verdict: str | None = None
+    reason: str = ""
+    for ln in reversed(run.last_lines):
+        m = _TRIAGE_RX.match(ln)
+        if m:
+            verdict = m.group(1).lower()
+            reason = (m.group(2) or "").strip().lstrip("—-:").strip()
+            break
+
+    if verdict == "yes" and exit_code == 0:
+        _clear_block(task_id)
+        try:
+            from ..patches import assign_task
+            assign_task(task_id)
+        except Exception:
+            pass
+        return "DONE"
+    # Anything else: park with a reason. If we couldn't even parse the
+    # anchor, record that explicitly so the operator doesn't wonder why.
+    display = reason if verdict == "no" and reason else (
+        f"triage said no: {reason}" if reason else
+        f"triage produced no TRIAGE: anchor (exit={exit_code})"
+    )
+    _set_block(task_id, f"triage: {display}")
+    return "CHANGES_REQUESTED"
 
 
 def _capture_audit(req, run, result, kind) -> tuple[str, str]:
