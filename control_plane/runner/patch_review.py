@@ -458,13 +458,29 @@ def on_step_finish(
             sums = json.loads((_load_patch_review(patch_id) or {}).get("summaries_json") or "[]")
         except Exception:
             sums = []
-        _launch_step(
-            patch=patch, task=tasks[next_index],
-            prior_summaries=sums,
-            step_index=next_index, total_steps=total,
-        )
+        if _launch_step(patch=patch, task=tasks[next_index],
+                        prior_summaries=sums,
+                        step_index=next_index, total_steps=total) is None:
+            _mark_review_failed(patch_id, f"step {next_index} launch failed")
     else:
-        _launch_synthesis(patch, tasks)
+        if _launch_synthesis(patch, tasks) is None:
+            _mark_review_failed(patch_id, "synthesis launch failed")
+
+
+def _mark_review_failed(patch_id: str, reason: str) -> None:
+    """Close a patch_reviews row when the orchestrator can't advance.
+
+    Hit when dispatcher.launch() returns a failed row (cap_hit, spawn
+    error) — the subprocess never ran so finalize_run → on_*_finish
+    never fires. Without this, the row would sit in_progress forever
+    and every subsequent POST /review would 409 already_running.
+    """
+    log.warning("patch_review %s failed: %s", patch_id, reason)
+    get_conn().execute(
+        "UPDATE patch_reviews SET status='failed', final_decision=?, "
+        "finished_at=? WHERE patch_id=?",
+        (f"orchestrator: {reason}"[:200], _now_iso(), patch_id),
+    )
 
 
 def on_synthesis_finish(patch_id: str, finished_run_id: str, exit_code: int) -> None:

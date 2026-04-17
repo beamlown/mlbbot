@@ -428,17 +428,21 @@ class RunDispatcher:
         )
         self._emit(run.run_id, "meta", f"■ exit={exit_code} status={status}")
 
+        # Drop the active row BEFORE handing off to the finalize callback.
+        # The finalize hook often chains the next run (patch-review
+        # orchestrator, triage launcher) and the family cap check must
+        # see this finishing run as free, not still-running. Holding a
+        # local `run` reference keeps the object alive for the callback.
+        with self._lock:
+            subs = list(run.subscribers)
+            self._runs.pop(run.run_id, None)
+
         # Hand off to the capture step (safe: runs in this thread).
         if self._finalize_cb is not None:
             try:
                 self._finalize_cb(run, exit_code)
             except Exception as e:
                 self._emit(run.run_id, "meta", f"[finalize-error] {e!r}")
-
-        # Notify SSE subscribers and drop the active row.
-        with self._lock:
-            subs = list(run.subscribers)
-            self._runs.pop(run.run_id, None)
         for q in subs:
             try:
                 q.put_nowait(_END_SENTINEL)
