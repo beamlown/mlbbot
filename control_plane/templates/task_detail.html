@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}{{ task.task_id }} · {{ task.title }}{% endblock %}
+{% block content %}
+
+<a class="back" href="{{ url_for('tasks.board') }}">← Board</a>
+
+<header class="task-header">
+  <div class="task-head-left">
+    <h1 class="task-title">{{ task.title }}</h1>
+    <code class="tid-big">{{ task.task_id }}</code>
+  </div>
+  <div class="task-head-right">
+    <span class="chip chip-{{ (task.status or 'PENDING')|lower }}">{{ task.status }}</span>
+    <span class="chip priority-{{ (task.priority or 'MEDIUM')|lower }}">{{ task.priority }}</span>
+    {% if task.subsystem %}<span class="chip">{{ task.subsystem }}</span>{% endif %}
+    {% if task.assigned_role %}<span class="chip role">{{ task.assigned_role }}</span>{% endif %}
+  </div>
+</header>
+
+<section class="two-col">
+
+  <div class="col-main">
+    <h3>Brief</h3>
+    {% if brief_content %}
+      <pre class="markdown">{{ brief_content }}</pre>
+    {% else %}
+      <div class="empty">No HANDOFF_{{ task.task_id }}.md found.</div>
+    {% endif %}
+
+    {% if task.acceptance %}
+      <h3>Acceptance</h3>
+      <pre class="markdown">{{ task.acceptance }}</pre>
+    {% endif %}
+
+    {% if task.evidence %}
+      <h3>Evidence</h3>
+      <pre class="markdown">{{ task.evidence }}</pre>
+    {% endif %}
+
+    {% if task.notes %}
+      <h3>Notes</h3>
+      <pre class="markdown">{{ task.notes }}</pre>
+    {% endif %}
+  </div>
+
+  <aside class="col-side">
+    <h3>Allowed files</h3>
+    <ul class="file-list">
+      {% for f in task.allowed_files %}
+        <li><code>{{ f }}</code></li>
+      {% else %}
+        <li class="empty">none specified</li>
+      {% endfor %}
+    </ul>
+
+    {% if task.forbidden_files %}
+      <h3>Forbidden files</h3>
+      <ul class="file-list forbidden">
+        {% for f in task.forbidden_files %}<li><code>{{ f }}</code></li>{% endfor %}
+      </ul>
+    {% endif %}
+
+    <h3>Linked artifacts</h3>
+    {% if links %}
+      <ul class="artifact-list">
+        {% for l in links %}
+          <li>
+            <span class="chip rel-{{ l.relation }}">{{ l.relation }}</span>
+            <a href="{{ url_for('artifacts.artifact_detail', artifact_id=l.artifact_id) }}">
+              {{ l.title or l.path.split('/')[-1] }}
+            </a>
+            <div class="artifact-meta">
+              <code class="kind">{{ l.kind }}</code>
+              <span class="path">{{ l.path }}</span>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">no linked artifacts</div>
+    {% endif %}
+
+    <h3>Runs</h3>
+    {% if runs %}
+      <ul class="run-list">
+        {% for r in runs %}
+          <li>
+            <span class="chip status-{{ r.status|lower }}">{{ r.status }}</span>
+            <span class="run-role">{{ r.role }}</span>
+            <span class="run-ts">{{ r.created_at }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">no runs (Phase 3)</div>
+    {% endif %}
+
+    <h3>Reviews</h3>
+    {% if reviews %}
+      <ul class="review-list">
+        {% for rv in reviews %}
+          <li>
+            <span class="chip decision-{{ rv.decision|lower }}">{{ rv.decision }}</span>
+            <span>{{ rv.reviewer }}</span>
+            <div>{{ rv.summary or '' }}</div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">no reviews (Phase 4)</div>
+    {% endif %}
+  </aside>
+
+</section>
+
+{% endblock %}

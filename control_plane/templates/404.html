@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Not found{% endblock %}
+{% block content %}
+<section class="empty" style="padding:2rem">
+  <h2>Not found</h2>
+  <p>{{ path }}</p>
+  <a class="btn" href="{{ url_for('tasks.board') }}">Back to board</a>
+</section>
+{% endblock %}
