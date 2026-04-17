@@ -126,3 +126,27 @@ def api_claude_bin_test():
         "version": probed.version,
         "error": probed.error,
     })
+
+
+@bp.route("/api/files/reindex", methods=["POST"])
+def api_files_reindex():
+    """Rescan every project root and repopulate known_files.
+
+    Cheap (~1-2s); run whenever a refactor moves files so the prompt
+    builder's resolve_task_files lookups don't serve stale paths.
+    """
+    from ..file_index import reindex as _reindex
+    try:
+        return jsonify({"ok": True, **_reindex()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@bp.route("/api/files/resolve", methods=["GET"])
+def api_files_resolve():
+    """Debug: ?name=bot_core.py → indexed absolute paths across roots."""
+    name = (request.args.get("name") or "").strip()
+    if not name:
+        return jsonify({"ok": False, "error": "missing_name"}), 400
+    from ..file_index import resolve as _resolve
+    return jsonify({"ok": True, "name": name, "matches": _resolve(name)})

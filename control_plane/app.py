@@ -34,6 +34,16 @@ def create_app() -> Flask:
     # Bootstrap DB + import BOT_BRIDGE once at process start.
     with app.app_context():
         init_db()
+        # Index every file across mlbbot + sibling project roots so the
+        # prompt builder can resolve bare filenames to canonical absolute
+        # paths. Without this, agents Glob/Grep sibling vs nested vs
+        # old-copy candidates and waste turns on the wrong tree.
+        try:
+            from .file_index import reindex as _reindex_files
+            _fi = _reindex_files()
+            app.logger.info("file_index: %s", _fi)
+        except Exception as e:
+            app.logger.warning("file_index.reindex failed: %r", e)
         report = import_bot_bridge()
         app.logger.info(
             "import_bot_bridge: tasks_seen=%d tasks_new=%d artifacts=%d errors=%d",
