@@ -144,6 +144,22 @@ def _structural_gate(task: dict | None, payload: dict) -> str | None:
     forbidden_set = {_norm_path(p) for p in forbidden if isinstance(p, str)}
     changed_set = {_norm_path(p) for p in files_changed if isinstance(p, str)}
 
+    # No-op guard: when the task scoped a non-empty allowed_files, it is
+    # by definition an EDIT task — the operator/manager said "these are
+    # the files that may be touched." A worker that returns status='ok'
+    # with files_changed=[] is declaring success without actually doing
+    # anything. Without this check, such a run sails through the gate,
+    # auto-DONEs, and lands in the pending patch with no material change
+    # — the patch-review Opus then spends tokens on a no-op. Refuse here
+    # so the operator sees the real signal immediately.
+    #
+    # Tasks with allowed_files=[] are intentionally unrestricted (audits,
+    # read-only analyses that emit artifacts under 08_SHARED_CONTEXT).
+    # Those are allowed to ship without a files_changed entry.
+    if allowed_set and not changed_set:
+        return (f"status='ok' but files_changed=[] despite {len(allowed_set)} "
+                f"allowed_files scoped — no-op not accepted")
+
     if forbidden_set:
         violated = sorted(changed_set & forbidden_set)
         if violated:
