@@ -17,6 +17,17 @@
     </nav>
   </div>
   <div class="topbar-right">
+    {% if CLAUDE_STATUS and not CLAUDE_STATUS.ok %}
+      <a href="{{ url_for('system.system_page') }}" class="chip chip-blocked"
+         title="Claude CLI not found — click to configure">
+        ⚠ claude CLI not found
+      </a>
+    {% elif CLAUDE_STATUS and CLAUDE_STATUS.source == 'db' %}
+      <a href="{{ url_for('system.system_page') }}" class="chip chip-active"
+         title="Using override set at /system: {{ CLAUDE_STATUS.resolved_path }}">
+        ✓ claude (override)
+      </a>
+    {% endif %}
     <label class="role-switch" title="Acting role (Phase 4 enforces)">
       <span class="role-label">acting as</span>
       <select id="acting-role-select" onchange="setActingRole(this.value)">

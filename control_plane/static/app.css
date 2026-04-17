@@ -378,3 +378,15 @@ body.agent-dragging .card-eligible .card-dropzone { display:block; border-color:
   padding:.35rem .5rem; font-size:.8rem; color: var(--muted);
   display:flex; gap:.5rem; flex-wrap:wrap;
 }
+.run-summary.err { border-color: var(--err); color: var(--err); }
+
+/* /system — Claude binary panel */
+.claude-bin-panel { background: var(--panel); border:1px solid var(--border);
+  border-radius:6px; padding:.75rem; margin-bottom:1rem; }
+.claude-bin-head { display:flex; gap:.6rem; align-items:center; margin-bottom:.6rem; }
+.claude-bin-table { margin-bottom:.5rem; }
+.claude-bin-table th { width: 14rem; color: var(--muted); }
+.claude-bin-table code { color: var(--fg); word-break: break-all; }
+.claude-bin-candidates summary { cursor:pointer; color: var(--muted); font-size:.8rem; }
+.claude-bin-candidates .file-list { margin-top:.4rem; max-height: 20vh; overflow:auto; }
+.err-text { color: var(--err); }
