@@ -1,0 +1,8 @@
+{
+  "status": "fail",
+  "summary": "(no RESULT_JSON emitted and no RESULT file written)",
+  "task_id": "MARKET_PRICE_SANITY_GATE_001",
+  "role": "HAIKU_WORKER",
+  "run_id": "RUN_0EECD47B11E7",
+  "captured_at": "2026-04-17T19:16:24Z"
+}

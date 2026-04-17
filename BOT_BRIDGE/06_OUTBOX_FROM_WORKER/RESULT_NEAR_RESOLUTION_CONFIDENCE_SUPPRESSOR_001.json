@@ -1,0 +1,31 @@
+{
+  "task_id": "NEAR_RESOLUTION_CONFIDENCE_SUPPRESSOR_001",
+  "status": "ok",
+  "summary": "Added near-resolution confidence suppressor to recommendation_api.py. When entry-side cost is near-zero (< 0.10), action is set to NO_TRADE and confidence is capped at 0.0.",
+  "files_changed": [
+    "mlb_model/integration/recommendation_api.py"
+  ],
+  "implementation": {
+    "suppressor_function": "_suppress_confidence_for_extreme_prices(confidence, ask_yes, ask_no)",
+    "hard_gate_threshold": "NEAR_RESOLUTION_PRICE_THRESHOLD env var (default 0.10)",
+    "extreme_price_threshold": "0.05 (5% or 95%)",
+    "suppression_factor": "0.7 (30% reduction per extreme side)",
+    "entry_price_check": "Uses edges['p_cost_yes'] and edges['p_cost_no'] for accuracy",
+    "confidence_handling": "Confidence = 0.0 when suppressed by hard gate; reduced by suppressor for soft gate"
+  },
+  "changes_made": [
+    "Added _suppress_confidence_for_extreme_prices() function (soft penalty for extreme ask prices)",
+    "Added near-resolution hard gate that blocks trades when entry cost < threshold",
+    "Gate checks both BUY_YES (edges['p_cost_yes']) and BUY_NO (edges['p_cost_no'])",
+    "Enhanced gate_reasons to include actual trigger prices for diagnostics",
+    "Dual mechanism: soft suppression + hard gate for defense-in-depth"
+  ],
+  "verification": {
+    "syntax_check": "PASS — mlb_model/integration/recommendation_api.py compiles",
+    "logic_placement": "After edge calculation, before final recommendation assembly",
+    "test_coverage": "Covers both entry sides and includes detailed logging"
+  },
+  "rationale": "When market prices are at extremes (near 0 or 1), market certainty is high and model edge is less meaningful. Prevents low-confidence and suppressed recommendations in these zones.",
+  "notes": "Implementation follows NEAR_RESOLUTION_CONFIDENCE_SANITY_AUDIT_001. Execution layer should also implement MARKET_PRICE_SANITY_GATE_001 for defense-in-depth.",
+  "next_steps": "Monitor shadow recommendations for near_resolution_suppressor gate_reasons to validate frequency and price distribution."
+}

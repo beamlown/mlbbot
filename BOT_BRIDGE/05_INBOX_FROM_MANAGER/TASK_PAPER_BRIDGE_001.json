@@ -1,119 +1,18 @@
 {
   "task_id": "PAPER_BRIDGE_001",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "ACTIVE",
+  "issued": "2026-04-17",
+  "subsystem": "paper execution / model bridge",
   "title": "Build guarded paper execution bridge from mlb_model recommendations to sports_bot_v2",
-  "objective": "Create a narrow bridge module that reads approved mlb_model shadow recommendations, applies strict gating, and creates paper trades in sports_bot_v2. Paper mode only. No real money execution. No architecture redesign.",
-
-  "paper_only_notice": "THIS IS PAPER MODE ONLY. No real money is involved. No live order placement. No connection to any exchange, broker, or betting platform. The bridge reads a local log file and writes to a local SQLite paper trade database only.",
-
   "allowed_files": [
     "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
     "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
   ],
-  "new_files_permitted": [
-    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py"
-  ],
-  "read_only_data_sources": [
-    "C:\\Users\\johnny\\Desktop\\mlb_model\\logs\\shadow_recommendations.jsonl"
-  ],
-
-  "do_not_touch": [
-    "C:\\Users\\johnny\\Desktop\\mlb_model",
-    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
-    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
-    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\signal_base.py",
-    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
-    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
-    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db",
-    "execution logic beyond calling existing paper_exec",
-    "model training",
-    "model artifacts",
-    "order placement",
-    "live execution"
-  ],
-
-  "inputs": [
-    "C:\\Users\\johnny\\Desktop\\mlb_model\\logs\\shadow_recommendations.jsonl — read the last N entries to find fresh recommendations",
-    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py — read to understand how to create a paper position (do not modify)",
-    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\db.py — read to understand how open positions are queried (do not modify)",
-    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json — read to understand current open positions"
-  ],
-
-  "architecture": [
-    "model_bridge.py is a pure gating module. It reads the shadow log, applies all gates, and returns a list of approved paper trade intents.",
-    "bot_core.py gets a minimal addition: after its existing discovery loop, call model_bridge.get_approved_intents(), then for each approved intent call the existing paper_exec machinery.",
-    "Do not replace or bypass any existing bot_core logic. The bridge is additive only.",
-    "The shadow log is read as a flat file — no import of mlb_model code."
-  ],
-
-  "log_deduplication_rules": [
-    "The shadow log is an audit/history source, not a clean execution feed. It may contain repeated recommendations for the same slug across many loops.",
-    "Before applying any gates, reduce the log to the LATEST entry per market_slug only. Use feature_timestamp or ts to determine recency.",
-    "Ignore all entries where action=NO_TRADE — these are never execution candidates.",
-    "After per-slug deduplication, the working set must contain at most one entry per slug.",
-    "This deduplication happens inside model_bridge.py before gate evaluation — not after."
-  ],
-
-  "required_gates": [
-    "model_version must match a known approved version string (e.g. mlb_winprob_v1_lgbm)",
-    "recommendation age must be below MAX_REC_AGE_SECONDS (suggested: 120s)",
-    "market_type must be moneyline — reject spreads, totals, props, NRFI",
-    "event date in slug must match today's date",
-    "is_live must be True in the recommendation payload",
-    "side must be explicit: BUY_YES or BUY_NO — never NONE or ambiguous",
-    "edge must exceed MIN_EDGE threshold (suggested: 0.05)",
-    "confidence must exceed MIN_CONFIDENCE threshold (suggested: 0.25)",
-    "game_state_age_sec must be below MAX_GAME_STATE_AGE (suggested: 60s)",
-    "book_age_sec must be below MAX_BOOK_AGE (suggested: 30s)",
-    "no existing open paper position for this event slug already in DB",
-    "no duplicate: only one approved intent per event slug per loop"
-  ],
-
-  "kill_switch": [
-    "Add ENABLE_MODEL_BRIDGE = False at the top of model_bridge.py as a hard config constant.",
-    "If ENABLE_MODEL_BRIDGE is False, get_approved_intents() returns an empty list immediately and logs: BRIDGE DISABLED — set ENABLE_MODEL_BRIDGE=True to activate.",
-    "Default must be False. The worker must not set it to True in the submitted patch.",
-    "The user will manually flip it to True after verifying the bridge logic in a test run."
-  ],
-
-  "paper_trade_behavior": [
-    "If all gates pass, call the existing paper_exec machinery to open a paper position",
-    "Position must be tagged with source='model_bridge' — this exact string, used consistently",
-    "Sizing: use the same default sizing already in paper_exec — do not invent new sizing logic",
-    "One position per game maximum — enforced by gate above",
-    "The paper trade appears in the existing DB and dashboard naturally via existing infrastructure"
-  ],
-
-  "deliverables": [
-    "model_bridge.py — new module with all gating logic and clear constants at the top",
-    "minimal diff to bot_core.py — only the bridge call and import, nothing else",
-    "summary of all gates and their threshold values used",
-    "restart steps",
-    "expected log output showing a gate pass and a gate rejection"
-  ],
-
-  "acceptance_criteria": [
-    "model_bridge.py exists with all required gates implemented",
-    "ENABLE_MODEL_BRIDGE = False is present at top of model_bridge.py and defaults to False in submitted patch",
-    "get_approved_intents() returns empty list and logs BRIDGE DISABLED when ENABLE_MODEL_BRIDGE is False",
-    "log deduplication: only latest entry per slug is evaluated, NO_TRADE entries are discarded before gating",
-    "bot_core.py calls model_bridge and passes approved intents to paper_exec",
-    "moneyline-only gate enforced — test that a spread recommendation is rejected",
-    "same-day date gate enforced — test that a future-dated recommendation is rejected",
-    "staleness gates enforced — rec age, game state age, book age all checked",
-    "duplicate position gate enforced — second intent for same slug is rejected",
-    "paper trade created when all gates pass — position appears in state.json or DB",
-    "source label 'model_bridge' present on created position (exact string)",
-    "no changes to paper_exec.py, risk.py, signal_base.py",
-    "no real execution path exists — paper only"
-  ],
-
-  "verification": [
-    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2",
-    "python bot_core.py",
-    "Inspect logs for: BRIDGE GATE PASS and BRIDGE GATE REJECT entries",
-    "Inspect runtime/state.json for any new paper position with source=model-driven",
-    "Confirm no changes to paper_exec.py, risk.py, signal_base.py"
-  ],
-
-  "rollback": "Delete core/model_bridge.py and revert bot_core.py only. No other files were modified."
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_PAPER_BRIDGE_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_PAPER_BRIDGE_001.json",
+  "assigned_role": "SONNET_WORKER",
+  "acceptance": "- model_bridge.py exists with all required gates implemented\n- ENABLE_MODEL_BRIDGE = False is present at top of model_bridge.py and defaults to False in submitted patch\n- get_approved_intents() returns empty list and logs BRIDGE DISABLED when ENABLE_MODEL_BRIDGE is False\n- log deduplication: only latest entry per slug is evaluated, NO_TRADE entries are discarded before gating\n- bot_core.py calls model_bridge and passes approved intents to paper_exec\n- moneyline-only gate enforced — test that a spread recommendation is rejected\n- same-day date gate enforced — test that a future-dated recommendation is rejected\n- staleness gates enforced — rec age, game state age, book age all checked\n- duplicate position gate enforced — second intent for same slug is rejected\n- paper trade created when all gates pass — position appears in state.json or DB\n- source label 'model_bridge' present on created position (exact string)\n- no changes to paper_exec.py, risk.py, signal_base.py\n- no real execution path exists — paper only"
 }

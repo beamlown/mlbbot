@@ -1,89 +1,15 @@
 {
   "task_id": "EXIT_GAME_AWARE_001",
-  "priority": "HIGH",
   "type": "implementation",
+  "priority": "HIGH",
+  "status": "ACTIVE",
+  "issued": "2026-04-17",
   "subsystem": "risk / exit",
-  "allowed_files": ["bot_core.py"],
-  "note": "bot_core.py only. Game-aware exit gate in the exit loop. No changes to risk.py, paper_exec.py, or .env.",
-
-  "context": {
-    "problem": "When a game ends (status='FINAL') and our position is winning, check_exit() still fires near_resolution at 0.97 (or take_profit at 0.40 after EXIT_PARAMS_TIGHTEN_001). This sells early and leaves 3–5¢ per contract on the table. The resolution_watcher process already handles closing settled positions at the final 1.00 price — we just need to stay out of its way.",
-    "desired_behavior": [
-      "If game is FINAL and current held price >= NEAR_RESOLUTION_PRICE → skip check_exit, log HOLD_TO_RESOLUTION, let resolution_watcher settle at 1.00",
-      "If game is FINAL and current held price < NEAR_RESOLUTION_PRICE → we are losing — let check_exit run normally (stop-loss should fire)",
-      "If game is not FINAL or game_state unavailable → let check_exit run normally (no change to behavior)"
-    ],
-    "resolution_watcher": "resolution_watcher.py already runs as a process and closes settled markets. This task ensures bot_core.py does not preempt it on winning FINAL positions."
-  },
-
-  "dependencies": {
-    "blocked_by": "BOT_DATE_GATE_DEFENSE_001",
-    "reason": "Both tasks touch bot_core.py. Must not be ACTIVE at the same time. Start this after BOT_DATE_GATE_DEFENSE_001 is APPROVED and merged.",
-    "also_after": "EXIT_PARAMS_TIGHTEN_001 (.env change, no conflict — can be done in parallel with BOT_DATE_GATE_DEFENSE_001)"
-  },
-
-  "implementation": {
-    "file": "sports_bot_v2/bot_core.py",
-
-    "where": "In the exit loop, lines 529-553. Immediately before the `should_close, reason = check_exit(trade, ob, t2e)` call (line 537). Insert inside the `try:` block, after `t2e = _time_to_end(mkt)`.",
-
-    "add_import_if_missing": {
-      "check": "Confirm `from core.risk import check_entry_gates, check_exit, set_current_loop` is already present (line 86). Extend it to also import NEAR_RESOLUTION_PRICE:",
-      "change_line_86_from": "from core.risk import check_entry_gates, check_exit, set_current_loop",
-      "change_line_86_to": "from core.risk import check_entry_gates, check_exit, set_current_loop, NEAR_RESOLUTION_PRICE",
-      "note": "NEAR_RESOLUTION_PRICE is a module-level float in risk.py (line 30). Importing it here ensures the same threshold is used for the hold-to-resolution gate as for the near_resolution exit trigger — no duplication."
-    },
-
-    "code_to_insert": [
-      "# Game-aware exit gate: if game is FINAL and position is winning,",
-      "# skip check_exit and let resolution_watcher close at 1.00.",
-      "_gs = None",
-      "try:",
-      "    _tms = extract_teams_from_question(mkt.question)",
-      "    if _tms[0] and _tms[1]:",
-      "        _gs = get_game_state(_tms[0], _tms[1])",
-      "except Exception:",
-      "    pass",
-      "if _gs is not None and _gs.status == 'FINAL':",
-      "    _held = ob.bid_yes if trade.side == 'BUY_YES' else ob.bid_no",
-      "    if _held is not None and _held >= NEAR_RESOLUTION_PRICE:",
-      "        logger.info(",
-      "            'HOLD_TO_RESOLUTION trade=%d %s status=FINAL held=%.4f — skipping check_exit',",
-      "            trade.id, trade.market_slug[:30], _held,",
-      "        )",
-      "        continue"
-    ],
-
-    "notes": [
-      "extract_teams_from_question and get_game_state are already imported at the top of bot_core.py (line 61 / 72 depending on sport).",
-      "get_game_state has a 15-second in-process cache (GAME_CACHE_TTL=15.0 in live_stats.py) — no significant overhead for calling it once per trade per loop tick.",
-      "The 'continue' skips only the check_exit call and the subsequent close_position call. The outer for-loop continues to the next trade — no other logic is affected.",
-      "Losing FINAL positions (held < NEAR_RESOLUTION_PRICE) fall through to check_exit normally — stop_loss will fire as usual.",
-      "If get_game_state raises or returns status='unknown', _gs remains None and the guard is skipped — safe fallback to existing behavior.",
-      "This gate runs after the ALLOW_LOCAL_MLB_ORIGINATION guard is moot (exit loop only runs on existing open trades), so there is no interaction with BOT_DATE_GATE_DEFENSE_001 logic at runtime."
-    ]
-  },
-
-  "verification": {
-    "steps": [
-      "Confirm only bot_core.py changed (git diff --name-only)",
-      "Confirm import line 86 now includes NEAR_RESOLUTION_PRICE",
-      "Confirm code inserted before check_exit call in exit loop",
-      "Simulate: set NEAR_RESOLUTION_PRICE=0.97 in .env (from EXIT_PARAMS_TIGHTEN_001), open a test trade, manually set game status to FINAL in ESPN API response — confirm HOLD_TO_RESOLUTION log line appears and position is not closed",
-      "Confirm a losing FINAL position (bid < 0.97) still gets stop-lossed (check_exit runs normally)"
-    ],
-    "note": "Process restart required since bot_core.py is a running process. Coordinate with operator after both BOT_DATE_GATE_DEFENSE_001 and EXIT_GAME_AWARE_001 are approved — restart once for both."
-  },
-
-  "do_not": [
-    "Edit risk.py, paper_exec.py, dashboard_server.py, or any file other than bot_core.py",
-    "Change the check_exit() function signature or logic",
-    "Add a new env var — reuse NEAR_RESOLUTION_PRICE from risk.py",
-    "Restart the process (operator handles restart after all pending bot_core.py tasks are approved)"
+  "title": "EXIT_GAME_AWARE_001",
+  "allowed_files": [
+    "bot_core.py"
   ],
-
-  "result_format": {
-    "file": "06_OUTBOX_FROM_WORKER/RESULT_EXIT_GAME_AWARE_001.json",
-    "required_fields": ["decision", "files_changed", "commit", "lines_added", "rollback"]
-  }
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_EXIT_GAME_AWARE_001.md",
+  "assigned_role": "SONNET_MANAGER"
 }

@@ -1,30 +1,15 @@
 {
   "task_id": "SESSION_SLUG_LOSS_CAP_001",
-  "title": "Ban a slug for the rest of the session after per-slug dollar loss cap is hit",
-  "priority": "MEDIUM",
   "type": "surgical risk containment fix",
-  "track": "Track B — alpha/strategy containment",
+  "priority": "MEDIUM",
+  "status": "QUEUED",
   "issued": "2026-04-11",
   "subsystem": "entry gates / loss containment / bot_core",
-  "status": "BACKLOG — after tomorrow first-wave tasks",
-  "depends_on": "SESSION_MARKET_TRADE_CAP_001 (APPROVED)",
-  "objective": "Add a per-session dollar-loss cap per slug so one toxic market can be banned before trade-count cap alone is reached.",
-  "context": {
-    "problem": "Count-only rules are not enough. A single slug can do outsized damage before hitting a trade count cap if losses are large or gap-driven.",
-    "classification": "containment/risk control gap",
-    "evidence": [
-      "CWS-KC and HOU-SEA produced repeated concentrated losses",
-      "Gap-stop clusters can create heavy damage before count-based controls fully engage"
-    ]
-  },
+  "title": "Ban a slug for the rest of the session after per-slug dollar loss cap is hit",
   "allowed_files": [
     "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
     "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
     "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env"
-  ],
-  "read_only_context_files": [
-    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
-    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\OVERNIGHT_ANALYSIS_2026_04_10.md"
   ],
   "forbidden_files": [
     "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
@@ -33,40 +18,8 @@
     "Any mlb_model file",
     "Any file not listed above"
   ],
-  "forbidden_actions": [
-    "Broad risk refactor",
-    "Exit logic redesign",
-    "Dashboard work",
-    "DB schema changes"
-  ],
-  "required_work": [
-    "1. Add a per-session realized-loss check per slug in the live entry gate path.",
-    "2. Reject further entries on a slug once cumulative session realized loss on that slug is at or below the configured negative dollar threshold.",
-    "3. Make threshold configurable in .env.",
-    "4. Log rejections clearly with slug and measured realized loss."
-  ],
-  "deliverables": [
-    "Minimal patch",
-    "Env var name and default",
-    "Exact rejection reason string",
-    "Restart note"
-  ],
-  "acceptance_criteria": [
-    "Further entries on a slug are blocked after the slug reaches the configured session loss cap",
-    "Threshold is configurable via .env",
-    "Rejection is logged in standard gate format",
-    "No files outside allowed scope modified",
-    "python -m py_compile bot_core.py passes",
-    "python -m py_compile core/risk.py passes if modified"
-  ],
-  "verification": [
-    "Show where slug loss is computed",
-    "Show the exact rejection reason",
-    "Run py_compile on every changed file",
-    "State whether restart is required"
-  ],
-  "rollback": "Revert only the files listed in allowed_files if they were changed for this task.",
-  "restart_required": true,
-  "restart_note": "Restart required for the new slug-loss cap to affect live entry gating.",
-  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_SESSION_SLUG_LOSS_CAP_001.json"
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_SESSION_SLUG_LOSS_CAP_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_SESSION_SLUG_LOSS_CAP_001.json",
+  "assigned_role": "SONNET_WORKER",
+  "acceptance": "- Further entries on a slug are blocked after the slug reaches the configured session loss cap\n- Threshold is configurable via .env\n- Rejection is logged in standard gate format\n- No files outside allowed scope modified\n- python -m py_compile bot_core.py passes\n- python -m py_compile core/risk.py passes if modified"
 }

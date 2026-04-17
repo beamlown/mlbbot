@@ -18,7 +18,7 @@ through the normal `actions` endpoints.
 from __future__ import annotations
 
 import json
-from typing import Iterable
+from typing import Iterable, Optional
 
 from .db import get_conn
 
@@ -29,6 +29,7 @@ WORKFLOW_LANES: tuple[str, ...] = (
     "AWAITING_REVIEW",
     "CHANGES_REQUESTED",
     "DONE",
+    "LIVE",
     "AUDIT_QUEUE",
     "ARCHIVED",
 )
@@ -39,7 +40,8 @@ LANE_DISPLAY = {
     "RUNNING":           "Running",
     "AWAITING_REVIEW":   "Awaiting Review",
     "CHANGES_REQUESTED": "Changes Requested",
-    "DONE":              "Done",
+    "DONE":              "Done (staged)",
+    "LIVE":              "Live",
     "AUDIT_QUEUE":       "Audit Queue",
     "ARCHIVED":          "Archived",
 }
@@ -85,6 +87,58 @@ def _has_artifact_of(task_id: str, kinds: set[str]) -> bool:
     return row is not None
 
 
+def _patch_status_for(task_id: str) -> Optional[str]:
+    """Return uppercased patches.status for this task's assigned patch,
+    or None if the task isn't in any patch. `SHIPPED` means the change is
+    live in the user's deployed environment; anything else (or None) means
+    it's not yet out."""
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            """SELECT p.status FROM tasks t
+                 JOIN patches p ON p.patch_id = t.patch_id
+                WHERE t.task_id=? LIMIT 1""",
+            (task_id,),
+        ).fetchone()
+    except Exception:
+        return None
+    if row is None:
+        return None
+    return (row["status"] or "").upper() or None
+
+
+def _is_in_shipped_patch(task_id: str) -> bool:
+    return _patch_status_for(task_id) == "SHIPPED"
+
+
+def _latest_result_status(task_id: str) -> Optional[str]:
+    """Return the lowercased `status` field from the most recent RESULT
+    artifact for this task, or None if no RESULT exists / it's unparseable.
+
+    Worker payloads use status ∈ {ok, fail, blocked}. This lets
+    derive_state distinguish a real completion from a launcher-written
+    fail stub that just proves the worker produced nothing.
+    """
+    conn = get_conn()
+    row = conn.execute(
+        """SELECT a.content FROM task_artifacts ta
+             JOIN artifacts a ON a.artifact_id = ta.artifact_id
+            WHERE ta.task_id=? AND a.kind='RESULT'
+            ORDER BY a.mtime DESC LIMIT 1""",
+        (task_id,),
+    ).fetchone()
+    if row is None or not row["content"]:
+        return None
+    try:
+        payload = json.loads(row["content"])
+    except Exception:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    s = (payload.get("status") or "").strip().lower()
+    return s or None
+
+
 def _has_active_run(task_id: str) -> bool:
     conn = get_conn()
     row = conn.execute(
@@ -114,14 +168,29 @@ def derive_state(task: dict) -> str:
         return "AUDIT_QUEUE"
 
     if decision == "APPROVED" or raw_status == "DONE":
+        # A DONE task splits into three buckets so the operator can tell at
+        # a glance what's deployed vs what's only staged vs what's just old
+        # historical completion:
+        #   - SHIPPED patch  → LIVE        (running in production)
+        #   - PENDING patch  → DONE        (staged for next release)
+        #   - no patch       → ARCHIVED    (historical, no action needed)
+        p = _patch_status_for(tid)
+        if p == "SHIPPED":
+            return "LIVE"
+        if p is None:
+            return "ARCHIVED"
         return "DONE"
     if decision in ("CHANGES_REQUESTED", "FAIL") or raw_status == "CHANGES_REQUESTED":
         return "CHANGES_REQUESTED"
-    # Any task with a worker result and no decided review sits in review.
-    # Using `decision is None` (rather than "no REVIEW artifact exists")
-    # also catches stale REVIEW artifacts left on disk with no recorded
-    # decision — they should not pin the task back to READY_FOR_WORKER.
+    # Any task with a worker result and no decided review sits in review —
+    # but only if the worker actually produced an `ok` payload. A `fail` or
+    # `blocked` RESULT (including launcher-written "no RESULT emitted" stubs)
+    # should go to CHANGES_REQUESTED so the Awaiting Review lane reflects
+    # work a reviewer can actually sign off on.
     if has_result and decision is None:
+        worker_status = _latest_result_status(tid)
+        if worker_status in ("fail", "blocked"):
+            return "CHANGES_REQUESTED"
         return "AWAITING_REVIEW"
     # Default: worker can pick it up.
     return "READY_FOR_WORKER"
