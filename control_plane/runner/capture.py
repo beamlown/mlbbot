@@ -197,7 +197,16 @@ def finalize_run(run, exit_code: int) -> None:
     artifact_ids: list[tuple[str, str]] = []
 
     if task_id and kind == "worker" and exit_code == 0:
-        artifact_ids.append(_capture_worker(req, run, result))
+        aid, relation, resolved = _capture_worker(req, run, result)
+        artifact_ids.append((aid, relation))
+        # File-first contract means the canonical summary lives in the
+        # on-disk RESULT file, not stdout. Prefer it over the stdout parse.
+        if resolved:
+            disk_summary = resolved.get("summary")
+            if disk_summary:
+                summary = str(disk_summary)
+            elif resolved.get("status"):
+                summary = f"status={resolved.get('status')}"
     elif task_id and kind in ("reviewer", "manager"):
         aid, new_status = _capture_review(req, run, result, exit_code)
         if aid:
@@ -239,21 +248,57 @@ def finalize_run(run, exit_code: int) -> None:
         pass
 
 
-def _capture_worker(req, run, result) -> tuple[str, str]:
-    """Worker run: write RESULT_<TASK>.json under 06_OUTBOX_FROM_WORKER."""
+def _capture_worker(req, run, result) -> tuple[str, str, dict]:
+    """Worker run: canonicalize RESULT_<TASK>.json under 06_OUTBOX_FROM_WORKER.
+
+    Contract (file-first): the worker is expected to WRITE the result file
+    directly. This function treats an on-disk file written during this run
+    as canonical and never overwrites it. Stdout `RESULT_JSON:` is only
+    used as a fallback when the worker skipped the file write.
+    """
     task_id = req.task_id
-    # When the worker fails to emit a RESULT_JSON tail line, treat the run as
-    # a failure rather than silently stamping status=ok. A missing RESULT_JSON
-    # means we have no machine-readable verdict — "ok" would auto-transition
-    # the task to AWAITING_REVIEW as if work had succeeded.
-    payload = result or {"status": "fail", "summary": "(no RESULT_JSON emitted)"}
+    path = _outbox() / f"RESULT_{task_id}.json"
+
+    # Parse run start into a unix timestamp so we can tell a fresh file
+    # written by this run apart from a stale artifact from a prior run.
+    try:
+        start_ts = datetime.fromisoformat(run.started_at.replace("Z", "+00:00")).timestamp()
+    except Exception:
+        start_ts = 0.0
+
+    worker_wrote_file = False
+    payload: dict | None = None
+    if path.exists():
+        try:
+            file_mtime = path.stat().st_mtime
+        except Exception:
+            file_mtime = 0.0
+        # Small slop (2s) for clock/filesystem granularity.
+        if file_mtime + 2.0 >= start_ts:
+            try:
+                disk_payload = json.loads(path.read_text(encoding="utf-8"))
+                if isinstance(disk_payload, dict):
+                    payload = disk_payload
+                    worker_wrote_file = True
+            except Exception:
+                payload = None
+
+    if payload is None:
+        # Fall back to a RESULT_JSON line the worker printed to stdout.
+        if result:
+            payload = dict(result)
+        else:
+            # Neither channel produced a result — record an explicit failure
+            # rather than silently marking the run ok.
+            payload = {"status": "fail", "summary": "(no RESULT_JSON emitted and no RESULT file written)"}
+
     payload.setdefault("task_id", task_id)
     payload.setdefault("role", req.role)
     payload.setdefault("run_id", req.run_id)
     payload.setdefault("captured_at", _now_iso())
-    path = _outbox() / f"RESULT_{task_id}.json"
     body = json.dumps(payload, indent=2, ensure_ascii=False)
-    path.write_text(body, encoding="utf-8")
+    if not worker_wrote_file:
+        path.write_text(body, encoding="utf-8")
     art_id = _write_artifact_row(
         kind="RESULT",
         path=path,
@@ -268,7 +313,7 @@ def _capture_worker(req, run, result) -> tuple[str, str]:
         "UPDATE tasks SET result_path=?, updated_at=? WHERE task_id=?",
         (f"06_OUTBOX_FROM_WORKER/RESULT_{task_id}.json", _now_iso(), task_id),
     )
-    return art_id, "result"
+    return art_id, "result", payload
 
 
 def _capture_review(req, run, result, exit_code) -> tuple[tuple[str, str] | None, str | None]:

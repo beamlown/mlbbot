@@ -35,10 +35,12 @@ _ROLE_FRAMING = {
     "HAIKU_WORKER": (
         "You are a WORKER. Read the HANDOFF carefully and produce the "
         "requested change, restricted to the task's `allowed_files`. Do NOT "
-        "touch any path in `forbidden_files`. When done, emit a single "
-        "JSON block on stdout prefixed by `RESULT_JSON:` containing "
-        "{status, files_changed[], notes, next_steps?}. Also write "
-        "RESULT_<TASK>.json under BOT_BRIDGE/06_OUTBOX_FROM_WORKER/."
+        "touch any path in `forbidden_files`. When done, WRITE your result "
+        "to BOT_BRIDGE/06_OUTBOX_FROM_WORKER/RESULT_<TASK>.json as a JSON "
+        "object containing at minimum {status, summary, files_changed[], "
+        "notes?, next_steps?}. `status` must be one of `ok` | `blocked` | "
+        "`fail`. This file is the authoritative result — the control plane "
+        "reads it directly."
     ),
 }
 
@@ -88,10 +90,22 @@ def build_prompt(req) -> str:
         lines += [f"  - {f}" for f in forbidden]
     if req.extra_prompt:
         lines += ["", "Operator note:", req.extra_prompt]
-    lines += [
-        "",
-        "When you are done, print a final line prefixed by `RESULT_JSON:` "
-        "containing a JSON object with at minimum a `status` field "
-        "(`ok` | `blocked` | `fail`) and a `summary` field.",
-    ]
+    role_kind = ROLE_INFO.get(role).kind if role in ROLE_INFO else ""
+    if role_kind == "worker":
+        lines += [
+            "",
+            f"When done, write your verdict to "
+            f"BOT_BRIDGE/06_OUTBOX_FROM_WORKER/RESULT_{tid}.json as a single "
+            "JSON object: {status, summary, files_changed[], notes?, "
+            "next_steps?}. `status` is one of `ok` | `blocked` | `fail`. "
+            "The control plane reads that file as the canonical result — "
+            "you do not need to also print RESULT_JSON on stdout.",
+        ]
+    else:
+        lines += [
+            "",
+            "When you are done, print a final line prefixed by `RESULT_JSON:` "
+            "containing a JSON object with at minimum a `status` field "
+            "(`ok` | `blocked` | `fail`) and a `summary` field.",
+        ]
     return "\n".join(lines)

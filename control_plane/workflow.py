@@ -117,7 +117,11 @@ def derive_state(task: dict) -> str:
         return "DONE"
     if decision in ("CHANGES_REQUESTED", "FAIL") or raw_status == "CHANGES_REQUESTED":
         return "CHANGES_REQUESTED"
-    if has_result and not has_review:
+    # Any task with a worker result and no decided review sits in review.
+    # Using `decision is None` (rather than "no REVIEW artifact exists")
+    # also catches stale REVIEW artifacts left on disk with no recorded
+    # decision — they should not pin the task back to READY_FOR_WORKER.
+    if has_result and decision is None:
         return "AWAITING_REVIEW"
     # Default: worker can pick it up.
     return "READY_FOR_WORKER"
