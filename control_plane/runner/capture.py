@@ -323,19 +323,23 @@ def finalize_run(run, exit_code: int) -> None:
                     _set_block(task_id, f"structural: {gate_reason}")
                     new_status = "CHANGES_REQUESTED"
                 else:
-                    # Gate passed — clear any stale block and auto-fire the
-                    # semantic triage. Task sits in AWAITING_REVIEW while
-                    # triage runs; _capture_triage will advance to DONE on
-                    # yes or CHANGES_REQUESTED on no.
+                    # Gate passed — auto-approve + auto-assign to the
+                    # pending patch. The patch-review Opus is the ship
+                    # gate, so per-task work that produces a well-formed
+                    # RESULT and survives the structural check is treated
+                    # as done; no need to stall in AWAITING_REVIEW waiting
+                    # for a manual review step. Manual reviewers can still
+                    # downgrade a task to CHANGES_REQUESTED if something
+                    # needs a second look before the patch lands.
                     _clear_block(task_id)
-                    new_status = "AWAITING_REVIEW"
+                    new_status = "DONE"
                     try:
-                        from .triage import launch_triage
-                        launch_triage(task_id, req.run_id)
+                        from ..patches import assign_task
+                        assign_task(task_id)
                     except Exception as e:
                         import logging
                         logging.getLogger(__name__).warning(
-                            "triage launch hook failed for %s: %r", task_id, e,
+                            "assign_task failed for %s: %r", task_id, e,
                         )
             elif payload_status in ("fail", "blocked"):
                 # Zero-exit fails are not successes — keep the run row honest.
@@ -586,7 +590,18 @@ def _capture_review(req, run, result, exit_code) -> tuple[tuple[str, str] | None
         f"- exit code: {exit_code}",
         "",
     ]
-    decision = _decision_from(result, run.last_lines) or ("APPROVED" if exit_code == 0 else "CHANGES_REQUESTED")
+    # Never demote a task to CHANGES_REQUESTED on infrastructure failures.
+    # If the reviewer subprocess crashed (exit != 0) without producing any
+    # parseable verdict, that's a transport problem, not a work-quality
+    # problem — record INDETERMINATE so the operator can re-run the review
+    # cleanly without the task silently rolling back to CHANGES_REQUESTED.
+    parsed = _decision_from(result, run.last_lines)
+    if parsed:
+        decision = parsed
+    elif exit_code == 0:
+        decision = "APPROVED"
+    else:
+        decision = "INDETERMINATE"
     body_lines += [f"## Decision: **{decision}**", ""]
     if result:
         body_lines += ["## RESULT_JSON", "", "```json", json.dumps(result, indent=2), "```", ""]
@@ -650,6 +665,9 @@ def _capture_review(req, run, result, exit_code) -> tuple[tuple[str, str] | None
         rsum = (result or {}).get("summary") if result else None
         reason = rsum or f"{decision} (see REVIEW_{task_id}.md)"
         _set_block(task_id, f"reviewer: {reason}")
+    # INDETERMINATE / unknown → return new_status=None so finalize_run
+    # leaves the task status untouched. The review artifact + row are
+    # still written so the operator can see the crashed run.
     return (art_id, "review"), new_status
 
 
