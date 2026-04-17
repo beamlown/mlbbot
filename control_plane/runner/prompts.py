@@ -11,27 +11,64 @@ from pathlib import Path
 
 from ..config import SETTINGS
 from ..roles import ROLE_INFO
+from ..file_index import resolve_task_files
 
 
 def _layout_block() -> list[str]:
-    """Repo grounding: absolute cwd + top-level dirs + navigation rules.
+    """Workspace grounding — tells the agent exactly where to look.
 
-    Prepended to every role's prompt so workers don't Glob/Grep the whole
-    machine looking for files already listed in `allowed_files`.
+    This is a multi-repo workspace: the control plane + BOT_BRIDGE live
+    inside mlbbot, but the actual bot runtime + ML model are SIBLING
+    directories under Desktop. Agents were wandering because the
+    previous block suggested everything lived under mlbbot/. The task's
+    `allowed_files` column already carries absolute paths (mostly) — the
+    rule is "open what's in allowed_files, do not search for it."
+
+    The text below is intentionally emphatic about not searching because
+    every run_log that crashes out to stderr begins with a Glob or Grep
+    against the wrong root.
     """
+    repo = str(SETTINGS.repo_root)
+    parent = str(SETTINGS.repo_root.parent)
     return [
-        f"Working directory: {SETTINGS.repo_root}",
-        "Do NOT search outside this root. All task paths are relative to it.",
+        "WORKSPACE LAYOUT — this is a multi-repo workspace. Read carefully.",
         "",
-        "Repo layout (top-level only):",
-        "  sports_bot_v2/   — live bot runtime (bot_core.py lives here)",
-        "  mlb_model/       — calibrated MLB win-prob model",
-        "  BOT_BRIDGE/      — task inbox/outbox, reviews, shared context",
-        "  control_plane/   — orchestrator (Flask + SQLite, this process)",
+        f"Working directory (cwd):  {repo}",
+        f"  This is the CONTROL PLANE + BOT_BRIDGE host. The actual bot",
+        f"  runtime and ML model are SIBLING directories under",
+        f"  {parent}, not subfolders of the cwd.",
         "",
-        "For files in `allowed_files`: open them directly — do not search.",
-        "If a HANDOFF mentions a filename without a directory prefix, check",
-        "`allowed_files` first; that list is the authoritative location.",
+        "Project roots in this workspace (all absolute):",
+        f"  {repo}",
+        f"    contains: control_plane/ (this process), BOT_BRIDGE/ (task",
+        f"              inbox + outbox + reviews), run artifacts.",
+        f"  {parent}\\sports_bot_v2",
+        f"    live bot runtime. bot_core.py, core/, dashboard_server.py,",
+        f"    paper_exec.py all live here — NOT under mlbbot.",
+        f"  {parent}\\mlb_model",
+        f"    calibrated MLB win-probability model. integration/,",
+        f"    recommendation_api.py, execution_guard.py.",
+        f"  {parent}\\march_madness_bot",
+        f"    sibling bot (separate project).",
+        "",
+        "Authoritative paths:",
+        f"  HANDOFFs:   {repo}\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\",
+        f"  RESULTs:    {repo}\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\",
+        f"  Reviews:    {repo}\\BOT_BRIDGE\\07_REVIEWS\\",
+        f"  Shared:     {repo}\\BOT_BRIDGE\\08_SHARED_CONTEXT\\",
+        f"  There is an older {parent}\\BOT_BRIDGE (no mlbbot prefix) —",
+        f"  ignore it. Only the path above is live.",
+        "",
+        "HARD RULES — your tools will waste turns if you ignore these:",
+        "  1. The `allowed_files` section below contains ABSOLUTE paths.",
+        "     Open them directly with Read. Do NOT Glob, Grep, or Bash-find",
+        "     to locate a file that's already listed.",
+        "  2. If a HANDOFF mentions a bare filename (e.g. `bot_core.py`),",
+        "     find it in `allowed_files` below. If it's not in",
+        "     `allowed_files`, it is out of scope for this task.",
+        "  3. Do NOT search Desktop\\sports_bot_v2 and Desktop\\mlbbot",
+        "     interchangeably. Each file has exactly one canonical location;",
+        "     `allowed_files` gives it to you.",
     ]
 
 
@@ -114,6 +151,13 @@ def build_prompt(req) -> str:
     except Exception as e:
         handoff_text = f"(HANDOFF file could not be read: {e})"
 
+    # Resolve every allowed_files entry against the on-disk file index so
+    # the prompt gives canonical absolute paths, not ambiguous bare names.
+    # Entries that don't exist or have multiple candidates are surfaced
+    # explicitly — an ambiguous path is information, not a silent fail.
+    allowed_resolved  = resolve_task_files(allowed)
+    forbidden_resolved = resolve_task_files(forbidden)
+
     lines = [
         framing,
         "",
@@ -128,12 +172,34 @@ def build_prompt(req) -> str:
         "Acceptance:",
         acceptance,
         "",
-        f"Allowed files ({len(allowed)}):",
-        *[f"  - {a}" for a in (allowed or ['(none specified)'])],
+        f"Allowed files ({len(allowed)}) — open these directly, do not search:",
     ]
-    if forbidden:
-        lines += ["", f"Forbidden files ({len(forbidden)}):"]
-        lines += [f"  - {f}" for f in forbidden]
+    if not allowed_resolved:
+        lines.append("  (none specified)")
+    else:
+        for entry in allowed_resolved:
+            status = entry["status"]
+            if status == "ok":
+                lines.append(f"  - {entry['resolved'][0]}")
+                if entry.get("note"):
+                    lines.append(f"      note: {entry['note']} (given: {entry['given']})")
+            elif status == "ambiguous":
+                lines.append(f"  - {entry['given']}  (AMBIGUOUS — multiple matches):")
+                for p in entry["resolved"]:
+                    lines.append(f"      * {p}")
+                lines.append("      Pick the one that fits the task subsystem; do NOT")
+                lines.append("      Glob/Grep to decide — ask the operator if unsure.")
+            else:  # missing
+                lines.append(f"  - {entry['given']}  (NOT FOUND in indexed roots — stop and")
+                lines.append("      emit status='blocked' if this file is load-bearing)")
+    if forbidden_resolved:
+        lines += ["", f"Forbidden files ({len(forbidden)}) — do NOT touch:"]
+        for entry in forbidden_resolved:
+            if entry["resolved"]:
+                for p in entry["resolved"]:
+                    lines.append(f"  - {p}")
+            else:
+                lines.append(f"  - {entry['given']}")
     if req.extra_prompt:
         lines += ["", "Operator note:", req.extra_prompt]
     role_kind = ROLE_INFO.get(role).kind if role in ROLE_INFO else ""

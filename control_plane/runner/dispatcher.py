@@ -237,6 +237,15 @@ class RunDispatcher:
                 stderr=subprocess.PIPE,
                 stdin=subprocess.PIPE,
                 text=True,
+                # Force UTF-8 on every stream. The Windows default for
+                # subprocess.Popen(text=True) is locale.getencoding() →
+                # cp1252, which chokes on HANDOFF bodies containing
+                # em-dashes, arrows, or any other non-Latin-1 content
+                # the moment we write the prompt to stdin. Disk writes
+                # elsewhere in the control plane already use UTF-8; this
+                # makes the subprocess boundary consistent.
+                encoding="utf-8",
+                errors="replace",
                 bufsize=1,       # line-buffered
                 env=env,
             )

@@ -198,6 +198,24 @@ CREATE TABLE IF NOT EXISTS patch_reviews (
   FOREIGN KEY (patch_id) REFERENCES patches(patch_id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_patch_reviews_status ON patch_reviews(status);
+
+-- known_files: file index across mlbbot and its sibling project roots
+-- (sports_bot_v2, mlb_model, march_madness_bot). Populated by a
+-- startup scan; used by the prompt builder to resolve bare filenames
+-- in allowed_files to their canonical absolute paths so agents stop
+-- Glob/Grep'ing entire trees. Scanner skips junk dirs (.git, __pycache__,
+-- node_modules, .venv) and files larger than ~1MB.
+CREATE TABLE IF NOT EXISTS known_files (
+  abs_path   TEXT PRIMARY KEY,
+  basename   TEXT NOT NULL,
+  root       TEXT NOT NULL,
+  kind       TEXT,
+  size_bytes INTEGER,
+  mtime      INTEGER,
+  indexed_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_known_files_basename ON known_files(basename);
+CREATE INDEX IF NOT EXISTS idx_known_files_root     ON known_files(root);
 """
 
 
