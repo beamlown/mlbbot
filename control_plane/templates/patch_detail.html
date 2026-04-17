@@ -18,6 +18,25 @@
   </div>
 </header>
 
+{% if patch.status == 'PENDING' and tasks %}
+<section class="patch-review-cta">
+  <span class="cta-icon">📜</span>
+  <div class="cta-text">
+    <div class="cta-title">Summon the Magistrate</div>
+    <div class="cta-subtitle">
+      Opus reads every task in this patch in order — with TL;DRs carried
+      forward — then renders one ship verdict. Sole Opus gate before release.
+    </div>
+  </div>
+  <button class="btn-magistrate" id="start-review-btn"
+          onclick="startPatchReview('{{ patch.patch_id }}')">
+    Start Patch Review
+  </button>
+</section>
+
+<section id="patch-review-progress" class="patch-review-progress hidden"></section>
+{% endif %}
+
 <section class="patch-card">
   <header class="patch-card-head">
     <span class="muted">opened {{ patch.created_at }}</span>
@@ -39,15 +58,26 @@
     <pre class="patch-notes">{{ patch.notes or '(no notes)' }}</pre>
   {% endif %}
 
-  <h3>Tasks in this patch ({{ tasks|length }})</h3>
+  <h3>
+    Tasks in this patch ({{ tasks|length }})
+    {% if patch.status == 'PENDING' and tasks %}
+      <span class="muted" style="font-size:.75rem;font-weight:400;">
+        · drag to set review order
+      </span>
+    {% endif %}
+  </h3>
   {% if tasks %}
-    <ul class="patch-task-list">
+    <ul id="patch-tasks" class="patch-task-list {% if patch.status == 'PENDING' %}reorderable{% endif %}"
+        data-patch-id="{{ patch.patch_id }}">
       {% for t in tasks %}
-        <li>
+        <li data-task-id="{{ t.task_id }}">
           <a href="{{ url_for('tasks.task_detail', task_id=t.task_id) }}">
             <code>{{ t.task_id }}</code>
           </a>
           <span class="patch-task-title">{{ t.title }}</span>
+          {% if t.blocked_on or t.block_reason %}
+            <span class="block-badge" title="{{ t.block_reason or ('parked behind ' ~ t.blocked_on) }}">🚧 blocked</span>
+          {% endif %}
           {% if t.subsystem %}<span class="chip">{{ t.subsystem }}</span>{% endif %}
           <span class="chip priority-{{ (t.priority or 'MEDIUM')|lower }}">{{ t.priority or 'MEDIUM' }}</span>
         </li>
@@ -61,6 +91,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
 async function savePatchNotes(patchId) {
   const notes = document.getElementById('patch-notes-ta').value;
@@ -68,5 +99,136 @@ async function savePatchNotes(patchId) {
   if (res.ok && res.json.ok) toast("Notes saved");
   else toast("Save failed: " + (res.json.error || res.status), false);
 }
+
+/* Drag-to-reorder. Sends the full new order to PATCH /api/patches/<pid>/order. */
+(function() {
+  const list = document.getElementById('patch-tasks');
+  if (!list || !list.classList.contains('reorderable')) return;
+  const patchId = list.dataset.patchId;
+  new Sortable(list, {
+    animation: 160,
+    ghostClass: 'sortable-ghost',
+    dragClass:  'sortable-drag',
+    onEnd: async () => {
+      const order = Array.from(list.querySelectorAll('li[data-task-id]'))
+        .map(li => li.dataset.taskId);
+      const res = await patchJSON(`/api/patches/${patchId}/order`, {order});
+      if (res.ok && res.json.ok) toast(`order saved (${res.json.applied})`);
+      else toast("order save failed: " + (res.json.error || res.status), false);
+    },
+  });
+})();
+
+/* Patch review — start + progress polling. */
+let _prPollTimer = null;
+
+async function startPatchReview(patchId) {
+  const btn = document.getElementById('start-review-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '…summoning'; }
+  const res = await postJSON(`/api/patches/${patchId}/review`, {});
+  if (res.ok || res.status === 202) {
+    toast('patch review started — step 1/' + (res.json.total || '?'));
+    pollPatchReview(patchId);
+  } else {
+    const j = res.json || {};
+    let msg = j.error || ('HTTP ' + res.status);
+    if (j.error === 'blocked_tasks' && j.blockers) {
+      msg = 'blocked tasks — unpark or delete: ' +
+            j.blockers.map(b => b.task_id).join(', ');
+    }
+    toast('review failed to start: ' + msg, false);
+    if (btn) { btn.disabled = false; btn.textContent = 'Start Patch Review'; }
+  }
+}
+
+function pollPatchReview(patchId) {
+  const panel = document.getElementById('patch-review-progress');
+  if (!panel) return;
+  panel.classList.remove('hidden');
+  if (_prPollTimer) clearInterval(_prPollTimer);
+  const tick = async () => {
+    const r = await fetch(`/api/patches/${patchId}/review`);
+    if (!r.ok) return;
+    const j = await r.json();
+    if (!j.ok || j.state === 'never_run') return;
+    renderReviewProgress(j.review);
+    if (j.review && (j.review.status === 'done' || j.review.status === 'failed')) {
+      clearInterval(_prPollTimer);
+      _prPollTimer = null;
+      const btn = document.getElementById('start-review-btn');
+      if (btn) { btn.disabled = false; btn.textContent = 'Start Patch Review'; }
+      toast('patch review ' + j.review.status +
+            (j.review.final_decision ? ' — ' + j.review.final_decision : ''),
+            j.review.status === 'done');
+    }
+  };
+  tick();
+  _prPollTimer = setInterval(tick, 3000);
+}
+
+function renderReviewProgress(rv) {
+  const panel = document.getElementById('patch-review-progress');
+  if (!panel || !rv) return;
+  const total = rv.total_steps || 0;
+  const cur = Math.min(rv.current_index || 0, total);
+  const pct = total ? Math.round((cur / total) * 100) : 0;
+  const sums = Array.isArray(rv.summaries_json) ? rv.summaries_json : [];
+  const fails = Array.isArray(rv.failed_steps_json) ? rv.failed_steps_json : [];
+  const failedIdx = new Set(fails.map(f => f.index));
+
+  let stepsHtml = '';
+  for (let i = 0; i < total; i++) {
+    let cls = 'pr-step pr-step-pending';
+    let icon = (i + 1).toString().padStart(2, '0');
+    if (failedIdx.has(i))         { cls = 'pr-step pr-step-failed';  icon = '✗'; }
+    else if (i < cur)             { cls = 'pr-step pr-step-done';    icon = '✓'; }
+    else if (i === cur &&
+             rv.status === 'in_progress') {
+      cls = 'pr-step pr-step-current'; icon = '▶';
+    }
+    const tldr = (i < sums.length) ? sums[i] : '';
+    stepsHtml += `
+      <div class="${cls}">
+        <div class="pr-step-icon">${icon}</div>
+        <div>
+          <div>Step ${i + 1}</div>
+          ${tldr ? `<div class="pr-step-tldr">${escapeHtml(tldr)}</div>` : ''}
+        </div>
+      </div>`;
+  }
+
+  const decision = rv.final_decision
+    ? `<span class="pr-state pr-state-${rv.status}">${escapeHtml(rv.final_decision)}</span>`
+    : `<span class="pr-state pr-state-${rv.status}">${rv.status}</span>`;
+
+  panel.innerHTML = `
+    <div class="pr-head">
+      <div class="pr-title">📜 Patch review</div>
+      ${decision}
+      <span class="muted" style="margin-left:auto">${cur}/${total}</span>
+    </div>
+    <div class="pr-bar"><div class="pr-bar-fill" style="width:${pct}%"></div></div>
+    <div class="pr-steps">${stepsHtml || '<div class="muted">no steps</div>'}</div>`;
+}
+
+function escapeHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/* Surface any in-progress review on page load. */
+(async function () {
+  const el = document.getElementById('patch-review-progress');
+  if (!el) return;
+  const r = await fetch(`/api/patches/{{ patch.patch_id }}/review`);
+  if (!r.ok) return;
+  const j = await r.json();
+  if (j.ok && j.state !== 'never_run' && j.review) {
+    renderReviewProgress(j.review);
+    el.classList.remove('hidden');
+    if (j.review.status === 'in_progress') pollPatchReview('{{ patch.patch_id }}');
+  }
+})();
 </script>
 {% endblock %}

@@ -207,9 +207,14 @@ def get_patch(patch_id: str) -> dict | None:
 
 
 def tasks_in_patch(patch_id: str) -> list[dict]:
+    # Sort by review order (manual drag from patch detail) first, then
+    # recency. block_reason/blocked_on surface on the patch_detail
+    # template so the operator sees why a task can't be reviewed yet.
     rows = get_conn().execute(
-        "SELECT task_id, title, status, priority, subsystem, updated_at "
-        "FROM tasks WHERE patch_id=? ORDER BY updated_at DESC",
+        "SELECT task_id, title, status, priority, subsystem, updated_at, "
+        "patch_order, blocked_on, block_reason, blocked_at "
+        "FROM tasks WHERE patch_id=? "
+        "ORDER BY patch_order ASC, updated_at DESC",
         (patch_id,),
     ).fetchall()
     return [dict(r) for r in rows]

@@ -19,6 +19,26 @@
   </div>
 </header>
 
+{% if task.block_reason or task.blocked_on %}
+<section class="block-banner" role="status" aria-live="polite">
+  <span class="block-icon">🚧</span>
+  <div>
+    <strong>Blocked</strong>
+    — {{ task.block_reason or ('parked behind ' ~ task.blocked_on) }}
+    <span class="block-meta">
+      {% if task.blocked_on %}
+        blocker: <a href="{{ url_for('tasks.task_detail', task_id=task.blocked_on) }}"><code>{{ task.blocked_on }}</code></a> ·
+      {% endif %}
+      {% if task.blocked_at %}since {{ task.blocked_at }} · {% endif %}
+      launches refuse unless you unpark or pass force=true
+    </span>
+  </div>
+  <div class="block-actions">
+    <button class="btn btn-xs" onclick="unparkTask('{{ task.task_id }}')">Unpark</button>
+  </div>
+</section>
+{% endif %}
+
 <section class="agent-palette" aria-label="Launch agent">
   <span class="palette-label">Launch on this task</span>
   {% for a in agents %}
@@ -73,6 +93,19 @@
   <div class="ctrl-group">
     <button class="btn btn-xs" onclick="toggleEdit()">Edit fields</button>
   </div>
+  <div class="ctrl-group">
+    <button class="btn btn-xs" onclick="togglePark()">Park…</button>
+    <button class="btn btn-xs btn-danger" onclick="deleteTask('{{ task.task_id }}', {onDelete: () => location.href='/' })">Delete task</button>
+  </div>
+</section>
+
+<section id="park-form" class="park-controls" style="display:none">
+  <label for="park-blocked-on" class="muted">blocked on</label>
+  <input type="text" id="park-blocked-on" placeholder="TASK_XYZ (optional)">
+  <label for="park-reason" class="muted">reason</label>
+  <input type="text" id="park-reason" placeholder="why is this stuck?">
+  <button class="btn btn-xs btn-accent" onclick="submitPark('{{ task.task_id }}')">Park</button>
+  <button class="btn btn-xs btn-ghost" onclick="togglePark()">Cancel</button>
 </section>
 
 <section class="live-run" id="live-run" {% if not request.args.get('watch') %}hidden{% endif %}>
@@ -403,5 +436,20 @@ async function cancelRun() {
 }
 
 if (currentRunId) openLive(currentRunId);
+
+function togglePark() {
+  const f = document.getElementById('park-form');
+  if (!f) return;
+  f.style.display = (f.style.display === 'none' || !f.style.display) ? 'flex' : 'none';
+}
+function submitPark(taskId) {
+  const blocked_on = (document.getElementById('park-blocked-on').value || '').trim();
+  const reason     = (document.getElementById('park-reason').value || '').trim();
+  if (!blocked_on && !reason) {
+    toast('give a blocker task or a reason', false);
+    return;
+  }
+  parkTask(taskId, {blocked_on, reason});
+}
 </script>
 {% endblock %}
