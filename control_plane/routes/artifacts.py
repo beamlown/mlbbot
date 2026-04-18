@@ -35,9 +35,26 @@ def list_artifacts():
     sql += " ORDER BY mtime DESC LIMIT 500"
 
     rows = conn.execute(sql, params).fetchall()
+    artifacts = [dict(r) for r in rows]
+
+    # Optional ?profile_id=… filter — narrow to artifacts from runs of that persona's role.
+    profile_id = request.args.get("profile_id")
+    if profile_id:
+        prof = conn.execute(
+            "SELECT role FROM agent_profiles WHERE profile_id=?", (profile_id,)
+        ).fetchone()
+        if prof:
+            role = prof["role"]
+            allowed_ids = {r["artifact_id"] for r in conn.execute(
+                "SELECT DISTINCT ta.artifact_id FROM task_artifacts ta "
+                "JOIN runs r ON r.task_id = ta.task_id "
+                "WHERE r.role = ?", (role,)
+            ).fetchall()}
+            artifacts = [a for a in artifacts if a["artifact_id"] in allowed_ids]
+
     return render_template(
         "artifacts.html",
-        artifacts=[dict(r) for r in rows],
+        artifacts=artifacts,
         kind=kind,
         kind_options=KIND_FILTERS,
         q=q,
