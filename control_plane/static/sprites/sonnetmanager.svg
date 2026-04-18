@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"
+     shape-rendering="crispEdges">
+  <!-- Sonnet — Bench Coach: cap, clipboard held at chest -->
+  <rect x="5"  y="2"  width="6" height="2"/>   <!-- cap crown -->
+  <rect x="4"  y="4"  width="8" height="1"/>   <!-- cap brim -->
+  <rect x="6"  y="5"  width="4" height="2"/>   <!-- face -->
+  <rect x="4"  y="7"  width="8" height="4"/>   <!-- jersey -->
+  <rect x="3"  y="7"  width="1" height="3"/>   <!-- arm L -->
+  <rect x="12" y="7"  width="1" height="3"/>   <!-- arm R -->
+  <rect x="6"  y="8"  width="4" height="3"/>   <!-- clipboard -->
+  <rect x="7"  y="9"  width="2" height="1" opacity="0.35"/> <!-- clipboard detail -->
+  <rect x="6"  y="11" width="2" height="3"/>   <!-- leg L -->
+  <rect x="8"  y="11" width="2" height="3"/>   <!-- leg R -->
+  <rect x="5"  y="14" width="3" height="1"/>
+  <rect x="8"  y="14" width="3" height="1"/>
+</svg>

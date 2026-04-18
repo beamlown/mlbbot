@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"
+     shape-rendering="crispEdges">
+  <!-- Opus · Patch — Crew Chief Umpire: face mask + chest pad -->
+  <rect x="5"  y="1"  width="6" height="2"/>   <!-- cap -->
+  <rect x="4"  y="3"  width="8" height="1"/>   <!-- brim -->
+  <!-- face mask (grid of dots over face) -->
+  <rect x="5"  y="4"  width="1" height="1"/>
+  <rect x="7"  y="4"  width="1" height="1"/>
+  <rect x="9"  y="4"  width="1" height="1"/>
+  <rect x="11" y="4"  width="1" height="1"/>
+  <rect x="5"  y="5"  width="7" height="1" opacity="0.35"/>
+  <rect x="5"  y="6"  width="1" height="1"/>
+  <rect x="7"  y="6"  width="1" height="1"/>
+  <rect x="9"  y="6"  width="1" height="1"/>
+  <rect x="11" y="6"  width="1" height="1"/>
+  <rect x="3"  y="7"  width="10" height="5"/>  <!-- chest pad (bigger than body) -->
+  <rect x="5"  y="12" width="2" height="2"/>
+  <rect x="9"  y="12" width="2" height="2"/>
+  <rect x="4"  y="14" width="3" height="1"/>
+  <rect x="9"  y="14" width="3" height="1"/>
+</svg>
