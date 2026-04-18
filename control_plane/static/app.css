@@ -1441,3 +1441,66 @@ body {
   font-family: var(--font-pixel-text); font-size: 18px;
   color: var(--scoreboard-amber);
 }
+
+/* === DUGOUT OS — composer === */
+.composer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  padding: 24px;
+}
+.composer-form { display: flex; flex-direction: column; gap: 16px; }
+.composer-panel {
+  border: 3px solid var(--scoreboard-amber);
+  background: var(--field-deep);
+  padding: 12px 16px;
+}
+.composer-panel legend {
+  font-family: var(--font-pixel); font-size: 10px;
+  color: var(--scoreboard-amber);
+  padding: 0 6px;
+}
+.composer-panel label {
+  display: flex; flex-direction: column; gap: 4px;
+  font-family: var(--font-pixel-text); font-size: 14px;
+  color: var(--chalk-dim); margin: 8px 0;
+}
+.composer-panel input,
+.composer-panel select,
+.composer-panel textarea {
+  font-family: var(--font-mono); font-size: 13px;
+  background: var(--field-night); color: var(--chalk);
+  border: 1px solid var(--chalk-dim); padding: 6px;
+}
+
+.composer-roles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.mini-card {
+  border: 2px solid var(--accent, var(--chalk-dim));
+  background: var(--field-night);
+  color: var(--chalk);
+  padding: 6px 10px;
+  cursor: pointer;
+  font-family: var(--font-pixel-text); font-size: 14px;
+  display: flex; flex-direction: column; align-items: center;
+  min-width: 90px;
+}
+.mini-jersey { font-family: var(--font-pixel); font-size: 14px; color: var(--accent); }
+.mini-name   { font-size: 13px; }
+.mini-card--selected {
+  background: var(--accent);
+  color: var(--field-deep);
+}
+
+.composer-actions { display: flex; justify-content: space-between; align-items: center; }
+.cta-play-ball { animation: none; margin-top: 0; }
+
+.composer-preview {
+  background: var(--field-deep);
+  border: 2px solid var(--chalk-dim);
+  padding: 16px;
+}
+.composer-preview h3 {
+  font-family: var(--font-pixel); font-size: 11px;
+  color: var(--scoreboard-amber);
+  margin: 0 0 12px;
+}
