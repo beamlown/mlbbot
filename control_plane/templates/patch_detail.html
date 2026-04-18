@@ -4,89 +4,109 @@
 
 <a class="back" href="{{ url_for('patches.patches_index') }}">← Release queue</a>
 
-<header class="task-header">
-  <div class="task-head-left">
-    <h1 class="task-title">{{ patch.title or ('Patch ' ~ patch.version) }}</h1>
-    <code class="tid-big">{{ patch.version }}</code>
-  </div>
-  <div class="task-head-right">
+<article class="program-page">
+
+  <div class="program-toc">
+
     {% if patch.status == 'PENDING' %}
-      <span class="chip chip-wf-awaiting_review">PENDING</span>
-    {% else %}
-      <span class="chip chip-wf-done">LIVE since {{ patch.shipped_at }}</span>
-    {% endif %}
-  </div>
-</header>
+    <section class="patch-review-cta">
+      <span class="cta-icon">📜</span>
+      <div class="cta-text">
+        <div class="cta-title">Summon the Magistrate</div>
+        <div class="cta-subtitle">
+          Opus reads every task in this patch in order — with TL;DRs carried
+          forward — then renders one ship verdict. Sole Opus gate before release.
+        </div>
+      </div>
+      <button class="btn-magistrate" id="start-review-btn"
+              onclick="startPatchReview('{{ patch.patch_id }}')">
+        Start Patch Review
+      </button>
+    </section>
 
-{% if patch.status == 'PENDING' and tasks %}
-<section class="patch-review-cta">
-  <span class="cta-icon">📜</span>
-  <div class="cta-text">
-    <div class="cta-title">Summon the Magistrate</div>
-    <div class="cta-subtitle">
-      Opus reads every task in this patch in order — with TL;DRs carried
-      forward — then renders one ship verdict. Sole Opus gate before release.
+    <section id="patch-review-progress" class="patch-review-progress hidden"></section>
+    {% endif %}
+
+    <section class="patch-card">
+      <header class="patch-card-head">
+        <span class="muted">opened {{ patch.created_at }}</span>
+        {% if patch.shipped_at %}<span class="muted">shipped {{ patch.shipped_at }}</span>{% endif %}
+        <span class="spacer"></span>
+        {% if patch.status == 'PENDING' and tasks %}
+          <button class="btn btn-xs btn-accent" onclick="shipPatch(this)">Ship {{ patch.version }}</button>
+        {% endif %}
+      </header>
+
+      <h3>Patch notes</h3>
+      {% if patch.status == 'PENDING' %}
+        <textarea id="patch-notes-ta" class="patch-notes-editor" rows="6"
+                  placeholder="Release notes — what's in this patch, why it matters.">{{ patch.notes or '' }}</textarea>
+        <div class="row-actions">
+          <button class="btn btn-xs" onclick="savePatchNotes('{{ patch.patch_id }}')">Save notes</button>
+        </div>
+      {% else %}
+        <pre class="patch-notes program-notes">{{ patch.notes or '(no notes)' }}</pre>
+      {% endif %}
+
+      <h3>
+        Tasks in this patch ({{ tasks|length }})
+        {% if patch.status == 'PENDING' and tasks %}
+          <span class="muted" style="font-size:.75rem;font-weight:400;">
+            · drag to set review order
+          </span>
+        {% endif %}
+      </h3>
+      {% if tasks %}
+        <ul id="patch-tasks" class="patch-task-list {% if patch.status == 'PENDING' %}reorderable{% endif %}"
+            data-patch-id="{{ patch.patch_id }}">
+          {% for t in tasks %}
+            <li data-task-id="{{ t.task_id }}">
+              <a href="{{ url_for('tasks.task_detail', task_id=t.task_id) }}">
+                <code>{{ t.task_id }}</code>
+              </a>
+              <span class="patch-task-title">{{ t.title }}</span>
+              {% if t.blocked_on or t.block_reason %}
+                <span class="block-badge" title="{{ t.block_reason or ('parked behind ' ~ t.blocked_on) }}">🚧 blocked</span>
+              {% endif %}
+              {% if t.subsystem %}<span class="chip">{{ t.subsystem }}</span>{% endif %}
+              <span class="chip priority-{{ (t.priority or 'MEDIUM')|lower }}">{{ t.priority or 'MEDIUM' }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty">No tasks yet.</div>
+      {% endif %}
+    </section>
+
+  </div>{# /.program-toc #}
+
+  <aside class="program-box-score">
+    <h3 class="sidebar-scoreboard-h">BOX SCORE</h3>
+    <div class="bat-tag">VERSION</div>
+    <div style="font-family:var(--font-pixel);font-size:28px;color:var(--hr-gold);margin-bottom:12px;">{{ patch.version }}</div>
+
+    <div class="bat-tag">STATUS</div>
+    <div style="margin-bottom:12px;">
+      {% if patch.status == 'PENDING' %}
+        <span class="chip chip-wf-awaiting_review">PENDING</span>
+      {% else %}
+        <span class="chip chip-wf-done">LIVE</span>
+      {% endif %}
     </div>
-  </div>
-  <button class="btn-magistrate" id="start-review-btn"
-          onclick="startPatchReview('{{ patch.patch_id }}')">
-    Start Patch Review
-  </button>
-</section>
 
-<section id="patch-review-progress" class="patch-review-progress hidden"></section>
-{% endif %}
+    <div class="bat-tag">TASKS</div>
+    <div style="font-family:var(--font-pixel);font-size:22px;color:var(--chalk);margin-bottom:12px;">{{ tasks|length }}</div>
 
-<section class="patch-card">
-  <header class="patch-card-head">
-    <span class="muted">opened {{ patch.created_at }}</span>
-    {% if patch.shipped_at %}<span class="muted">shipped {{ patch.shipped_at }}</span>{% endif %}
-    <span class="spacer"></span>
-    {% if patch.status == 'PENDING' and tasks %}
-      <button class="btn btn-xs btn-accent" onclick="shipPatch(this)">Ship {{ patch.version }}</button>
+    <div class="bat-tag">OPENED</div>
+    <div style="font-family:var(--font-pixel-text);font-size:13px;color:var(--chalk-dim);margin-bottom:12px;">{{ patch.created_at[:10] if patch.created_at else '—' }}</div>
+
+    {% if patch.shipped_at %}
+    <div class="bat-tag">SHIPPED</div>
+    <div style="font-family:var(--font-pixel-text);font-size:13px;color:var(--chalk-dim);margin-bottom:12px;">{{ patch.shipped_at[:10] }}</div>
     {% endif %}
-  </header>
+  </aside>
 
-  <h3>Patch notes</h3>
-  {% if patch.status == 'PENDING' %}
-    <textarea id="patch-notes-ta" class="patch-notes-editor" rows="6"
-              placeholder="Release notes — what's in this patch, why it matters.">{{ patch.notes or '' }}</textarea>
-    <div class="row-actions">
-      <button class="btn btn-xs" onclick="savePatchNotes('{{ patch.patch_id }}')">Save notes</button>
-    </div>
-  {% else %}
-    <pre class="patch-notes">{{ patch.notes or '(no notes)' }}</pre>
-  {% endif %}
-
-  <h3>
-    Tasks in this patch ({{ tasks|length }})
-    {% if patch.status == 'PENDING' and tasks %}
-      <span class="muted" style="font-size:.75rem;font-weight:400;">
-        · drag to set review order
-      </span>
-    {% endif %}
-  </h3>
-  {% if tasks %}
-    <ul id="patch-tasks" class="patch-task-list {% if patch.status == 'PENDING' %}reorderable{% endif %}"
-        data-patch-id="{{ patch.patch_id }}">
-      {% for t in tasks %}
-        <li data-task-id="{{ t.task_id }}">
-          <a href="{{ url_for('tasks.task_detail', task_id=t.task_id) }}">
-            <code>{{ t.task_id }}</code>
-          </a>
-          <span class="patch-task-title">{{ t.title }}</span>
-          {% if t.blocked_on or t.block_reason %}
-            <span class="block-badge" title="{{ t.block_reason or ('parked behind ' ~ t.blocked_on) }}">🚧 blocked</span>
-          {% endif %}
-          {% if t.subsystem %}<span class="chip">{{ t.subsystem }}</span>{% endif %}
-          <span class="chip priority-{{ (t.priority or 'MEDIUM')|lower }}">{{ t.priority or 'MEDIUM' }}</span>
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <div class="empty">No tasks yet.</div>
-  {% endif %}
-</section>
+</article>
 
 {% endblock %}
 
