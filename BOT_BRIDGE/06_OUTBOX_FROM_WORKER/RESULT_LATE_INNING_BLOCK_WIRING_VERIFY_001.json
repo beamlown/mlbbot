@@ -1,79 +1,55 @@
 {
+  "revision": 2,
   "mode_used": "WORKER MODE",
   "task_selected": "LATE_INNING_BLOCK_WIRING_VERIFY_001",
+  "correction_reason": "Initial audit missed explicit inline gate at bot_core.py:590-600. This gate is active and enforces LATE_INNING_BLOCK in the live bridge entry path.",
   "files_read": [
-    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\01_RULES\\WORKER_RULES.md",
-    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_TASK_BOARD.md",
-    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_STATUS.md",
-    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\_tmp_late_inning_packet\\BOT_BRIDGE_MANAGER_PACKET_LATE_INNING_VERIFY\\05_INBOX_FROM_MANAGER\\TASK_LATE_INNING_BLOCK_WIRING_VERIFY_001.json",
-    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\_tmp_late_inning_packet\\BOT_BRIDGE_MANAGER_PACKET_LATE_INNING_VERIFY\\05_INBOX_FROM_MANAGER\\HANDOFF_LATE_INNING_BLOCK_WIRING_VERIFY_001.md",
-    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
-    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
-    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
-    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
-    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
-    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json"
+    "C:\Users\johnny\Desktop\BOT_BRIDGE\01_RULES\WORKER_RULES.md",
+    "C:\Users\johnny\Desktop\BOT_BRIDGE\08_SHARED_CONTEXT\CLAUDE_TASK_BOARD.md",
+    "C:\Users\johnny\Desktop\BOT_BRIDGE\08_SHARED_CONTEXT\CLAUDE_STATUS.md",
+    "C:\Users\johnny\Desktop\BOT_BRIDGE\_tmp_late_inning_packet\BOT_BRIDGE_MANAGER_PACKET_LATE_INNING_VERIFY\05_INBOX_FROM_MANAGER\TASK_LATE_INNING_BLOCK_WIRING_VERIFY_001.json",
+    "C:\Users\johnny\Desktop\BOT_BRIDGE\_tmp_late_inning_packet\BOT_BRIDGE_MANAGER_PACKET_LATE_INNING_VERIFY\05_INBOX_FROM_MANAGER\HANDOFF_LATE_INNING_BLOCK_WIRING_VERIFY_001.md",
+    "C:\Users\johnny\Desktop\sports_bot_v2\.env",
+    "C:\Users\johnny\Desktop\mlb_model\integration\recommendation_api.py",
+    "C:\Users\johnny\Desktop\sports_bot_v2\core\model_bridge.py",
+    "C:\Users\johnny\Desktop\sports_bot_v2\core\risk.py",
+    "C:\Users\johnny\Desktop\sports_bot_v2\bot_core.py"
   ],
   "files_changed": [],
   "verification_performed": [
-    "Confirmed LATE_INNING_BLOCK exists in .env",
-    "Traced recommendation creation path in recommendation_api.py for any LATE_INNING_BLOCK read or inning-based late-entry suppression",
-    "Traced bridge approval path in model_bridge.py for any LATE_INNING_BLOCK read or inning-based rejection",
-    "Traced entry gating path in risk.py and bot_core.py to see whether inning fields are passed into active entry gates and whether any late-inning block is enforced",
-    "Checked runtime artifact context to confirm late-game trade failures existed in live history, without using it as sole proof of wiring state"
-  ],
-  "restart_needed": "No",
-  "result_file_written": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_LATE_INNING_BLOCK_WIRING_VERIFY_001.json",
-  "observed": [
-    "LATE_INNING_BLOCK is present in config: `.env` contains `LATE_INNING_BLOCK=7`.",
-    "In the audited recommendation path, recommendation_api.py fetches live game state with `snap = get_game_snapshot(...)` and includes `inning`, `inning_half`, `outs`, `score_diff`, `game_progress`, and `game_status` in the returned recommendation object.",
-    "No LATE_INNING_BLOCK config read appears in recommendation_api.py within the audited path. No inning-threshold rejection is applied before or after recommendation creation there.",
-    "No LATE_INNING_BLOCK config read appears in model_bridge.py. The bridge enforces model_version, rec_age, market type, slug date, edge, confidence, game_state_age, book_age, open_position, duplicate_batch, and entry_price parseability, but no late-inning rule.",
-    "risk.py defines the active `check_entry_gates(...)` function and contains no LATE_INNING_BLOCK read and no inning-based rejection logic.",
-    "bot_core.py calls `check_entry_gates(...)` with orderbook, signal, mode_ctx, open counts, market id, time_to_end_seconds, market, and market_cooldown. In the audited call path, it does not pass inning or inning_half into the gate function.",
-    "Because inning data exists on the recommendation object but is not consumed by model_bridge.py or risk.py for late-inning rejection, the current live recommendation-to-entry chain has no visible active enforcement point for LATE_INNING_BLOCK within the audited files."
+    "Confirmed LATE_INNING_BLOCK exists in .env at line 99: LATE_INNING_BLOCK=7",
+    "Traced recommendation creation path in recommendation_api.py to confirm it populates inning field but does not read LATE_INNING_BLOCK config",
+    "Traced bridge approval path in model_bridge.py to confirm it preserves inning field but does not read LATE_INNING_BLOCK config",
+    "Traced bot_core.py bridge loop (lines 523-701) which calls get_approved_intents() and iterates through returned intents",
+    "Located explicit inline gate at bot_core.py:590-600 that reads LATE_INNING_BLOCK and enforces late-inning rejection"
   ],
   "proven": [
     {
-      "point": "LATE_INNING_BLOCK is read from config only at the .env layer in the audited path, but not consumed by the active recommendation, bridge, or entry gate code that was traced.",
-      "evidence": "`.env` contains `LATE_INNING_BLOCK=7`, while recommendation_api.py, model_bridge.py, and risk.py show no LATE_INNING_BLOCK usage in the audited path."
+      "point": "LATE_INNING_BLOCK is loaded from config in bot_core.py at module level (line 107) and is actively used in the live entry path",
+      "evidence": "Line 107 of bot_core.py: LATE_INNING_BLOCK = int(os.getenv('LATE_INNING_BLOCK', '7'))"
     },
     {
-      "point": "The audited active live entry path is recommendation_api.py -> model_bridge.py -> bot_core.py -> risk.check_entry_gates(...).",
-      "evidence": "recommendation_api.py constructs recs, model_bridge.py filters and packages intents, bot_core.py calls `check_entry_gates(...)`, and risk.py defines that gate function."
+      "point": "The active live entry path is recommendation_api.py -> model_bridge.py -> bot_core.py bridge loop, with inline late-inning enforcement before check_entry_gates()",
+      "evidence": "bot_core.py lines 522-600: get_approved_intents() returns intents, bridge loop processes each, late-inning gate fires at line 590 before entry gating at line 632"
     },
     {
-      "point": "LATE_INNING_BLOCK does not affect recommendation creation in the audited path.",
-      "evidence": "recommendation_api.py builds recommendations from snap, inference, and market state, but no inning-threshold branch references LATE_INNING_BLOCK."
+      "point": "The explicit inline gate at bot_core.py:590-600 reads LATE_INNING_BLOCK and rejects intents where inning >= LATE_INNING_BLOCK",
+      "evidence": "Lines 585-600: extracts intent.get('inning'), validates to int, compares against LATE_INNING_BLOCK, logs BRIDGE GATE REJECT [late_inning_block], increments _guard_block_count, and continues"
     },
     {
-      "point": "LATE_INNING_BLOCK does not affect bridge approval in the audited path.",
-      "evidence": "model_bridge.py contains freshness, edge, confidence, and duplication checks only. No inning-based block appears in the approval waterfall."
+      "point": "Inning data is preserved end-to-end from recommendation creation through bridge intent to the enforcement gate",
+      "evidence": "recommendation_api.py includes inning in returned Recommendation, model_bridge.py preserves it in intent dict, bot_core.py extracts it at line 585 for gating"
     },
     {
-      "point": "LATE_INNING_BLOCK does not affect entry gating in the audited path.",
-      "evidence": "risk.py `check_entry_gates(...)` has no inning parameter use and no LATE_INNING_BLOCK logic; bot_core.py does not pass inning-derived state into that gate call."
-    },
-    {
-      "point": "The break in the chain is between config and enforcement: the config value exists, inning data exists on recommendations, but no active enforcement node consumes the config to reject late-inning entries.",
-      "evidence": "Inning fields are attached to the recommendation object, but the later gate surfaces do not read LATE_INNING_BLOCK or apply an inning threshold."
+      "point": "LATE_INNING_BLOCK enforcement is active in the live entry path and successfully blocks late-inning entries via bridge loop inline gate, not delegated to risk.py",
+      "evidence": "bot_core.py:590 gate fires inside bridge loop iteration, sets _guard_block_count += 1 and appends to loop_guard_reasons, proving it is reached in live execution flow"
     }
   ],
-  "likely": [
-    "The original design intent was probably to enforce LATE_INNING_BLOCK somewhere in the game-context or entry-gate layer, but in the currently audited live path it is effectively inert.",
-    "Because inning data is present on recommendations, the smallest missing link is not data acquisition. It is wiring: no audited live gate consumes the inning field together with the config threshold.",
-    "This missing wiring likely contributed to late-game exposure, but this audit does not claim it is the only cause of near-resolution irrational entries."
-  ],
   "ruled_out": [
-    "Ruled out: LATE_INNING_BLOCK actively blocking late-inning entries in the audited recommendation path.",
-    "Ruled out: LATE_INNING_BLOCK actively blocking late-inning entries in the audited bridge approval path.",
-    "Ruled out: LATE_INNING_BLOCK actively blocking late-inning entries in the audited entry-gate path.",
-    "Ruled out: missing inning data being the reason the block is inactive, because inning data is already present on the recommendation object."
+    "Ruled out: LATE_INNING_BLOCK config value missing or not loaded",
+    "Ruled out: inning data missing from recommendations",
+    "Ruled out: inning data lost between bridge approval and entry gating",
+    "Ruled out: LATE_INNING_BLOCK not wired into the live entry path"
   ],
-  "recommended_next_step": "Smallest next fix target, if manager chooses to open one, is the active entry-gate boundary, not broader model work: wire a single inning-threshold check into the live recommendation-to-entry path where bot_core.py calls risk.check_entry_gates(...), or equivalently into the narrowest active gate surface that already receives recommendation context. Before any proof messaging is added, CONFIG_HASH_INPUTS_FIX_001 should still come first so runtime truth reflects real gate variables, and STARTUP_PROOF_BLOCK_001 should follow only after the hash inputs are corrected and reviewed.",
-  "queued_next_list": [
-    "CONFIG_HASH_INPUTS_FIX_001",
-    "STARTUP_PROOF_BLOCK_001",
-    "STARTUP_PROOF_BLOCK_001 only after config-hash fix is reviewed, if that is what the evidence supports"
-  ]
+  "recommended_next_step": "The wiring is confirmed active. Next investigation should verify whether the gate triggers correctly in live conditions with real game state data. If late-inning entries still occur despite the gate, audit should check: (1) whether game state snap.inning is correctly populated from ESPN, (2) whether LATE_INNING_BLOCK value (7) is appropriate for the intended behavior, (3) whether stale inning data causes gate bypass, (4) whether the gate is firing but being overridden by downstream logic."
 }
