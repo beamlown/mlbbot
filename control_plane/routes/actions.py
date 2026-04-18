@@ -111,6 +111,13 @@ def api_create_task():
         return jsonify({"ok": False, "error": "invalid_role"}), 400
     allowed = _loadlist(body.get("allowed_files"))
     forbidden = _loadlist(body.get("forbidden_files"))
+    # restart_scope — operator-supplied; fall back to subsystem heuristic.
+    from ..db import _restart_scope_for_subsystem, _VALID_RESTART_SCOPES
+    rs_raw = (body.get("restart_scope") or "").strip().lower()
+    if rs_raw in _VALID_RESTART_SCOPES:
+        restart_scope = rs_raw
+    else:
+        restart_scope = _restart_scope_for_subsystem(subsystem)
 
     conn = get_conn()
     exists = conn.execute("SELECT 1 FROM tasks WHERE task_id=?", (tid,)).fetchone()
@@ -123,8 +130,9 @@ def api_create_task():
             """INSERT INTO tasks
                (task_id, type, priority, status, issued, subsystem, title,
                 allowed_files, forbidden_files, acceptance, notes,
-                assigned_role, brief_path, source, created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                assigned_role, restart_scope, brief_path, source,
+                created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 tid, body.get("type") or "manual",
                 priority, status,
@@ -132,13 +140,14 @@ def api_create_task():
                 subsystem, title,
                 json.dumps(allowed),
                 json.dumps(forbidden),
-                acceptance, notes, assigned_role,
+                acceptance, notes, assigned_role, restart_scope,
                 f"05_INBOX_FROM_MANAGER/HANDOFF_{tid}.md",
                 "dashboard", now, now,
             ),
         )
 
-    return jsonify({"ok": True, "task_id": tid, **_touched(tid)})
+    return jsonify({"ok": True, "task_id": tid, "restart_scope": restart_scope,
+                    **_touched(tid)})
 
 
 # ---------------------------------------------------------------------------
@@ -148,6 +157,7 @@ def api_create_task():
 EDITABLE_FIELDS = {
     "title", "priority", "subsystem", "acceptance", "notes",
     "allowed_files", "forbidden_files", "evidence", "type",
+    "restart_scope",
 }
 
 
@@ -172,6 +182,10 @@ def api_edit_task(task_id: str):
         elif key == "priority":
             p = (val or "").upper()
             args.append(p if p in VALID_PRIORITIES else "MEDIUM")
+        elif key == "restart_scope":
+            from ..db import _VALID_RESTART_SCOPES
+            s = (val or "").strip().lower()
+            args.append(s if s in _VALID_RESTART_SCOPES else "both")
         else:
             v = (str(val).strip() if val is not None else None)
             args.append(v or None)

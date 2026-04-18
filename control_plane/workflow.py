@@ -192,17 +192,24 @@ def derive_state(task: dict) -> str:
         return "AUDIT_QUEUE"
 
     if decision == "APPROVED" or raw_status == "DONE":
-        # A DONE task splits into three buckets so the operator can tell at
-        # a glance what's deployed vs what's only staged vs what's just old
-        # historical completion:
-        #   - SHIPPED patch  → LIVE        (running in production)
-        #   - PENDING patch  → DONE        (staged for next release)
-        #   - no patch       → ARCHIVED    (historical, no action needed)
+        # A DONE task splits into four buckets so the operator can tell at
+        # a glance what's deployed vs what's only staged vs what's hot-live
+        # without a ship vs what's just old historical completion:
+        #   - SHIPPED patch                 → LIVE
+        #   - PENDING patch + restart=none  → LIVE (hot change, no ship needed;
+        #                                           still carried in patch notes)
+        #   - PENDING patch + needs restart → DONE (staged until ship + restart)
+        #   - no patch                      → ARCHIVED (historical)
         p = _patch_status_for(tid)
         if p == "SHIPPED":
             return "LIVE"
         if p is None:
             return "ARCHIVED"
+        # Patch is PENDING. If this task needs no process restart to take
+        # effect, it's already live — skip the 'staged' intermediate state.
+        scope = (task.get("restart_scope") or "both").strip().lower()
+        if scope == "none":
+            return "LIVE"
         return "DONE"
     if decision in ("CHANGES_REQUESTED", "FAIL") or raw_status == "CHANGES_REQUESTED":
         return "CHANGES_REQUESTED"

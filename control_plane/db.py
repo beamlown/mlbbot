@@ -402,6 +402,16 @@ def init_db() -> None:
     _add_column_if_missing(conn, "agent_profiles", "released_at",    "TEXT")
     _add_column_if_missing(conn, "agent_profiles", "released_reason","TEXT")
     _add_column_if_missing(conn, "agent_profiles", "jersey_number",  "INTEGER")
+    # Dugout OS — restart-scope on tasks (added 2026-04-18):
+    #   none           — hot change; already live the moment it's approved
+    #                    (docs, spec, dashboard cosmetic, CSS-only).
+    #   control_plane  — needs the CP Flask process relaunched.
+    #   bot            — needs the betting bot process relaunched.
+    #   both           — needs both. Safe default; anything touching shared
+    #                    modules or data models.
+    _add_column_if_missing(conn, "tasks", "restart_scope",
+                           "TEXT NOT NULL DEFAULT 'both'")
+    _backfill_restart_scope()
     _backfill_roster_fields()
     _seed_agent_profiles()
 
@@ -452,6 +462,70 @@ _DEFAULT_JERSEYS = {
     "opus_auditor":         99,
     "opus_patch_reviewer":  1,
 }
+
+
+_VALID_RESTART_SCOPES = frozenset({"none", "control_plane", "bot", "both"})
+
+
+_RESTART_SCOPE_HINTS = (
+    # (substring match on lowercased subsystem, resulting scope)
+    ("docs",           "none"),
+    ("doc",            "none"),
+    ("spec",           "none"),
+    ("notes",          "none"),
+    ("dashboard",      "control_plane"),
+    ("control_plane",  "control_plane"),
+    ("ui",             "control_plane"),
+    ("template",       "control_plane"),
+    ("css",            "none"),
+    ("bot",            "bot"),
+    ("runner",         "bot"),
+    ("sports_bot",     "bot"),
+    ("mlb_model",      "bot"),
+    ("ingest",         "bot"),
+    ("sizing",         "bot"),
+    ("decision",       "bot"),
+    ("baseball",       "bot"),
+)
+
+
+def _restart_scope_for_subsystem(subsystem: str | None) -> str:
+    """Heuristic guess for a task's restart scope from its subsystem label.
+
+    Returns 'none' | 'control_plane' | 'bot' | 'both'. Safe default is 'both';
+    operators can always override in the UI.
+    """
+    s = (subsystem or "").strip().lower()
+    if not s:
+        return "both"
+    for needle, scope in _RESTART_SCOPE_HINTS:
+        if needle in s:
+            return scope
+    return "both"
+
+
+def _backfill_restart_scope() -> None:
+    """Populate restart_scope for tasks that pre-date the column.
+
+    Only touches rows where restart_scope is NULL or the SQL-level default
+    ('both') AND the subsystem gives a confident hint. If the heuristic
+    returns 'both', we leave the row as-is (no signal either way).
+    """
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT task_id, subsystem, restart_scope FROM tasks"
+    ).fetchall()
+    for r in rows:
+        current = (r["restart_scope"] or "both").strip().lower()
+        if current != "both":
+            continue  # operator-edited; don't override
+        guess = _restart_scope_for_subsystem(r["subsystem"])
+        if guess == "both":
+            continue  # no confident hint; leave default
+        conn.execute(
+            "UPDATE tasks SET restart_scope=? WHERE task_id=?",
+            (guess, r["task_id"]),
+        )
 
 
 def _backfill_roster_fields() -> None:
