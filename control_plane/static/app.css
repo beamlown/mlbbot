@@ -1273,3 +1273,102 @@ body {
 
 .card.drag-go  { box-shadow: 0 0 0 3px var(--scoreboard-green) inset; }
 .card.drag-no  { opacity: 0.4; }
+
+/* === DUGOUT OS — trading-card task === */
+.task-card-trading {
+  background: var(--field-night);
+  border: 2px solid var(--chalk-dim);
+  border-radius: 8px;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+  color: var(--chalk);
+  margin-bottom: 12px;
+}
+.task-card-trading.state--RUNNING        { border-color: var(--scoreboard-green); }
+.task-card-trading.state--AWAITING_REVIEW { border-color: var(--ump-purple); }
+.task-card-trading.state--CHANGES_REQUESTED { border-color: var(--foul-red); }
+.task-card-trading.state--BLOCKED         { border-color: var(--rain-blue); }
+.task-card-trading.state--DONE            { border-color: var(--scoreboard-amber); }
+.task-card-trading.state--LIVE            { border-color: var(--hr-gold); }
+
+.task-card-trading .card-head-pixel {
+  display: flex; flex-direction: column; gap: 4px;
+  background: linear-gradient(180deg, var(--turf) 0%, var(--turf-bright) 100%);
+  padding: 8px 10px;
+  border-bottom: 2px dashed var(--chalk);
+}
+.task-card-trading .tid {
+  font-family: var(--font-mono); font-size: 11px; color: var(--chalk-dim);
+}
+.task-card-trading .card-head-title {
+  font-family: var(--font-pixel); font-size: 11px; line-height: 1.4;
+  color: var(--chalk);
+}
+.task-card-trading .card-meta-pixel {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 8px 10px;
+}
+.chip-pri--high     { color: var(--foul-red);         border-color: var(--foul-red); }
+.chip-pri--medium   { color: var(--scoreboard-amber); border-color: var(--scoreboard-amber); }
+.chip-pri--low      { color: var(--chalk-dim);        border-color: var(--chalk-dim); }
+.chip-patch--shipped{ color: var(--hr-gold);          border-color: var(--hr-gold); }
+.chip-patch--pending{ color: var(--scoreboard-amber); border-color: var(--scoreboard-amber); }
+
+.at-bat-banner {
+  background: var(--turf-bright);
+  color: var(--field-deep);
+  font-family: var(--font-pixel); font-size: 10px;
+  padding: 6px 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.at-bat-dot { font-size: 16px; }
+.pulse-pitch { animation: pulse-pitch 1.2s ease-in-out infinite; }
+
+.rain-overlay {
+  background:
+    repeating-linear-gradient(180deg,
+      transparent 0, transparent 6px,
+      var(--rain-blue) 6px, var(--rain-blue) 8px);
+  background-size: 100% 32px;
+  animation: rain-drift 3s linear infinite;
+  padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.rain-label  { font-family: var(--font-pixel); font-size: 10px; color: var(--chalk); }
+.rain-detail { font-family: var(--font-pixel-text); font-size: 14px; color: var(--chalk); }
+
+.card-notes {
+  padding: 6px 10px 10px;
+  font-family: var(--font-body); font-size: 13px; color: var(--chalk-dim);
+}
+.card-dropzone {
+  background: rgba(0,0,0,0.4);
+  border-top: 2px dashed var(--chalk-dim);
+  font-family: var(--font-pixel-text); font-size: 14px;
+  color: var(--chalk-dim);
+  text-align: center;
+  padding: 6px;
+}
+.card-dropzone.drag-over { background: var(--turf); color: var(--chalk); }
+
+.pennant {
+  font-family: var(--font-pixel); font-size: 9px;
+  padding: 3px 6px;
+  position: relative;
+}
+.pennant::after {
+  content: ''; position: absolute; right: -6px; top: 50%;
+  border: 6px solid transparent;
+  transform: translateY(-50%);
+}
+.pennant--new   { background: var(--scoreboard-green); color: var(--field-deep); }
+.pennant--new::after  { border-left-color: var(--scoreboard-green); }
+.pennant--stale { background: var(--scoreboard-amber); color: var(--field-deep); }
+.pennant--stale::after { border-left-color: var(--scoreboard-amber); }
+
+.attempt-badge {
+  font-family: var(--font-pixel); font-size: 9px;
+  background: var(--foul-red); color: var(--chalk);
+  padding: 3px 6px;
+}
