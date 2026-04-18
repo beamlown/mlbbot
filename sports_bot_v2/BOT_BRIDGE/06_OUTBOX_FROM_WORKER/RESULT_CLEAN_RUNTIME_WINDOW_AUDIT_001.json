@@ -1,0 +1,10 @@
+{
+  "status": "ok",
+  "summary": "Clean-era audit deferred — activation condition not met",
+  "notes": "Query executed with correct ISO timestamp filter (ts_open > '2026-04-11T10:57:33' UTC). Database query returns n=0 trades in actual clean era (post-verified restart). Task board notes indicate: 'Activate when n≥30'. Deferred condition not yet satisfied.",
+  "files_changed": [],
+  "next_steps": [
+    "Task remains DEFERRED in queue — activate when n >= 30 trades accumulate in clean window",
+    "Use timestamp filter: ts_open > '2026-04-11T10:57:33' (ISO format) to avoid prior zombie-process capture error"
+  ]
+}

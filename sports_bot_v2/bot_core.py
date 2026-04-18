@@ -11,7 +11,7 @@ import os
 import sys
 import time
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from pathlib import Path
 
 from core.utils import load_env, atomic_write_json, config_hash, now_iso, append_jsonl, parse_utc_dt
@@ -106,6 +106,7 @@ from core.risk import check_entry_gates, check_exit, set_current_loop, NEAR_RESO
 
 LATE_INNING_BLOCK = int(os.getenv("LATE_INNING_BLOCK", "7"))
 MAX_SLUG_ENTRIES_SESSION = int(os.getenv("MAX_SLUG_ENTRIES_SESSION", "3"))
+MAX_SLUG_LOSS_USD = float(os.getenv("MAX_SLUG_LOSS_USD", "0"))
 from core.types import Market, Trade, Signal
 from core.model_bridge import get_approved_intents
 
@@ -119,6 +120,7 @@ _guard_market_blocks: dict[str, int] = defaultdict(int)
 _last_invalid_market_details: dict = {}
 _market_cooldown: dict[str, float] = {}   # market_id → expiry timestamp
 _session_gap_stop_bans: set = set()       # (market_slug, side) → banned for session after gap_stop
+_session_slug_loss_bans: set = set()      # market_slug → banned for session after loss cap hit
 _exit_reason_counts: dict[str, int] = defaultdict(int)  # exit reason → count
 _resolved_markets: dict = {}
 _resolved_markets_mtime: float = 0.0
@@ -228,6 +230,7 @@ def _write_state(status_line: str = "", mode_ctx=None):
             "market_cooldowns_active": sum(
                 1 for exp in _market_cooldown.values() if time.time() < exp
             ),
+            "session_slug_loss_bans": list(_session_slug_loss_bans),
             "open_positions": open_positions,
             "recent_closed": [
                 {
@@ -381,7 +384,7 @@ def main():
     _write_pid()
 
     # ── Restore cooldown and session start from prior state ───────────────
-    global _market_cooldown, _session_start_ts, _session_gap_stop_bans
+    global _market_cooldown, _session_start_ts, _session_gap_stop_bans, _session_slug_loss_bans
     try:
         with open(STATE_PATH) as _f:
             _prior = json.load(_f)
@@ -400,6 +403,14 @@ def main():
         if 0 < _prior_ts and (_now - _prior_ts) < 86400:
             _session_start_ts = _prior_ts
             logger.info("Restored session_start_ts=%d from prior state", _session_start_ts)
+        # Restore slug loss bans from prior state
+        for _slug in _prior.get("session_slug_loss_bans", []):
+            _session_slug_loss_bans.add(_slug)
+        if _session_slug_loss_bans:
+            logger.info(
+                "Restored %d slug loss ban(s) from prior state: %s",
+                len(_session_slug_loss_bans), _session_slug_loss_bans,
+            )
     except (FileNotFoundError, KeyError, ValueError, TypeError, OSError):
         pass
 
@@ -548,6 +559,23 @@ def main():
                             logger.info("BRIDGE GATE REJECT [market_lookup] slug=%s reason=market_not_found", intent["slug"])
                             _bridge_consumed_slugs.add(intent["slug"])
                             continue
+                        # Slug-date gate: reject if slug embeds a date != today (UTC)
+                        _slug_parts = market.slug.rsplit('-', 3)
+                        if len(_slug_parts) == 4:
+                            try:
+                                _slug_date = date.fromisoformat('-'.join(_slug_parts[1:]))
+                                _today = date.today()
+                                if _slug_date != _today:
+                                    logger.info(
+                                        "BRIDGE GATE REJECT [slug_date_gate] slug=%s reason=slug_date=%s!=today=%s",
+                                        market.slug, _slug_date, _today,
+                                    )
+                                    _guard_block_count += 1
+                                    loop_guard_reasons.append("bridge:slug_date_mismatch")
+                                    _bridge_consumed_slugs.add(market.slug)
+                                    continue
+                            except ValueError:
+                                pass  # slug date not parseable — pass through
                         ob = get_orderbook_snapshot(market)
                         signal = Signal(
                             side=intent["side"],
@@ -608,6 +636,37 @@ def main():
                             loop_guard_reasons.append("bridge:post_gap_stop_session_ban")
                             _bridge_consumed_slugs.add(market.slug)
                             continue
+                        if market.slug in _session_slug_loss_bans:
+                            logger.info(
+                                "BRIDGE GATE REJECT [check_entry_gates] slug=%s reasons=%s",
+                                market.slug,
+                                [f"session_slug_loss_cap_exceeded:{market.slug}"],
+                            )
+                            _guard_block_count += 1
+                            loop_guard_reasons.append("bridge:session_slug_loss_cap_exceeded")
+                            _bridge_consumed_slugs.add(market.slug)
+                            continue
+                        if MAX_SLUG_LOSS_USD > 0:
+                            try:
+                                import sqlite3 as _sqlite3
+                                with _sqlite3.connect(DB_PATH, timeout=2.0) as _sc:
+                                    _slug_loss = _sc.execute(
+                                        "SELECT COALESCE(SUM(pnl_usd), 0) FROM trades WHERE market_slug = ? AND status = 'closed' AND pnl_usd < 0",
+                                        (market.slug,),
+                                    ).fetchone()[0]
+                                if _slug_loss <= -MAX_SLUG_LOSS_USD:
+                                    logger.info(
+                                        "BRIDGE GATE REJECT [check_entry_gates] slug=%s reasons=%s",
+                                        market.slug,
+                                        [f"session_slug_loss_cap_hit:{_slug_loss:.2f}<={-MAX_SLUG_LOSS_USD}"],
+                                    )
+                                    _session_slug_loss_bans.add(market.slug)
+                                    _guard_block_count += 1
+                                    loop_guard_reasons.append("bridge:session_slug_loss_cap_hit")
+                                    _bridge_consumed_slugs.add(market.slug)
+                                    continue
+                            except Exception as _sce:
+                                logger.warning("session_slug_loss_cap check failed: %s", _sce)
                         if MAX_SLUG_ENTRIES_SESSION > 0:
                             try:
                                 import sqlite3 as _sqlite3

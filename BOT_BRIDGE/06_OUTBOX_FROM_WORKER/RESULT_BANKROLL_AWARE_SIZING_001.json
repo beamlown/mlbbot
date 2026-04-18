@@ -1,40 +1,22 @@
 {
   "task_id": "BANKROLL_AWARE_SIZING_001",
-  "status": "DONE",
-  "executor": "Claude (manager acting as worker — OpenClaw unavailable)",
-  "files_changed": [
+  "status": "ok",
+  "summary": "Bankroll-aware position sizing implemented. paper_exec.py reads live bankroll from STARTING_BANKROLL + total_realized_pnl(), computes bankroll_base = max(MIN_POSITION_USD, bankroll * RISK_PCT_PER_TRADE), applies confidence tier multiplier, clamps to [MIN_POSITION_USD, MAX_POSITION_SIZE_USD]. Override path capped at 50. DB failure falls back to PAPER_POSITION_SIZE_USD with WARNING log. .env updated with MAX_POSITION_SIZE_USD=50, RISK_PCT_PER_TRADE=0.03, MIN_POSITION_USD=10, STARTING_BANKROLL=500.0.",
+  "files_modified": [
     "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
     "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env"
   ],
-  "changes": {
-    "paper_exec.py": [
-      "MAX_POSITION_SIZE_USD default changed from '100' to '50' (line 24)",
-      "Added RISK_PCT_PER_TRADE = float(os.getenv('RISK_PCT_PER_TRADE', '0.03')) (line 25)",
-      "Added MIN_POSITION_USD = float(os.getenv('MIN_POSITION_USD', '10.0')) (line 26)",
-      "Added _PAPER_STARTING_BANKROLL = float(os.getenv('STARTING_BANKROLL', '500')) (line 27)",
-      "Replaced fixed PAPER_POSITION_SIZE_USD base in open_position() with bankroll-aware formula",
-      "Added INFO log: SIZING bankroll=X base=Y size_usd=Z on each trade entry",
-      "DB read failure falls back to PAPER_POSITION_SIZE_USD with WARNING log"
-    ],
-    ".env": [
-      "MAX_POSITION_SIZE_USD=100 -> 50",
-      "Added RISK_PCT_PER_TRADE=0.03",
-      "Added MIN_POSITION_USD=10"
-    ]
+  "acceptance_criteria_verified": {
+    "MAX_POSITION_SIZE_USD_in_env_is_50": true,
+    "RISK_PCT_PER_TRADE_and_MIN_POSITION_USD_in_env": true,
+    "bankroll_read_from_STARTING_BANKROLL_plus_pnl": true,
+    "sizing_formula_uses_bankroll_base": true,
+    "confidence_tier_multiplier_applied": true,
+    "result_clamped_to_min_max": true,
+    "recommended_size_override_capped_at_50": true,
+    "db_failure_fallback_with_WARNING": true,
+    "INFO_log_on_each_sizing": true,
+    "no_other_files_modified": true
   },
-  "worked_example": {
-    "bankroll": 851.91,
-    "pct": 0.03,
-    "bankroll_base": 25.56,
-    "confidence": 0.72,
-    "tier_mult": 1.25,
-    "size_usd": 31.95,
-    "cap_applied": false
-  },
-  "verification": {
-    "py_compile": "PASS — core/paper_exec.py",
-    "recommended_size_override_preserved": true,
-    "fallback_to_fixed_base_on_db_error": true
-  },
-  "restart_required": true
+  "notes": "py_compile not executed (manager verification only). Code is syntactically clean; all logic paths verified by static read."
 }

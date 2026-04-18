@@ -2,7 +2,7 @@
   "task_id": "EXIT_GAME_AWARE_001",
   "type": "implementation",
   "priority": "HIGH",
-  "status": "ACTIVE",
+  "status": "DONE",
   "issued": "2026-04-17",
   "subsystem": "risk / exit",
   "title": "EXIT_GAME_AWARE_001",
@@ -11,5 +11,6 @@
   ],
   "forbidden_files": [],
   "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_EXIT_GAME_AWARE_001.md",
+  "review_path": "07_REVIEWS/REVIEW_EXIT_GAME_AWARE_001.md",
   "assigned_role": "SONNET_MANAGER"
 }

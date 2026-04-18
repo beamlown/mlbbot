@@ -1,44 +1,15 @@
 {
   "task_id": "DASH_002",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "",
   "title": "Compact position cards — remove visual bloat",
-  "objective": "Reduce each position card to essential info only. Cards currently show 6 stat boxes, a probability track bar, a sparkline chart, and a reasons row — most is redundant or low-value and makes every card take up half the screen.",
   "allowed_files": [
     "dashboard.html"
   ],
-  "do_not_touch": [
-    "dashboard_server.py",
-    "bot_core.py",
-    "core/",
-    "integration/"
-  ],
-  "inputs": [
-    "dashboard.html — function buildUnifiedPositionCards() around line 754",
-    "Current pos-stats div contains 6 stat boxes: Entry, Current, Live PnL, TP, SL, Confidence",
-    "Live PnL is shown TWICE: once in pos-badge-col as pnl-large, and again as a stat box",
-    "probTrack = buildProbTrack(r) adds a probability bar to every card",
-    "sparkline = buildSparkline(r.market_slug) adds a mini chart to every card",
-    "reasons row adds reason tags to every card"
-  ],
-  "deliverables": [
-    "Remove probTrack from buildUnifiedPositionCards() — delete the variable and its use in the template",
-    "Remove sparkline from buildUnifiedPositionCards() — delete the variable and its use in the template",
-    "Remove the reasons row from buildUnifiedPositionCards() — delete the reasons.length conditional block",
-    "Remove the duplicate 'Live PnL' stat box from pos-stats (the stat-box with stat-label 'Live PnL') — keep pnl-large in pos-badge-col",
-    "Reduce pos-stats to 3 stat boxes: Entry, Current, Confidence (remove TP and SL stat boxes — these will be shown server-side in a later task)",
-    "Keep: game context pill, pos-top row with team/badges/pnl-large, conf-wrap bar"
-  ],
-  "acceptance_criteria": [
-    "No sparkline SVG rendered in any position card",
-    "No probability track bar rendered in any position card",
-    "No reasons tags row rendered in any position card",
-    "PnL appears exactly once per card (in pos-badge-col)",
-    "pos-stats shows exactly 3 boxes: Entry, Current, Confidence",
-    "Cards are visually much shorter — roughly half the previous height",
-    "No unrelated JS or CSS changed"
-  ],
-  "verification": [
-    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2 && python dashboard_server.py",
-    "Open http://localhost:5000 in browser and confirm cards are compact"
-  ],
-  "rollback": "Revert dashboard.html only."
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_DASH_002.md",
+  "acceptance": "- No sparkline SVG rendered in any position card\n- No probability track bar rendered in any position card\n- No reasons tags row rendered in any position card\n- PnL appears exactly once per card (in pos-badge-col)\n- pos-stats shows exactly 3 boxes: Entry, Current, Confidence\n- Cards are visually much shorter — roughly half the previous height\n- No unrelated JS or CSS changed"
 }

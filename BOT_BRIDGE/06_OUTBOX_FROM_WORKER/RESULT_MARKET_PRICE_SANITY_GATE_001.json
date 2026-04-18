@@ -1,8 +1,28 @@
 {
-  "status": "fail",
-  "summary": "(no RESULT_JSON emitted and no RESULT file written)",
-  "task_id": "MARKET_PRICE_SANITY_GATE_001",
-  "role": "HAIKU_WORKER",
-  "run_id": "RUN_0EECD47B11E7",
-  "captured_at": "2026-04-17T19:16:24Z"
+  "status": "ok",
+  "summary": "Added hard sanity gate for extremely irrational near-zero and near-one price entries. Gate blocks ask prices outside [0.05, 0.95] range — distinct from MIN/MAX_ENTRY_PRICE and NEAR_RESOLUTION gates.",
+  "files_changed": [
+    "sports_bot_v2/core/risk.py",
+    "sports_bot_v2/.env"
+  ],
+  "gate_logic": "Sanity gate (A2) injected early in check_entry_gates waterfall. Checks ask_side (computed from side: BUY_YES→ask_yes, BUY_NO→ask_no) against EXTREME_SANITY_FLOOR (0.05) and EXTREME_SANITY_CEILING (0.95). Rejects on either threshold breach with reason: 'extreme_sanity_floor:<price><threshold>' or 'extreme_sanity_ceiling:<price>><threshold>'.",
+  "env_vars": {
+    "EXTREME_SANITY_FLOOR": "0.05 (default) — blocks ask prices below this threshold (near-zero irrational entries)",
+    "EXTREME_SANITY_CEILING": "0.95 (default) — blocks ask prices above this threshold (near-one irrational entries)"
+  },
+  "rejection_reasons": [
+    "extreme_sanity_floor:<ask_price><floor> — entry price too extreme (near zero)",
+    "extreme_sanity_ceiling:<ask_price>><ceiling> — entry price too extreme (near certainty)"
+  ],
+  "gate_distinctness": "Placed as A2 gate in waterfall, BEFORE spread, depth, imbalance, confidence checks. Distinct from: MIN_ENTRY_PRICE floor (0.22), MAX_ENTRY_PRICE ceiling (0.99), and NEAR_RESOLUTION_PRICE (0.97). Captures irrational extremes beyond normal operating range.",
+  "py_compile_results": {
+    "sports_bot_v2/core/risk.py": "ok",
+    "sports_bot_v2/bot_core.py": "ok"
+  },
+  "restart_note": "Restart bot_core.py to enable gate. Gate activates on next check_entry_gates() call in entry loop. No database migration required.",
+  "next_steps": [
+    "Deploy updated .env and core/risk.py to runtime",
+    "Restart bot (no DB changes needed)",
+    "Monitor logs for extreme_sanity_floor/ceiling rejections to verify gate is working"
+  ]
 }

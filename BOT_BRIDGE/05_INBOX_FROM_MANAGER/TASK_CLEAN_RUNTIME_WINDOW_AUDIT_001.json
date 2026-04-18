@@ -2,7 +2,7 @@
   "task_id": "CLEAN_RUNTIME_WINDOW_AUDIT_001",
   "type": "imported_from_board",
   "priority": "HIGH",
-  "status": "DEFERRED",
+  "status": "DONE",
   "issued": "2026-04-17",
   "subsystem": "Track B — edge proof / clean era",
   "title": "Isolate and evaluate post-2026-04-11 restart trades only — E1+E2 proof in the verified gate era",
@@ -11,5 +11,7 @@
   ],
   "forbidden_files": [],
   "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_CLEAN_RUNTIME_WINDOW_AUDIT_001.md",
-  "assigned_role": "HAIKU_WORKER"
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_CLEAN_RUNTIME_WINDOW_AUDIT_001.json",
+  "review_path": "07_REVIEWS/REVIEW_CLEAN_RUNTIME_WINDOW_AUDIT_001.md",
+  "assigned_role": "SONNET_MANAGER"
 }

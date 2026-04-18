@@ -1,8 +1,8 @@
 {
   "task_id": "MLB_PITCHER_BULLPEN_HYDRATION_BUILD_001",
-  "type": "code-writing task",
+  "type": "api-probe",
   "priority": "HIGH",
-  "status": "CHANGES_REQUESTED",
+  "status": "ACTIVE",
   "issued": "2026-04-12",
   "subsystem": "mlb_model pitcher/bullpen hydration completion",
   "title": "Populate pitcher_game_logs and bullpen_context in the canonical 2026 MLB foundation",
@@ -15,6 +15,8 @@
   ],
   "forbidden_files": [],
   "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_MLB_PITCHER_BULLPEN_HYDRATION_BUILD_001.md",
-  "assigned_role": "SONNET_WORKER",
-  "acceptance": "- PROOF RUN: exactly 1 game_pk fetched, 1 pitcher_game_logs row written, result JSON written\n- pitcher_game_logs row contains: game_pk, game_date, team_id, pitcher_id, starter flag, IP, ER, pitches, hand\n- No full-season iteration — single game only in this pass\n- No unrelated files modified\n- result JSON states exact game_pk used and row counts written"
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_MLB_PITCHER_BULLPEN_HYDRATION_BUILD_001.json",
+  "review_path": "07_REVIEWS/REVIEW_MLB_PITCHER_BULLPEN_HYDRATION_BUILD_001.md",
+  "assigned_role": "OPUS_AUDITOR",
+  "acceptance": "- API probe only: use requests to call MLB Stats API schedule+boxscore for 1 game_pk\n- probe_result in result JSON contains at least 1 pitcher entry extracted from boxscore response\n- game_pk used is documented in result JSON\n- NO data files written (no parquet, no CSV, no script files created)\n- NO imports beyond requests and standard library\n- If SIGKILL occurs again: note it in result and stop — do not retry"
 }

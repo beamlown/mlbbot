@@ -1,39 +1,17 @@
 {
   "task_id": "DASH_006",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "",
   "title": "Fix TP/SL — compute server-side per trade in /api/trades",
-  "objective": "Compute tp_price and sl_price server-side from each trade's entry_px and return them in /api/trades. Frontend constant removal is handled in DASH_008.",
   "allowed_files": [
     "dashboard_server.py"
   ],
-  "do_not_touch": [
-    "dashboard.html",
-    "bot_core.py",
-    "core/",
-    ".env"
-  ],
-  "inputs": [
-    "dashboard_server.py — _fetch_trades() function around line 233",
-    "Each trade row has: entry_px (float), side ('BUY_YES' or 'BUY_NO')",
-    "TP target is fixed at 0.85. SL is 20% adverse move from entry."
-  ],
-  "deliverables": [
-    "In _fetch_trades(), for each bot/model_bridge trade dict, add tp_price and sl_price keys:",
-    "  tp_price = 0.85 (fixed, regardless of side)",
-    "  sl_price = round(entry_px * 0.80, 4) for BUY_YES",
-    "  sl_price = round(min(entry_px * 1.20, 0.99), 4) for BUY_NO",
-    "Do NOT add tp_price/sl_price to manual trades (source='manual')"
-  ],
-  "acceptance_criteria": [
-    "/api/trades JSON includes tp_price and sl_price on each non-manual trade",
-    "tp_price is always 0.85",
-    "sl_price for BUY_YES entry_px=0.60 is 0.48",
-    "Manual trades do not have these fields (or they are null)",
-    "No other fields in /api/trades changed",
-    "No other files touched"
-  ],
-  "verification": [
-    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2 && python dashboard_server.py",
-    "curl http://localhost:5000/api/trades | python -m json.tool | findstr tp_price"
-  ],
-  "rollback": "Revert dashboard_server.py only."
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_DASH_006.md",
+  "review_path": "07_REVIEWS/REVIEW_DASH_006.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- /api/trades JSON includes tp_price and sl_price on each non-manual trade\n- tp_price is always 0.85\n- sl_price for BUY_YES entry_px=0.60 is 0.48\n- Manual trades do not have these fields (or they are null)\n- No other fields in /api/trades changed\n- No other files touched"
 }

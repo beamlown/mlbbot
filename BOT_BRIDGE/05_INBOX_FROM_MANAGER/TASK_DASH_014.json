@@ -1,44 +1,15 @@
 {
   "task_id": "DASH_014",
-  "title": "Win rate for paper trades + fix BUY_NO TP/SL",
-  "status": "ACTIVE",
-  "priority": 1,
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
   "subsystem": "dashboard_server",
-  "allowed_files": ["dashboard_server.py"],
-  "do_not_touch": ["dashboard.html", "launch_all.py", "bot_core.py", "core/paper_exec.py", ".env", "core/", "mlb_model/"],
-
-  "objective": "Two server-side fixes: (1) compute paper trade win rate in _read_state() so /api/state returns r25.win_rate — the KPI strip already reads this field but /api/state never returns it so it always shows '—'. (2) Fix tp_price computation in _fetch_trades() — currently hardcoded to 0.85 for all sides; for BUY_NO this is a losing price not a winning price.",
-
-  "deliverables": [
-    {
-      "label": "Add r25 win rate to _read_state()",
-      "file": "dashboard_server.py",
-      "where": "_read_state() — after building the bankroll dict, before returning state",
-      "change": "Query DB for last 25 closed trades and attach r25 block:\n\n  rows = conn.execute(\n      \"SELECT pnl_usd FROM trades WHERE status='closed' ORDER BY id DESC LIMIT 25\"\n  ).fetchall()\n  wins = sum(1 for r in rows if (r['pnl_usd'] or 0) > 0)\n  losses = sum(1 for r in rows if (r['pnl_usd'] or 0) <= 0)\n  total = len(rows)\n  win_rate = round(wins / total, 4) if total else None\n  exp = round(sum(r['pnl_usd'] or 0 for r in rows) / total, 4) if total else None\n  state['r25'] = {'win_rate': win_rate, 'wins': wins, 'losses': losses,\n                  'expectancy': exp, 'sample_size': total}"
-    },
-    {
-      "label": "Fix tp_price and sl_price in _fetch_trades() — side-aware",
-      "file": "dashboard_server.py",
-      "where": "_fetch_trades() — replace the hardcoded tp_price = 0.85 block",
-      "change": "Read AUTO_TAKE_PROFIT_PCT and AUTO_STOP_LOSS_PCT from env (already in .env as 0.85 and 0.20).\n\nAt module level (near other os.getenv calls):\n  AUTO_TAKE_PROFIT_PCT = float(os.getenv('AUTO_TAKE_PROFIT_PCT', '0.85'))\n  AUTO_STOP_LOSS_PCT   = float(os.getenv('AUTO_STOP_LOSS_PCT', '0.20'))\n\nIn _fetch_trades(), replace the hardcoded tp_price/sl_price block with:\n  if side == 'BUY_NO':\n      tp_price = round(max(0.01, 1.0 - entry_px * (1 + AUTO_TAKE_PROFIT_PCT)), 6)\n      sl_price = round(min(0.99, entry_px * (1 + AUTO_STOP_LOSS_PCT)), 6)\n  else:  # BUY_YES\n      tp_price = round(min(0.99, entry_px * (1 + AUTO_TAKE_PROFIT_PCT)), 6)\n      sl_price = round(max(0.01, entry_px * (1 - AUTO_STOP_LOSS_PCT)), 6)"
-    }
+  "title": "Win rate for paper trades + fix BUY_NO TP/SL",
+  "allowed_files": [
+    "dashboard_server.py"
   ],
-
-  "acceptance_criteria": [
-    "GET /api/state returns r25 object with win_rate, wins, losses, expectancy, sample_size",
-    "win_rate is a float 0.0-1.0 (or null if no closed trades)",
-    "BUY_YES tp_price = min(0.99, entry * 1.85) — e.g. entry=0.41 → tp=0.759",
-    "BUY_NO tp_price = max(0.01, 1.0 - entry * 1.85) — e.g. entry=0.41 → tp=0.241 (a LOW yes price, which is a WIN for NO holder)",
-    "BUY_YES sl_price = max(0.01, entry * 0.80)",
-    "BUY_NO sl_price = min(0.99, entry * 1.20)",
-    "No other files modified"
-  ],
-
-  "verification": [
-    "curl http://localhost:8900/api/state | python -m json.tool — look for r25 key",
-    "curl http://localhost:8900/api/trades — spot check a BUY_NO trade's tp_price is < 0.50, not 0.85",
-    "If no closed trades exist, r25.win_rate should be null (not crash)"
-  ],
-
-  "rollback": "Revert dashboard_server.py only. Dashboard keeps showing '—' for win rate and wrong TP for BUY_NO (pre-existing bugs)."
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_DASH_014.md",
+  "acceptance": "- GET /api/state returns r25 object with win_rate, wins, losses, expectancy, sample_size\n- win_rate is a float 0.0-1.0 (or null if no closed trades)\n- BUY_YES tp_price = min(0.99, entry * 1.85) — e.g. entry=0.41 → tp=0.759\n- BUY_NO tp_price = max(0.01, 1.0 - entry * 1.85) — e.g. entry=0.41 → tp=0.241 (a LOW yes price, which is a WIN for NO holder)\n- BUY_YES sl_price = max(0.01, entry * 0.80)\n- BUY_NO sl_price = min(0.99, entry * 1.20)\n- No other files modified"
 }

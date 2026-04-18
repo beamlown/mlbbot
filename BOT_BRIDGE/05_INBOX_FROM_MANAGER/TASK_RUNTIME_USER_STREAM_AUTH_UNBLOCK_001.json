@@ -1,14 +1,15 @@
 {
   "task_id": "RUNTIME_USER_STREAM_AUTH_UNBLOCK_001",
-  "title": "Verify presence of server-side Polymarket user-stream auth in active runtime",
-  "status": "ACTIVE",
-  "priority": 1,
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
   "subsystem": "runtime_user_stream_auth",
-  "objective": "Check whether the required server-side Polymarket user-stream credentials are present in the runtime/config surfaces used by launch_all.py and dashboard_server.py without exposing any raw secret values.",
-  "acceptance_criteria": [
-    "each required credential marked present or missing",
-    "no raw secrets exposed",
-    "result clearly states whether REALTIME_USER_STREAM_001 is unblocked"
-  ],
-  "rollback": "Verification only, no code changes."
+  "title": "Verify presence of server-side Polymarket user-stream auth in active runtime",
+  "allowed_files": [],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_RUNTIME_USER_STREAM_AUTH_UNBLOCK_001.md",
+  "review_path": "07_REVIEWS/REVIEW_RUNTIME_USER_STREAM_AUTH_UNBLOCK_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- each required credential marked present or missing\n- no raw secrets exposed\n- result clearly states whether REALTIME_USER_STREAM_001 is unblocked"
 }
