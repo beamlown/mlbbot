@@ -155,7 +155,7 @@ def task_detail(task_id: str):
         (task["task_id"],),
     ).fetchall()
 
-    # Load the brief content inline if we have one (first HANDOFF we find).
+    # Load the original HANDOFF for the collapsed "original brief" view.
     brief_content = None
     for lk in links:
         if lk["kind"] == "HANDOFF":
@@ -166,6 +166,31 @@ def task_detail(task_id: str):
             if art and art["content"]:
                 brief_content = art["content"]
                 break
+
+    # Load the LATEST report for this task — whichever of AUDIT, REVIEW,
+    # APPROVED, PROVISIONAL_REVIEW has the newest mtime. This is what the
+    # operator sees up top when opening the detail page; the original
+    # HANDOFF stays available below in a collapsible section so you can
+    # still read the initial brief without hunting through artifacts.
+    latest_report = None
+    lr_row = conn.execute(
+        """SELECT a.artifact_id, a.kind, a.path, a.title, a.mtime, a.content
+             FROM task_artifacts ta JOIN artifacts a ON a.artifact_id = ta.artifact_id
+            WHERE ta.task_id = ?
+              AND a.kind IN ('AUDIT','REVIEW','APPROVED','PROVISIONAL_REVIEW')
+              AND a.content IS NOT NULL AND a.content != ''
+            ORDER BY a.mtime DESC LIMIT 1""",
+        (task["task_id"],),
+    ).fetchone()
+    if lr_row:
+        latest_report = {
+            "kind": lr_row["kind"],
+            "title": lr_row["title"],
+            "path": lr_row["path"],
+            "mtime": lr_row["mtime"],
+            "content": lr_row["content"],
+            "artifact_id": lr_row["artifact_id"],
+        }
 
     # Pull the most recent RESULT artifact so the detail page can render
     # a prominent status card ("ok / fail / blocked" + summary) above the
@@ -232,6 +257,7 @@ def task_detail(task_id: str):
         task=task,
         links=[dict(lk) for lk in links],
         brief_content=brief_content,
+        latest_report=latest_report,
         runs=[dict(r) for r in runs],
         reviews=[dict(r) for r in reviews],
         agents=agents,

@@ -166,11 +166,33 @@
       </div>
     </div>
 
-    <h3>Brief</h3>
-    {% if brief_content %}
-      <pre class="markdown">{{ brief_content }}</pre>
+    {% if latest_report %}
+      <h3>
+        Latest report
+        <span class="chip chip-rel-{{ latest_report.kind|lower }}">{{ latest_report.kind }}</span>
+        <a class="muted" style="font-size:.7rem;margin-left:.4rem" href="{{ url_for('artifacts.artifact_detail', artifact_id=latest_report.artifact_id) }}">
+          open artifact →
+        </a>
+      </h3>
+      <pre class="markdown">{{ latest_report.content }}</pre>
+
+      <details style="margin-top:.5rem">
+        <summary class="muted" style="cursor:pointer;font-size:.85rem">
+          Original HANDOFF {% if brief_content %}(collapsed){% else %}(none){% endif %}
+        </summary>
+        {% if brief_content %}
+          <pre class="markdown" style="margin-top:.4rem">{{ brief_content }}</pre>
+        {% else %}
+          <div class="empty">No HANDOFF_{{ task.task_id }}.md found.</div>
+        {% endif %}
+      </details>
     {% else %}
-      <div class="empty">No HANDOFF_{{ task.task_id }}.md found.</div>
+      <h3>Brief</h3>
+      {% if brief_content %}
+        <pre class="markdown">{{ brief_content }}</pre>
+      {% else %}
+        <div class="empty">No HANDOFF_{{ task.task_id }}.md found.</div>
+      {% endif %}
     {% endif %}
 
     {% if task.acceptance %}
