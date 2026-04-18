@@ -138,6 +138,13 @@ def create_app() -> Flask:
             guardrail_fails = sum(1 for r in results if not r.ok)
         except Exception:
             guardrail_fails = 0
+        from .stats import persona_stats as _ps
+        roster_rows = conn.execute(
+            "SELECT * FROM agent_profiles "
+            "WHERE status='ACTIVE' AND enabled=1 "
+            "ORDER BY jersey_number"
+        ).fetchall()
+        roster_stats = {r["profile_id"]: _ps(r["profile_id"]) for r in roster_rows}
         return {
             "ROLE_INFO": ROLE_INFO,
             "ACTING_ROLE": acting_role,
@@ -149,6 +156,8 @@ def create_app() -> Flask:
             "PENDING_PATCH": pending_patch_banner,
             "LANE_COUNTS": lane_counts,
             "GUARDRAIL_FAILS": guardrail_fails,
+            "ROSTER": [dict(r) for r in roster_rows],
+            "ROSTER_STATS": roster_stats,
         }
 
     app.register_blueprint(tasks_bp)

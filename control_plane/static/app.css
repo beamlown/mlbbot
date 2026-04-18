@@ -1199,3 +1199,77 @@ body {
 }
 .btn-pixel-sm:hover { border-color: var(--scoreboard-amber); color: var(--scoreboard-amber); }
 .btn-pixel-accent { border-color: var(--hr-gold); color: var(--hr-gold); }
+
+/* === DUGOUT OS — roster strip === */
+.roster-strip {
+  display: flex; gap: 12px; overflow-x: auto;
+  padding: 16px 24px;
+  background: linear-gradient(180deg, var(--turf) 0%, var(--turf-bright) 100%);
+  border-bottom: 2px solid var(--chalk);
+}
+
+.player-card {
+  flex: 0 0 220px;
+  background: var(--field-deep);
+  border: 3px solid var(--accent, var(--chalk));
+  border-radius: 6px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  grid-template-rows: auto auto auto auto;
+  gap: 4px 10px;
+  position: relative;
+  color: var(--chalk);
+  text-decoration: none;
+  cursor: grab;
+}
+.player-card:active { cursor: grabbing; }
+
+.player-card-jersey {
+  grid-row: 1 / span 2;
+  font-family: var(--font-pixel);
+  font-size: 28px;
+  color: var(--accent, var(--chalk));
+  text-align: center;
+  padding-top: 6px;
+}
+.player-card-sprite {
+  grid-row: 1 / span 2; grid-column: 1;
+  position: absolute; top: 38px; left: 16px;
+  color: var(--accent, var(--chalk));
+  width: 36px; height: 36px;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.player-card-name {
+  grid-column: 2; grid-row: 1;
+  font-family: var(--font-pixel); font-size: 11px;
+  color: var(--chalk);
+}
+.player-card-role {
+  grid-column: 2; grid-row: 2;
+  font-family: var(--font-pixel-text); font-size: 14px;
+  color: var(--chalk-dim);
+}
+.player-card-stats {
+  grid-column: 1 / -1; grid-row: 3;
+  font-family: var(--font-pixel-text); font-size: 14px;
+  color: var(--scoreboard-amber);
+}
+.player-card-xp {
+  grid-column: 1 / -1; grid-row: 4;
+  height: 4px; background: rgba(0,0,0,0.5); position: relative;
+}
+.player-card-xp-bar {
+  height: 100%; background: var(--accent, var(--scoreboard-green));
+}
+
+.player-card-empty {
+  border-style: dashed;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
+  cursor: pointer;
+}
+
+.card.drag-go  { box-shadow: 0 0 0 3px var(--scoreboard-green) inset; }
+.card.drag-no  { opacity: 0.4; }

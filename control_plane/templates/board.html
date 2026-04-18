@@ -31,21 +31,57 @@
   </div>
 </section>
 
-<section class="agent-palette" aria-label="Agent palette">
-  <span class="palette-label">Agents</span>
-  {% for a in agents %}
-    <div class="agent-chip"
-         draggable="true"
-         data-profile-id="{{ a.profile_id }}"
-         data-allowed-states='{{ a.allowed_states|tojson }}'
-         style="--agent-color: {{ a.color or '#8892a6' }}"
-         title="{{ a.display }}{% if a.tagline %} — {{ a.tagline }}{% endif %}&#10;Role: {{ a.role }}&#10;Model: {{ a.model }}&#10;Eligible lanes: {{ a.allowed_states|join(', ') }}">
-      <span class="agent-icon">{{ a.icon or '●' }}</span>
-      <span class="agent-name">{{ a.display }}</span>
-    </div>
+<section class="roster-strip" aria-label="Active roster">
+  {% for p in ROSTER %}
+    {% set s = ROSTER_STATS[p.profile_id] %}
+    <article class="player-card"
+             draggable="true"
+             data-profile-id="{{ p.profile_id }}"
+             data-allowed-states='{{ p.allowed_states }}'
+             style="--accent: {{ p.color }}">
+      <div class="player-card-jersey">{{ p.jersey_number }}</div>
+      <img class="player-card-sprite sprite-pixel"
+           src="{{ url_for('static', filename='sprites/' ~ (p.role|lower|replace('_','') ~ '.svg')) }}"
+           alt="" width="48" height="48"
+           onerror="this.src='{{ url_for('static', filename='sprites/haikuworker.svg') }}'">
+      <div class="player-card-name">{{ p.display }}</div>
+      <div class="player-card-role">{{ p.role|replace('_',' ')|title }}</div>
+      <div class="player-card-stats">
+        AVG {{ s.AVG }} · HR {{ s.HR }} · RBI {{ s.RBI }} · G {{ s.G }}
+      </div>
+      <div class="player-card-xp" title="Level {{ s.level }} — {{ s.xp_pct }}% to next">
+        <div class="player-card-xp-bar" style="width: {{ s.xp_pct }}%"></div>
+      </div>
+    </article>
   {% endfor %}
-  <span class="palette-hint">drag onto a task →</span>
+  <a class="player-card player-card-empty" href="/roster">
+    <div class="player-card-jersey">+</div>
+    <div class="player-card-name">🎟 SIGN NEW</div>
+  </a>
 </section>
+
+{# --- loop-back (rework) row — renders above the main board strip --- #}
+{% if loopback_lanes %}
+  {% set has_loopback = loopback_lanes|selectattr('0')|list or (loopback_lanes and lanes[loopback_lanes[0]]|length > 0) %}
+  <section class="board wf-board wf-board--loopback" aria-label="Rework lane">
+    {% for lane in loopback_lanes %}
+      {% set items = lanes[lane] or [] %}
+      <div class="lane lane-wf-{{ lane|lower }} lane--loopback" data-lane="{{ lane }}">
+        <header class="lane-header">
+          <span class="lane-title">↺ {{ lane_display[lane] }}</span>
+          <span class="lane-count">{{ items|length }}</span>
+        </header>
+        <div class="lane-body lane-body--loopback" data-lane="{{ lane }}">
+          {% for t in items %}
+            {% include "_card_inner.html" %}
+          {% else %}
+            <div class="empty muted">no rework</div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </section>
+{% endif %}
 
 <section class="board wf-board">
   {% for lane in lane_order %}
@@ -57,55 +93,7 @@
       </header>
       <div class="lane-body" data-lane="{{ lane }}">
         {% for t in items %}
-          {% set is_blocked = t.blocked_on or t.block_reason %}
-          {% set is_shipped = t.patch_info and t.patch_info.status == 'SHIPPED' %}
-          <div class="card priority-{{ (t.priority or 'MEDIUM')|lower }}{% if t.conflict %} card-conflict{% endif %}{% if lane == 'RUNNING' %} card-running{% endif %}{% if is_blocked %} card-blocked{% endif %}"
-               data-task-id="{{ t.task_id }}"
-               data-workflow-state="{{ t.workflow_state }}">
-            {% if not is_shipped %}
-              <button type="button" class="card-trash" aria-label="Delete {{ t.task_id }}"
-                      onclick="event.preventDefault(); event.stopPropagation(); deleteTask('{{ t.task_id }}');"
-                      title="Delete this task">🗑</button>
-            {% endif %}
-            <a class="card-link" href="{{ url_for('tasks.task_detail', task_id=t.task_id) }}">
-              <div class="card-head">
-                <span class="tid">{{ t.task_id }}</span>
-                <span class="pri">{{ t.priority or 'MEDIUM' }}</span>
-              </div>
-              <div class="card-title">{{ t.title }}</div>
-              <div class="card-meta">
-                {% if is_blocked %}
-                  <span class="block-badge"
-                        title="{{ t.block_reason or ('parked behind ' ~ t.blocked_on) }}{% if t.blocked_at %} — since {{ t.blocked_at }}{% endif %}">
-                    🚧
-                    {% if t.blocked_on %}
-                      <span class="block-reason-preview">blocked on {{ t.blocked_on }}</span>
-                    {% else %}
-                      <span class="block-reason-preview">{{ t.block_reason|truncate(28) }}</span>
-                    {% endif %}
-                  </span>
-                {% endif %}
-                {% if t.subsystem %}<span class="meta">{{ t.subsystem }}</span>{% endif %}
-                {% if t.assigned_role %}<span class="meta role">{{ t.assigned_role }}</span>{% endif %}
-                {% if t.allowed_files and t.allowed_files|length > 0 %}
-                  <span class="meta files" title="{{ t.allowed_files|join(', ') }}">files: {{ t.allowed_files|length }}</span>
-                {% endif %}
-                {% if t.conflict %}<span class="meta conflict" title="External edit detected on TASK_{{ t.task_id }}.json">!conflict</span>{% endif %}
-                {% if lane == 'RUNNING' %}<span class="meta running-pulse">● running</span>{% endif %}
-                {% if t.patch_info %}
-                  <span class="meta patch-tag patch-tag-{{ t.patch_info.status|lower }}"
-                        title="Included in patch {{ t.patch_info.version }} ({{ t.patch_info.status }})">
-                    {{ t.patch_info.version }} · {{ 'live' if t.patch_info.status == 'SHIPPED' else 'pending' }}
-                  </span>
-                {% endif %}
-              </div>
-              {% if t.notes %}<div class="card-notes">{{ t.notes|truncate(140) }}</div>{% endif %}
-              {% if lane == 'RUNNING' %}
-                <div class="xp-bar" aria-hidden="true"><div class="xp-bar-fill" style="--xp-pct: 55%"></div></div>
-              {% endif %}
-            </a>
-            <div class="card-dropzone" data-dropzone="1">drop an agent here</div>
-          </div>
+          {% include "_card_inner.html" %}
         {% else %}
           <div class="empty">no tasks</div>
         {% endfor %}
@@ -118,16 +106,16 @@
 
 {% block scripts %}
 <script>
-// Native HTML5 drag-and-drop: agent-chip → task-card
+// Native HTML5 drag-and-drop: player-card → task-card
 (function() {
   let dragging = null;
 
-  document.querySelectorAll('.agent-chip').forEach(chip => {
+  document.querySelectorAll('.player-card[data-profile-id]').forEach(chip => {
     chip.addEventListener('dragstart', (e) => {
       dragging = {
         profile_id: chip.dataset.profileId,
         allowed_states: JSON.parse(chip.dataset.allowedStates || '[]'),
-        display: chip.querySelector('.agent-name').textContent.trim(),
+        display: (chip.querySelector('.player-card-name') || chip.querySelector('.agent-name') || chip).textContent.trim(),
       };
       e.dataTransfer.effectAllowed = 'copy';
       e.dataTransfer.setData('text/plain', dragging.profile_id);
