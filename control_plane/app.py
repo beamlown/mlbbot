@@ -19,6 +19,7 @@ from .routes.system import bp as system_bp
 from .routes.actions import bp as actions_bp
 from .routes.runs import bp as runs_bp
 from .routes.patches import bp as patches_bp
+from .routes.roster import bp as roster_bp
 from .roles import ROLE_INFO
 from .workflow import WORKFLOW_LANES, LANE_DISPLAY
 
@@ -166,6 +167,7 @@ def create_app() -> Flask:
     app.register_blueprint(actions_bp)
     app.register_blueprint(runs_bp)
     app.register_blueprint(patches_bp)
+    app.register_blueprint(roster_bp)
 
     @app.errorhandler(404)
     def _404(e):
