@@ -1733,3 +1733,23 @@ body {
 }
 .rain-delay-title   { font-family: var(--font-pixel); font-size: 36px; color: var(--chalk); }
 .rain-delay-message { font-family: var(--font-pixel-text); font-size: 22px; color: var(--chalk); }
+
+/* === DUGOUT OS — restart scope === */
+.restart-scope-panel {
+  margin-bottom: 18px;
+  padding: 10px 12px;
+  background: var(--field-deep);
+  border: 2px solid var(--scoreboard-amber);
+}
+.restart-scope-panel select {
+  font-family: var(--font-mono); font-size: 13px;
+  background: var(--field-night); color: var(--chalk);
+  border: 1px solid var(--chalk-dim); padding: 6px;
+  width: 100%;
+}
+.restart-scope-hint {
+  font-family: var(--font-body); font-size: 12px;
+  color: var(--chalk-dim); margin: 8px 0 0;
+  line-height: 1.5;
+}
+.restart-scope-hint strong { color: var(--hr-gold); }

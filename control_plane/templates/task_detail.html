@@ -225,6 +225,28 @@
   </div>
 
   <aside class="col-side">
+    <h3 class="sidebar-scoreboard-h">RESTART SCOPE</h3>
+    <div class="restart-scope-panel">
+      <select id="restart-scope-select" onchange="updateRestartScope('{{ task.task_id }}', this.value)">
+        {% set cur = task.restart_scope or 'both' %}
+        <option value="none"          {% if cur == 'none' %}selected{% endif %}>none — hot, already live on approval</option>
+        <option value="control_plane" {% if cur == 'control_plane' %}selected{% endif %}>control_plane — relaunch CP after ship</option>
+        <option value="bot"           {% if cur == 'bot' %}selected{% endif %}>bot — relaunch bot after ship</option>
+        <option value="both"          {% if cur == 'both' %}selected{% endif %}>both — relaunch CP + bot after ship</option>
+      </select>
+      <p class="restart-scope-hint">
+        {% if cur == 'none' %}
+          Hot change — goes straight to <strong>In The Books</strong> when approved. No restart needed.
+        {% elif cur == 'control_plane' %}
+          After ship, kill and relaunch the CP Flask process to activate.
+        {% elif cur == 'bot' %}
+          After ship, restart the betting bot to activate.
+        {% else %}
+          After ship, restart both the CP and the bot.
+        {% endif %}
+      </p>
+    </div>
+
     <h3 class="sidebar-scoreboard-h">PLAYBOOK — eligible paths</h3>
     <ul class="file-list">
       {% for f in task.allowed_files %}
@@ -363,6 +385,17 @@ async function saveEdit() {
   const res = await patchJSON(`/api/tasks/${TID}`, payload);
   if (res.ok && res.json.ok) { toast('Saved'); setTimeout(() => location.reload(), 300); }
   else toast('Save failed: ' + (res.json.error || res.status), false);
+}
+
+// ---------- Restart scope ----------
+async function updateRestartScope(taskId, scope) {
+  const res = await patchJSON(`/api/tasks/${taskId}`, {restart_scope: scope});
+  if (res.ok && res.json.ok) {
+    toast(`restart scope → ${scope}`);
+    setTimeout(() => location.reload(), 400);
+  } else {
+    toast('Failed: ' + (res.json.error || res.status), false);
+  }
 }
 
 // ---------- Agent launch ----------

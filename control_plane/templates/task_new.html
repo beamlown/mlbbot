@@ -19,6 +19,16 @@
       </label>
       <label>subsystem <input id="f-subsystem" placeholder="e.g. dashboard, parser, runner" oninput="updatePreview()"></label>
       <label>type <input id="f-type" value="manual"></label>
+      <label title="Which process needs to restart before this change is live?">
+        restart scope
+        <select id="f-restart-scope" onchange="updatePreview()">
+          <option value="">(auto from subsystem)</option>
+          <option value="none">none — hot, already live on approval</option>
+          <option value="control_plane">control_plane — relaunch CP after ship</option>
+          <option value="bot">bot — relaunch betting bot after ship</option>
+          <option value="both">both — relaunch CP + bot after ship</option>
+        </select>
+      </label>
     </fieldset>
 
     <fieldset class="composer-panel">
@@ -119,6 +129,7 @@ async function createTask() {
     forbidden_files: document.getElementById('f-forbidden').value,
     acceptance:    document.getElementById('f-acceptance').value,
     notes:         document.getElementById('f-notes').value,
+    restart_scope: document.getElementById('f-restart-scope').value,
   };
   if (!payload.task_id) { toast('task_id required', false); return; }
   if (!payload.title)   { toast('title required', false); return; }
