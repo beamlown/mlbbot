@@ -1504,3 +1504,109 @@ body {
   color: var(--scoreboard-amber);
   margin: 0 0 12px;
 }
+
+/* === DUGOUT OS — at-bat view === */
+.hero-mound {
+  position: relative;
+  padding: 32px 24px;
+  background:
+    radial-gradient(ellipse at center bottom, var(--dirt) 0 60%, transparent 60%),
+    linear-gradient(180deg, var(--field-night), var(--field-deep));
+  border-bottom: 4px solid var(--scoreboard-amber);
+}
+.hero-mound-content {
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 4px 24px; align-items: end;
+  position: relative; z-index: 1;
+}
+.hero-tid {
+  font-family: var(--font-mono); font-size: 14px; color: var(--chalk-dim);
+}
+.hero-title {
+  font-family: var(--font-pixel); font-size: 22px; line-height: 1.3;
+  color: var(--chalk); margin: 0;
+  grid-column: 1; grid-row: 2;
+}
+.hero-count {
+  display: flex; gap: 8px; grid-column: 2; grid-row: 1 / span 2;
+  font-family: var(--font-pixel); font-size: 16px;
+  color: var(--scoreboard-amber);
+}
+.count-balls   { color: var(--scoreboard-amber); }
+.count-strikes { color: var(--foul-red); }
+.hero-state {
+  grid-column: 2; grid-row: 1;
+  font-family: var(--font-pixel-text); font-size: 16px;
+  color: var(--chalk-dim);
+  justify-self: end;
+}
+
+.rain-banner {
+  background: var(--rain-blue);
+  color: var(--chalk);
+  padding: 10px 24px;
+  font-family: var(--font-pixel-text); font-size: 18px;
+  display: flex; gap: 16px; align-items: center;
+}
+.rain-banner-label { font-family: var(--font-pixel); font-size: 11px; }
+
+.bullpen-strip {
+  display: flex; gap: 10px; padding: 16px 24px; flex-wrap: wrap;
+  background: rgba(0,0,0,0.3);
+}
+.bullpen-button {
+  background: var(--field-deep);
+  border: 3px solid var(--accent, var(--chalk-dim));
+  color: var(--chalk);
+  font-family: var(--font-pixel); font-size: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+.bullpen-button:hover { background: var(--accent, var(--turf)); color: var(--field-deep); }
+
+.arcade-bar { display: flex; gap: 8px; padding: 16px 24px; flex-wrap: wrap; }
+.btn-pixel-arcade {
+  font-family: var(--font-pixel); font-size: 10px;
+  background: var(--field-deep); color: var(--chalk);
+  border: 3px solid var(--scoreboard-amber);
+  padding: 12px 16px;
+  box-shadow: 0 3px 0 var(--scoreboard-amber);
+  cursor: pointer;
+}
+.btn-pixel-arcade:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--scoreboard-amber); }
+
+.broadcast-booth {
+  background: var(--field-deep);
+  border: 2px solid var(--foul-red);
+  padding: 12px 16px;
+  margin: 16px 24px;
+}
+.on-air-dot {
+  font-family: var(--font-pixel); font-size: 11px;
+  color: var(--foul-red);
+  display: inline-block; margin-bottom: 8px;
+  animation: pulse-pitch 1.6s ease-in-out infinite;
+}
+
+.rain-request-panel {
+  background: rgba(74, 123, 167, 0.15);
+  border: 2px dashed var(--rain-blue);
+  padding: 12px 16px;
+  margin: 16px 24px;
+}
+
+.play-by-play { background: var(--field-deep); padding: 16px; margin: 16px 24px; border: 2px solid var(--chalk-dim); }
+.verdict-badge {
+  font-family: var(--font-pixel); font-size: 14px;
+  padding: 6px 12px; display: inline-block;
+}
+.verdict-safe   { background: var(--scoreboard-green); color: var(--field-deep); }
+.verdict-out    { background: var(--foul-red);         color: var(--chalk); }
+.verdict-review { background: var(--ump-purple);       color: var(--chalk); }
+
+.sidebar-scoreboard-h {
+  font-family: var(--font-pixel); font-size: 10px;
+  color: var(--scoreboard-amber);
+  border-bottom: 2px solid var(--scoreboard-amber);
+  padding-bottom: 4px; margin: 18px 0 8px;
+}
