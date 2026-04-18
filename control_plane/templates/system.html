@@ -6,19 +6,41 @@
   <h1 class="task-title">Runtime / System</h1>
 </header>
 
+<section class="turnstile-row">
+  {% for g in guardrails %}
+    <article class="turnstile turnstile--{{ 'ok' if g.ok else 'fail' }}">
+      <div class="turnstile-icon">{{ '✓' if g.ok else '✗' }}</div>
+      <div class="turnstile-name">{{ g.name }}</div>
+      <div class="turnstile-detail">{{ g.detail }}</div>
+      {% if g.violating_paths %}
+        <details class="turnstile-paths">
+          <summary>{{ g.violating_paths|length }} path{{ '' if g.violating_paths|length == 1 else 's' }}</summary>
+          <ul>
+            {% for p in g.violating_paths[:10] %}<li>{{ p }}</li>{% endfor %}
+            {% if g.violating_paths|length > 10 %}
+              <li class="muted">… and {{ g.violating_paths|length - 10 }} more</li>
+            {% endif %}
+          </ul>
+        </details>
+      {% endif %}
+    </article>
+  {% endfor %}
+</section>
+
 <section class="two-col">
   <div class="col-main">
-    <h3>Claude CLI binary</h3>
-    <div class="claude-bin-panel">
+
+    <section class="bat-rack">
+      <h3>Claude CLI binary</h3>
       <div class="claude-bin-head">
-        <span class="chip {% if claude_info.ok %}chip-active{% else %}chip-blocked{% endif %}">
+        <span class="bat-tag {% if claude_info.ok %}chip-active{% else %}chip-blocked{% endif %}">
           {% if claude_info.ok %}healthy{% else %}not working{% endif %}
         </span>
-        <span class="muted">platform: <code>{{ claude_info.platform }}</code></span>
-        <span class="muted">source: <code>{{ claude_info.source }}</code></span>
+        <span class="bat-tag">platform: {{ claude_info.platform }}</span>
+        <span class="bat-tag">source: {{ claude_info.source }}</span>
       </div>
 
-      <table class="table claude-bin-table">
+      <table class="table claude-bin-table" style="margin-top:12px;">
         <tr>
           <th>Resolved path</th>
           <td><code id="cb-resolved">{{ claude_info.resolved_path or '(none found)' }}</code></td>
@@ -71,35 +93,41 @@
                  placeholder="C:\Users\you\AppData\Roaming\npm\claude.cmd">
         </label>
         <div class="row-actions">
-          <button class="btn btn-accent" onclick="saveClaudeBin()">Save + test</button>
-          <button class="btn" onclick="testClaudeBin()">Test current</button>
-          <button class="btn btn-ghost" onclick="clearClaudeBin()">Clear override</button>
+          <button class="btn-pixel-arcade" onclick="saveClaudeBin()">Save + test</button>
+          <button class="btn-pixel-arcade" onclick="testClaudeBin()">Test current</button>
+          <button class="btn-pixel-arcade" onclick="clearClaudeBin()">Clear override</button>
         </div>
         <div id="cb-result" class="run-summary" style="margin-top:.6rem; display:none;"></div>
       </div>
-    </div>
+    </section>
 
-    <h3>runtime/state.json</h3>
-    {% if state %}
-      <pre class="markdown">{{ state|tojson(indent=2) }}</pre>
-    {% else %}
-      <div class="empty">
-        No <code>sports_bot_v2/runtime/state.json</code> found in this checkout.
-      </div>
-    {% endif %}
+    <details class="state-drawer">
+      <summary>📜 runtime/state.json</summary>
+      {% if state %}
+        <pre class="markdown">{{ state|tojson(indent=2) }}</pre>
+      {% else %}
+        <div class="empty" style="padding:1rem;">
+          No <code>sports_bot_v2/runtime/state.json</code> found in this checkout.
+        </div>
+      {% endif %}
+    </details>
+
   </div>
-  <aside class="col-side">
-    <h3>Launcher</h3>
+
+  <aside class="dugout-phone">
+    <h3 class="sidebar-scoreboard-h">DUGOUT PHONE</h3>
+
+    <h4 style="font-family:var(--font-pixel);font-size:10px;color:var(--chalk-dim);margin:12px 0 4px;">Launcher</h4>
     {% if launcher_pid %}
-      <div>PID {{ launcher_pid }}</div>
+      <div class="bat-tag">PID {{ launcher_pid }}</div>
     {% else %}
       <div class="empty">no launcher.pid</div>
     {% endif %}
 
-    <h3>Bot</h3>
+    <h4 style="font-family:var(--font-pixel);font-size:10px;color:var(--chalk-dim);margin:12px 0 4px;">Bot</h4>
     <div class="empty">on/off toggle — Phase 5</div>
 
-    <h3>Config hash</h3>
+    <h4 style="font-family:var(--font-pixel);font-size:10px;color:var(--chalk-dim);margin:12px 0 4px;">Config hash</h4>
     <div class="empty">config_hash tail — Phase 5</div>
   </aside>
 </section>

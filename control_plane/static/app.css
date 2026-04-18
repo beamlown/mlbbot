@@ -1658,3 +1658,45 @@ body {
 .program-box-score {
   background: var(--field-deep); border: 2px solid var(--scoreboard-amber); padding: 16px;
 }
+
+/* === DUGOUT OS — clubhouse === */
+.turnstile-row {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px; padding: 16px 24px;
+}
+.turnstile {
+  background: var(--field-deep);
+  border: 3px solid var(--chalk-dim);
+  padding: 12px; text-align: center;
+}
+.turnstile--ok   { border-color: var(--scoreboard-green); }
+.turnstile--fail { border-color: var(--foul-red); }
+.turnstile-icon  { font-family: var(--font-pixel); font-size: 24px; color: var(--scoreboard-green); }
+.turnstile--fail .turnstile-icon { color: var(--foul-red); }
+.turnstile-name  { font-family: var(--font-pixel); font-size: 9px; color: var(--chalk); margin-top: 8px; }
+.turnstile-detail{ font-family: var(--font-pixel-text); font-size: 14px; color: var(--chalk-dim); margin-top: 4px; }
+.turnstile-paths summary { cursor: pointer; color: var(--scoreboard-amber); font-family: var(--font-pixel-text); }
+.turnstile-paths ul { font-family: var(--font-mono); font-size: 12px; text-align: left; }
+
+.bat-rack {
+  background: var(--field-deep); border: 2px solid var(--dirt);
+  padding: 16px; margin: 16px 24px;
+}
+.bat-tag {
+  font-family: var(--font-pixel-text); font-size: 14px;
+  background: var(--dirt); color: var(--chalk);
+  padding: 4px 10px; margin-right: 6px;
+  border-radius: 12px 12px 0 0;
+  display: inline-block;
+}
+
+.state-drawer summary {
+  font-family: var(--font-pixel); font-size: 10px;
+  color: var(--scoreboard-amber); cursor: pointer;
+  padding: 8px 16px;
+}
+
+.dugout-phone {
+  background: var(--field-deep); border: 2px solid var(--scoreboard-amber);
+  padding: 12px 16px; margin: 16px 24px;
+}
