@@ -820,3 +820,231 @@ body.agent-dragging .card-eligible .card-dropzone { display:block; border-color:
 .claude-bin-candidates summary { cursor:pointer; color: var(--muted); font-size:.8rem; }
 .claude-bin-candidates .file-list { margin-top:.4rem; max-height: 20vh; overflow:auto; }
 .err-text { color: var(--err); }
+
+/* ============================================================ */
+/* Color-coded board (2026-04-18 workflow design)               */
+/* Each card carries four independent visual signals:           */
+/*   - state  (card background hue)                             */
+/*   - track  (left stripe cyan/magenta)                        */
+/*   - age    (corner badge NEW/STALE)                          */
+/*   - attempt (rework badge + dashed border when > 1)          */
+/*   - priority (left border thickness)                         */
+/* ============================================================ */
+
+/* State hues — applied to .card; keeps existing bg color but */
+/* tints it with a left-to-right gradient so titles stay readable. */
+.card.state--DRAFT              { background-image: linear-gradient(95deg, rgba(71, 85, 105, 0.55) 0%, var(--card-bg, #1e293b) 70%); }
+.card.state--READY_FOR_WORKER   { background-image: linear-gradient(95deg, rgba(30,58,138, 0.65) 0%, var(--card-bg, #1e293b) 70%); }
+.card.state--CLAIMED            { background-image: linear-gradient(95deg, rgba(15,118,110, 0.65) 0%, var(--card-bg, #1e293b) 70%); }
+.card.state--RUNNING            { background-image: linear-gradient(95deg, rgba(180,83, 9,  0.70) 0%, var(--card-bg, #1e293b) 70%); animation: cardPulse 2.4s ease-in-out infinite; }
+.card.state--AWAITING_REVIEW    { background-image: linear-gradient(95deg, rgba(109,40, 217, 0.65) 0%, var(--card-bg, #1e293b) 70%); }
+.card.state--CHANGES_REQUESTED  { background-image: linear-gradient(95deg, rgba(194,65, 12,  0.70) 0%, var(--card-bg, #1e293b) 70%); }
+.card.state--BLOCKED            { background-image: linear-gradient(95deg, rgba(153,27, 27,  0.70) 0%, var(--card-bg, #1e293b) 70%); }
+.card.state--DONE               { background-image: linear-gradient(95deg, rgba(22, 101, 52, 0.65) 0%, var(--card-bg, #1e293b) 70%); }
+.card.state--AUDIT_QUEUE        { background-image: linear-gradient(95deg, rgba(161,98, 7,   0.70) 0%, var(--card-bg, #1e293b) 70%); }
+.card.state--LIVE               { background-image: linear-gradient(95deg, rgba(55, 65, 81,  0.70) 0%, var(--card-bg, #1e293b) 70%); }
+.card.state--ARCHIVED           { background-image: linear-gradient(95deg, rgba(31, 41, 55,  0.60) 0%, var(--card-bg, #1e293b) 70%); opacity: 0.55; }
+
+@keyframes cardPulse {
+  0%, 100% { filter: brightness(1.00); }
+  50%      { filter: brightness(1.18); }
+}
+
+/* Track stripe — rendered via ::before (absolute) so it overlays       */
+/* whatever left-border thickness the priority class sets.              */
+.card { position: relative; }
+.card.track--A::before,
+.card.track--B::before {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: 4px;
+  border-top-left-radius: inherit;
+  border-bottom-left-radius: inherit;
+  pointer-events: none;
+}
+.card.track--A::before { background: #22d3ee; }   /* cyan — plumbing / Track A */
+.card.track--B::before { background: #ec4899; }   /* magenta — alpha / Track B */
+
+/* Corner signal stack (age + attempt badges) */
+.card-signals {
+  position: absolute;
+  top: .35rem;
+  right: 2.25rem; /* clear of .card-trash */
+  display: flex;
+  gap: .3rem;
+  align-items: center;
+  pointer-events: none;
+}
+.age-badge {
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  line-height: 1;
+}
+.age-badge--new   { background: #facc15; color: #111; }
+.age-badge--stale { background: #f59e0b; color: #111; }
+
+.attempt-badge {
+  font-size: .65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #fbbf24;
+  color: #111;
+}
+
+/* Rework visual — dashed border when attempt > 1 */
+.card.attempt--2,
+.card.attempt--3plus {
+  outline: 1.5px dashed #fbbf24;
+  outline-offset: -3px;
+}
+.card.attempt--3plus {
+  outline-color: #ef4444;
+}
+
+/* Priority border thickness — numeric left border */
+.card.priority--CRITICAL { border-left-width: 6px; border-left-style: solid; border-left-color: #ef4444; }
+.card.priority--HIGH     { border-left-width: 4px; border-left-style: solid; border-left-color: #f97316; }
+.card.priority--MEDIUM   { border-left-width: 2px; border-left-style: solid; border-left-color: #94a3b8; }
+.card.priority--LOW      { border-left-width: 1px; border-left-style: solid; border-left-color: #475569; }
+
+/* Loop-back row (CHANGES_REQUESTED) rendered above the main strip */
+.wf-board--loopback {
+  margin-bottom: .5rem;
+  border-bottom: 1px dashed rgba(251, 191, 36, 0.35);
+  padding-bottom: .6rem;
+}
+.lane--loopback {
+  min-height: 0; /* collapse when empty */
+}
+.lane-body--loopback {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+.lane-body--loopback .card {
+  flex: 0 0 calc(33.333% - .4rem);
+}
+
+/* Track meta chip */
+.meta.track-meta {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+/* ============================================================ */
+/* Startup guardrails panel on /system                           */
+/* ============================================================ */
+.guardrails-panel {
+  margin-bottom: 1rem;
+  padding: .6rem .75rem;
+  background: var(--panel-bg, #111827);
+  border: 1px solid var(--panel-border, #1f2937);
+  border-radius: 6px;
+}
+.guardrails-panel h3 { margin: 0 0 .5rem 0; font-size: .85rem; letter-spacing: .03em; color: var(--muted); text-transform: uppercase; }
+.guardrails-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .5rem; }
+.guardrail {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  grid-template-areas: "badge name" "badge detail" "badge details";
+  gap: 2px 8px;
+  padding: .4rem .6rem;
+  border-radius: 5px;
+  border-left: 3px solid transparent;
+  background: rgba(15,23,42,0.55);
+  font-size: .8rem;
+}
+.guardrail--ok    { border-left-color: #22c55e; }
+.guardrail--warn  { border-left-color: #f59e0b; }
+.guardrail--fail  { border-left-color: #ef4444; background: rgba(127, 29, 29, 0.35); }
+.guardrail-badge  { grid-area: badge; font-size: 1.2rem; font-weight: 700; align-self: center; text-align: center; }
+.guardrail--ok   .guardrail-badge { color: #22c55e; }
+.guardrail--warn .guardrail-badge { color: #f59e0b; }
+.guardrail--fail .guardrail-badge { color: #ef4444; }
+.guardrail-name   { grid-area: name;   font-weight: 600; color: var(--fg); }
+.guardrail-detail { grid-area: detail; color: var(--muted); }
+.guardrail details  { grid-area: details; margin-top: 2px; }
+.guardrail details summary { cursor: pointer; font-size: .72rem; color: var(--muted); }
+.guardrail details ul { margin: .25rem 0 0 1rem; font-size: .72rem; color: var(--muted); max-height: 18vh; overflow:auto; }
+
+/* ===================================================================
+ * === DUGOUT OS — design tokens =====================================
+ * Spec: docs/superpowers/specs/2026-04-18-control-plane-redesign-design.md §3
+ * =================================================================== */
+
+:root {
+  --field-night:        #0a1628;
+  --field-deep:         #050a14;
+  --turf:               #1a5d3a;
+  --turf-bright:        #2d8a52;
+  --chalk:              #f4f1e8;
+  --chalk-dim:          #a8a59a;
+  --dirt:               #8b6f47;
+  --scoreboard-amber:   #ffb627;
+  --scoreboard-green:   #7dd87d;
+  --hr-gold:            #ffd700;
+  --foul-red:           #e63946;
+  --rain-blue:          #4a7ba7;
+  --ump-purple:         #6b4e8f;
+
+  --persona-rookie:     #a78bfa;  /* Haiku · Leadoff Rookie */
+  --persona-coach:      #60a5fa;  /* Sonnet · Bench Coach */
+  --persona-scout:      #34d399;  /* Sonnet · Advance Scout */
+  --persona-slugger:    #f472b6;  /* Opus · Cleanup Slugger */
+  --persona-umpire:     #fb7185;  /* Opus · Crew Chief Umpire */
+
+  --font-pixel:         'Press Start 2P', system-ui, monospace;
+  --font-pixel-text:    'VT323', 'Press Start 2P', monospace;
+  --font-body:          'Inter Tight', system-ui, sans-serif;
+  --font-mono:          'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* Sprites: scale up tiny SVGs without antialiasing them into mush. */
+.sprite-pixel {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+}
+
+/* Motion keyframes — reduced-motion users see static states (see fallback at end). */
+@keyframes pulse-pitch {
+  0%, 100% { transform: scale(1.00); }
+  50%      { transform: scale(1.03); }
+}
+@keyframes smack {
+  0%   { transform: scale(0.95); filter: brightness(1.0); }
+  40%  { transform: scale(1.08); filter: brightness(1.4); }
+  100% { transform: scale(1.00); filter: brightness(1.0); }
+}
+@keyframes ball-trail {
+  0%   { transform: translateX(-20%); opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translateX(120%); opacity: 0; }
+}
+@keyframes slide-safe {
+  0%   { transform: translateY(-12px); opacity: 0; }
+  60%  { transform: translateY(4px); }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes home-run {
+  0%   { box-shadow: 0 0 0 0 var(--hr-gold); }
+  60%  { box-shadow: 0 0 36px 12px var(--hr-gold); }
+  100% { box-shadow: 0 0 0 0 var(--hr-gold); }
+}
+@keyframes rain-drift {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 64px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-pitch, .smack, .ball-trail, .slide-safe,
+  .home-run-burst, .rain-drift {
+    animation: none !important;
+  }
+}
