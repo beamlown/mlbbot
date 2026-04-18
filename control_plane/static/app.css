@@ -1372,3 +1372,72 @@ body {
   background: var(--foul-red); color: var(--chalk);
   padding: 3px 6px;
 }
+
+/* === DUGOUT OS — lane grid === */
+.dot-matrix-strip {
+  background: var(--field-deep);
+  border: 2px solid var(--scoreboard-amber);
+  padding: 10px 16px;
+  display: flex; align-items: center; gap: 12px;
+  margin: 16px 24px;
+}
+.strip-label {
+  font-family: var(--font-pixel); font-size: 9px;
+  color: var(--scoreboard-amber);
+}
+.dot-matrix-form input,
+.dot-matrix-form select,
+.dot-matrix-form button {
+  font-family: var(--font-pixel-text); font-size: 14px;
+  background: var(--field-night); color: var(--chalk);
+  border: 1px solid var(--chalk-dim); padding: 4px 6px;
+}
+
+.loopback-ribbon {
+  margin: 12px 24px;
+  border: 3px dashed var(--foul-red);
+  padding: 12px;
+  background: rgba(230, 57, 70, 0.08);
+}
+.loopback-title {
+  font-family: var(--font-pixel); font-size: 12px;
+  color: var(--foul-red); margin: 0 0 10px;
+}
+.loopback-cards {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.lane-grid {
+  display: grid; grid-template-columns: repeat(6, minmax(220px, 1fr));
+  gap: 12px;
+  padding: 0 24px 24px;
+}
+.lane-pixel {
+  background: rgba(0,0,0,0.25);
+  border: 2px solid var(--chalk-dim);
+  border-radius: 6px;
+  padding: 10px;
+  min-height: 240px;
+}
+.lane-pixel.state--READY_FOR_WORKER { border-color: var(--scoreboard-amber); }
+.lane-pixel.state--RUNNING          { border-color: var(--scoreboard-green); }
+.lane-pixel.state--AWAITING_REVIEW  { border-color: var(--ump-purple); }
+.lane-pixel.state--BLOCKED          { border-color: var(--rain-blue); }
+.lane-pixel.state--DONE             { border-color: var(--scoreboard-amber); }
+.lane-pixel.state--LIVE             { border-color: var(--hr-gold); }
+.lane-pixel.state--ARCHIVED         { opacity: 0.7; }
+
+.lane-pixel-header {
+  display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 2px solid var(--chalk-dim);
+  padding-bottom: 6px; margin-bottom: 10px;
+}
+.lane-pixel-name {
+  font-family: var(--font-pixel); font-size: 11px;
+  color: var(--chalk);
+}
+.lane-pixel-count {
+  font-family: var(--font-pixel-text); font-size: 18px;
+  color: var(--scoreboard-amber);
+}

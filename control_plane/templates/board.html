@@ -2,8 +2,9 @@
 {% block title %}Board · Control Plane{% endblock %}
 {% block content %}
 
-<section class="filters">
-  <form method="get" class="filter-row">
+<section class="dot-matrix-strip" aria-label="Scouting report"><span class="strip-label">SCOUTING REPORT</span>
+<form method="get" class="filters dot-matrix-form">
+  <div class="filter-row">
     <input type="search" name="q" value="{{ filter_q }}" placeholder="Search task_id or title…">
     <select name="priority">
       <option value="">priority: any</option>
@@ -19,7 +20,7 @@
     </select>
     <button class="btn" type="submit">Apply</button>
     <a class="btn btn-ghost" href="{{ url_for('tasks.board') }}">Reset</a>
-  </form>
+  </div>
   <div class="counts">
     {% for lane, count in lane_counts.items() %}
       <span class="chip chip-wf-{{ lane|lower }}">{{ lane_display[lane] }} · {{ count }}</span>
@@ -29,6 +30,7 @@
       <span id="auto-refresh-label">auto-refresh: off</span>
     </label>
   </div>
+</form>
 </section>
 
 <section class="roster-strip" aria-label="Active roster">
@@ -63,33 +65,28 @@
 {# --- loop-back (rework) row — renders above the main board strip --- #}
 {% if loopback_lanes %}
   {% set has_loopback = loopback_lanes|selectattr('0')|list or (loopback_lanes and lanes[loopback_lanes[0]]|length > 0) %}
-  <section class="board wf-board wf-board--loopback" aria-label="Rework lane">
+  <section class="loopback-ribbon" aria-label="Rework lane">
+    <h3 class="loopback-title">⚾ FOUL BALL — back to the box</h3>
+    <div class="loopback-cards">
     {% for lane in loopback_lanes %}
       {% set items = lanes[lane] or [] %}
-      <div class="lane lane-wf-{{ lane|lower }} lane--loopback" data-lane="{{ lane }}">
-        <header class="lane-header">
-          <span class="lane-title">↺ {{ lane_display[lane] }}</span>
-          <span class="lane-count">{{ items|length }}</span>
-        </header>
-        <div class="lane-body lane-body--loopback" data-lane="{{ lane }}">
-          {% for t in items %}
-            {% include "_card_inner.html" %}
-          {% else %}
-            <div class="empty muted">no rework</div>
-          {% endfor %}
-        </div>
-      </div>
+      {% for t in items %}
+        {% include "_card_inner.html" %}
+      {% else %}
+        <div class="empty muted">no rework</div>
+      {% endfor %}
     {% endfor %}
+    </div>
   </section>
 {% endif %}
 
-<section class="board wf-board">
+<section class="board wf-board lane-grid">
   {% for lane in lane_order %}
     {% set items = lanes[lane] or [] %}
-    <div class="lane lane-wf-{{ lane|lower }}" data-lane="{{ lane }}">
-      <header class="lane-header">
-        <span class="lane-title">{{ lane_display[lane] }}</span>
-        <span class="lane-count">{{ items|length }}</span>
+    <div class="lane lane-pixel lane-wf-{{ lane|lower }} state--{{ lane }}" data-lane="{{ lane }}">
+      <header class="lane-pixel-header">
+        <span class="lane-pixel-name">{{ lane_display[lane] }}</span>
+        <span class="lane-pixel-count">{{ items|length }}</span>
       </header>
       <div class="lane-body" data-lane="{{ lane }}">
         {% for t in items %}
