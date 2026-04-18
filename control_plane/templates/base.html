@@ -10,64 +10,75 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
 <body>
-<header class="topbar">
-  <div class="topbar-left">
-    <a href="{{ url_for('tasks.board') }}" class="brand">BOT_BRIDGE · Control Plane</a>
-    <nav class="nav">
-      <a href="{{ url_for('tasks.board') }}">Board</a>
-      <a href="{{ url_for('patches.patches_index') }}">Patches</a>
-      <a href="{{ url_for('artifacts.list_artifacts') }}">Artifacts</a>
-      <a href="{{ url_for('system.system_page') }}">System</a>
-    </nav>
-  </div>
-  <div class="topbar-right">
-    {% if CLAUDE_STATUS and not CLAUDE_STATUS.ok %}
-      <a href="{{ url_for('system.system_page') }}" class="chip chip-blocked"
-         title="Claude CLI not found — click to configure">
-        ⚠ claude CLI not found
-      </a>
-    {% elif CLAUDE_STATUS and CLAUDE_STATUS.source == 'db' %}
-      <a href="{{ url_for('system.system_page') }}" class="chip chip-active"
-         title="Using override set at /system: {{ CLAUDE_STATUS.resolved_path }}">
-        ✓ claude (override)
-      </a>
+<header class="scoreboard">
+  <div class="scoreboard-left">
+    <a href="{{ url_for('tasks.board') }}" class="brand-pixel">
+      <span class="brand-pixel-line1">DUGOUT OS</span>
+      <span class="brand-pixel-line2">BOT_BRIDGE</span>
+    </a>
+    <span class="chip-pixel-led" title="Bot version">● BOT v{{ SETTINGS.bot_version|default('0.4.2') }}</span>
+    {% if PENDING_PATCH and PENDING_PATCH.last_shipped_version %}
+      <span class="chip-pixel-led" title="Last shipped patch">INN {{ PENDING_PATCH.last_shipped_version|replace('PATCH_','') }}</span>
     {% endif %}
-    <label class="role-switch" title="Acting role (Phase 4 enforces)">
-      <span class="role-label">acting as</span>
+    <span class="chip-pixel-led" title="Open critical guardrails">OUTS {{ GUARDRAIL_FAILS|default(0) }}</span>
+    <span class="scoreboard-counts">
+      🏁 {{ LANE_COUNTS.READY_FOR_WORKER|default(0) }} at bat ·
+      ⚾ {{ LANE_COUNTS.RUNNING|default(0) }} in play
+    </span>
+  </div>
+
+  <nav class="scoreboard-nav">
+    <a href="{{ url_for('tasks.board') }}"            class="nav-tab">[ BOARD ]</a>
+    <a href="/roster" class="nav-tab">[ ROSTER ]</a>
+    <a href="{{ url_for('patches.patches_index') }}"  class="nav-tab">[ PATCHES ]</a>
+    <a href="{{ url_for('artifacts.list_artifacts') }}" class="nav-tab">[ ARTIFACTS ]</a>
+    <a href="{{ url_for('system.system_page') }}"     class="nav-tab">[ SYSTEM ]</a>
+  </nav>
+
+  <div class="scoreboard-right">
+    {% if CLAUDE_STATUS and not CLAUDE_STATUS.ok %}
+      <a href="{{ url_for('system.system_page') }}" class="chip-pixel chip-pixel--warn"
+         title="Claude CLI not found">⚠ claude</a>
+    {% elif CLAUDE_STATUS and CLAUDE_STATUS.source == 'db' %}
+      <a href="{{ url_for('system.system_page') }}" class="chip-pixel chip-pixel--ok"
+         title="{{ CLAUDE_STATUS.resolved_path }}">✓ claude</a>
+    {% endif %}
+    <label class="role-switch-pixel" title="Acting role">
+      <span>acting:</span>
       <select id="acting-role-select" onchange="setActingRole(this.value)">
         {% for key, info in ROLE_INFO.items() %}
           <option value="{{ key }}" {% if ACTING_ROLE == key %}selected{% endif %}>{{ info.display }}</option>
         {% endfor %}
       </select>
     </label>
-    <a class="btn btn-xs btn-accent" href="{{ url_for('tasks.task_new') }}">+ New Task</a>
-    <button class="btn btn-xs" onclick="regenerateBoard(this)">Regenerate board.md</button>
-    <button class="btn btn-xs" onclick="reimport(this)">Re-import</button>
+    <button class="btn-pixel-icon" onclick="regenerateBoard(this)" title="Regenerate board.md">📋</button>
+    <button class="btn-pixel-icon" onclick="reimport(this)" title="Re-import">⟳</button>
   </div>
+
+  <a class="cta-step-up" href="{{ url_for('tasks.task_new') }}"
+     title="Draft a new task">
+    ⚾ STEP UP TO THE PLATE
+  </a>
 </header>
 
 {% if PENDING_PATCH %}
-<section class="patch-banner {% if PENDING_PATCH.task_count > 0 %}patch-banner-ready{% else %}patch-banner-empty{% endif %}">
-  <div class="patch-banner-left">
-    <span class="patch-banner-label">Pending release</span>
+<section class="between-innings-ticker {% if PENDING_PATCH.task_count > 0 %}ticker--ready{% else %}ticker--empty{% endif %}">
+  <div class="ticker-scroll">
+    <span class="ticker-label">PENDING RELEASE</span>
     {% if PENDING_PATCH.patch_id %}
-      <a class="patch-banner-version" href="{{ url_for('patches.patch_detail', patch_id=PENDING_PATCH.patch_id) }}">
-        {{ PENDING_PATCH.version }}
-      </a>
+      <a class="ticker-version" href="{{ url_for('patches.patch_detail', patch_id=PENDING_PATCH.patch_id) }}">{{ PENDING_PATCH.version }}</a>
     {% else %}
-      <span class="patch-banner-version">{{ PENDING_PATCH.version }}</span>
+      <span class="ticker-version">{{ PENDING_PATCH.version }}</span>
     {% endif %}
-    <span class="patch-banner-count">
+    <span class="ticker-count">
       {{ PENDING_PATCH.task_count }} task{{ '' if PENDING_PATCH.task_count == 1 else 's' }} awaiting relaunch
     </span>
     {% if PENDING_PATCH.last_shipped_version %}
-      <span class="patch-banner-muted">live: {{ PENDING_PATCH.last_shipped_version }}</span>
+      <span class="ticker-muted">live: {{ PENDING_PATCH.last_shipped_version }}</span>
     {% endif %}
-  </div>
-  <div class="patch-banner-right">
-    <a class="btn btn-xs btn-ghost" href="{{ url_for('patches.patches_index') }}">Release queue →</a>
+    <a class="btn-pixel-sm" href="{{ url_for('patches.patches_index') }}">RELEASE QUEUE →</a>
     {% if PENDING_PATCH.task_count > 0 and PENDING_PATCH.patch_id %}
-      <button class="btn btn-xs btn-accent" onclick="shipPatch(this)" title="Freeze this patch and start a new one">Ship {{ PENDING_PATCH.version }}</button>
+      <button class="btn-pixel-sm btn-pixel-accent" onclick="shipPatch(this)">SHIP {{ PENDING_PATCH.version }}</button>
     {% endif %}
   </div>
 </section>
@@ -77,9 +88,11 @@
 {% block content %}{% endblock %}
 </main>
 
-<footer class="footer">
+<footer class="led-ribbon">
   <span>repo {{ SETTINGS.repo_root }}</span>
+  <span>·</span>
   <span>db {{ SETTINGS.db_path.name }}</span>
+  <span>·</span>
   <span>port {{ SETTINGS.port }}</span>
 </footer>
 
