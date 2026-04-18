@@ -170,6 +170,70 @@ def import_bot_bridge() -> ImportReport:
 # Helpers
 # ---------------------------------------------------------------------------
 
+def _recategorize_from_audit(task_id: str, text: str, fname: str) -> None:
+    """Classify a freshly-seen AUDIT body and, on FAIL, kick the task back
+    to CHANGES_REQUESTED so the worker lane rescans it. Called from
+    _upsert_artifact only when the artifact is new or its content changed.
+    """
+    from ..runner.capture import _classify_audit
+    verdict, verdict_tail = _classify_audit(text)
+    if verdict != "FAIL":
+        return
+    conn = get_conn()
+    now = _now_iso()
+    reason = (verdict_tail or f"audit flagged issues (see {fname})")[:200]
+    conn.execute(
+        "UPDATE tasks SET status='CHANGES_REQUESTED', "
+        "block_reason=?, blocked_at=?, updated_at=? "
+        "WHERE task_id=? AND status != 'CHANGES_REQUESTED'",
+        (f"audit: {reason}", now, now, task_id),
+    )
+
+
+def _recategorize_from_review(task_id: str, text: str, fname: str) -> None:
+    """Same idea for REVIEW / APPROVED / PROVISIONAL_REVIEW artifacts —
+    parse the decision line and apply the state transition the importer
+    would previously have missed (because no run captured it).
+    """
+    # Lazy import — parsers lives in the same package but keeps things
+    # clear at the top of the module.
+    from .parsers import parse_review_md
+    from pathlib import Path as _P  # alias so we don't shadow
+    # parse_review_md takes a path; synthesize one from the text we have.
+    # Simpler: scan for DECISION: lines inline.
+    import re as _re
+    m = _re.search(r"(?im)^\s*(?:#+\s*)?\*{0,2}\s*"
+                   r"(?:DECISION|VERDICT)\s*:\s*(\*{0,2}\s*)?"
+                   r"(APPROVED|CHANGES_REQUESTED|CHANGES REQUESTED|FAIL|FAILED|REJECTED|PROVISIONAL)"
+                   r"(?:\s*[—\-:]\s*(.*?))?\s*\*{0,2}\s*$", text)
+    if not m:
+        return
+    word = m.group(2).upper().replace(" ", "_")
+    tail = (m.group(3) or "").strip()
+    conn = get_conn()
+    now = _now_iso()
+    if word == "APPROVED":
+        # Clear any prior block and promote to DONE, assign to patch.
+        conn.execute(
+            "UPDATE tasks SET status='DONE', blocked_on=NULL, block_reason=NULL, "
+            "blocked_at=NULL, updated_at=? WHERE task_id=?",
+            (now, task_id),
+        )
+        try:
+            from ..patches import assign_task
+            assign_task(task_id)
+        except Exception:
+            pass
+    elif word in ("CHANGES_REQUESTED", "FAIL", "FAILED", "REJECTED"):
+        reason = (tail or f"reviewer {word} (see {fname})")[:200]
+        conn.execute(
+            "UPDATE tasks SET status='CHANGES_REQUESTED', "
+            "block_reason=?, blocked_at=?, updated_at=? "
+            "WHERE task_id=?",
+            (f"reviewer: {reason}", now, now, task_id),
+        )
+
+
 def _upsert_artifact(fp: Path, report: ImportReport) -> None:
     report.artifacts_seen += 1
     rel = _repo_rel(fp)
@@ -215,7 +279,9 @@ def _upsert_artifact(fp: Path, report: ImportReport) -> None:
 
     conn = get_conn()
     row = conn.execute("SELECT artifact_id, sha256 FROM artifacts WHERE path=?", (rel,)).fetchone()
-    if row is None:
+    is_new = row is None
+    is_changed = (row is not None and row["sha256"] != sha)
+    if is_new:
         aid = uuid.uuid4().hex
         conn.execute(
             """INSERT INTO artifacts
@@ -225,13 +291,25 @@ def _upsert_artifact(fp: Path, report: ImportReport) -> None:
             (aid, kind, rel, title, summary, tid, mtime, size, sha, text, _now_iso()),
         )
         report.artifacts_new += 1
-    elif row["sha256"] != sha:
+    elif is_changed:
         conn.execute(
             """UPDATE artifacts SET kind=?, title=?, summary=?, task_ref=?,
                                     mtime=?, size_bytes=?, sha256=?, content=?
                 WHERE artifact_id=?""",
             (kind, title, summary, tid, mtime, size, sha, text, row["artifact_id"]),
         )
+
+    # Auto-recategorize on new / changed AUDIT or REVIEW reports. A FAIL
+    # verdict flips the task back to CHANGES_REQUESTED + sets a specific
+    # block_reason so the worker lane picks it up for another pass. This
+    # is the "drop a new report, task reroutes itself" behavior — equally
+    # useful whether the artifact came from an Opus audit run or was
+    # dropped into 08_SHARED_CONTEXT manually by the operator.
+    if tid and text and (is_new or is_changed):
+        if kind == "AUDIT":
+            _recategorize_from_audit(tid, text, fp.name)
+        elif kind in ("REVIEW", "APPROVED", "PROVISIONAL_REVIEW"):
+            _recategorize_from_review(tid, text, fp.name)
 
 
 def _upsert_task_from_json(path: Path, report: ImportReport) -> None:

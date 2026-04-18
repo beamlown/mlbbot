@@ -47,6 +47,62 @@ from ..bridge.task_board_md import regenerate_board_md
 _RESULT_RX = re.compile(r"^\s*RESULT_JSON:\s*(\{.*\})\s*$")
 _TRIAGE_RX = re.compile(r"^\s*TRIAGE:\s*(yes|no)\b\s*(.*)$", re.IGNORECASE)
 
+# Audit / report verdict anchor. Tolerant of markdown decoration because
+# Opus tends to render the verdict as a heading or bold line. The captured
+# group lands in _AUDIT_PASS_WORDS or _AUDIT_FAIL_WORDS to classify.
+# Note the verdict-word char class uses [A-Z_ \t] not \s — \s includes
+# newlines and the greedy match would otherwise run across lines.
+_AUDIT_VERDICT_RX = re.compile(
+    r"(?im)^[ \t]*(?:#+[ \t]*)?\*{0,2}[ \t]*"
+    r"(?:DECISION|VERDICT|FINDING|FINDINGS|AUDIT|STATUS)[ \t]*:[ \t]*"
+    r"([A-Z_][A-Z_ \t]{1,30})"
+    r"(?:[ \t]*[—\-:][ \t]*(.*?))?[ \t]*\*{0,2}[ \t]*$"
+)
+_AUDIT_PASS_WORDS = {
+    "PASS", "PASSED", "CLEAN", "APPROVED", "OK", "GREEN",
+    "NO_ISSUES", "NO ISSUES", "NO_FINDINGS", "NO FINDINGS",
+    "READY", "SHIP", "SHIPPABLE",
+}
+_AUDIT_FAIL_WORDS = {
+    "FAIL", "FAILED", "REJECTED", "BLOCKED", "BLOCK", "RED",
+    "ISSUES_FOUND", "ISSUES FOUND", "ISSUES",
+    "CHANGES_REQUESTED", "CHANGES REQUESTED", "CHANGES_REQUIRED", "CHANGES REQUIRED",
+    "NEEDS_FIX", "NEEDS FIX", "MUST_FIX", "MUST FIX",
+    "FINDINGS", "CONCERNS", "BROKEN",
+}
+
+
+def _classify_audit(text: str) -> tuple[str | None, str | None]:
+    """Scan an audit/report body for a verdict anchor. Return (verdict, reason).
+
+    verdict ∈ {'PASS', 'FAIL', None}. reason is any tail text after the
+    anchor (e.g. 'FAIL — two broken callsites in bot_core.py') or None.
+    Keyword matching is permissive — we want a low miss rate and accept
+    that a FAIL in an audit body that uses a weird synonym will occasionally
+    slip through. The verdict is only half the signal; the review artifact
+    still gets written for the operator regardless.
+    """
+    if not text:
+        return None, None
+    for m in _AUDIT_VERDICT_RX.finditer(text):
+        word = (m.group(1) or "").strip().upper()
+        tail = (m.group(2) or "").strip()
+        if word in _AUDIT_PASS_WORDS:
+            return "PASS", tail or None
+        if word in _AUDIT_FAIL_WORDS:
+            return "FAIL", tail or None
+    # No explicit anchor — scan for bare fail keywords in the first 600
+    # chars (the summary area most audit templates land in).
+    head = text[:600].upper()
+    for w in ("ISSUES FOUND", "MUST FIX", "NEEDS FIX", "BLOCKED", "FAIL",
+              "REJECTED", "BROKEN"):
+        if w in head:
+            return "FAIL", None
+    for w in ("NO ISSUES", "CLEAN", "APPROVED", "PASSED"):
+        if w in head:
+            return "PASS", None
+    return None, None
+
 
 def _sha(b: bytes) -> str:
     return hashlib.sha256(b).hexdigest()
@@ -409,7 +465,14 @@ def finalize_run(run, exit_code: int) -> None:
         # patch_review_meta (stored on the runs row at launch time).
         _route_patch_review(req, run, exit_code)
     elif task_id and kind in ("auditor", "architect"):
-        artifact_ids.append(_capture_audit(req, run, result, kind))
+        aid_tup, audit_status = _capture_audit(req, run, result, kind)
+        artifact_ids.append(aid_tup)
+        # Audit/architect runs now recategorize the task. An audit that
+        # finds issues kicks the task back to CHANGES_REQUESTED so the
+        # worker lane picks it up for another pass; a clean audit leaves
+        # the status untouched (task stays DONE or wherever it was).
+        if audit_status:
+            new_status = audit_status
 
     # Update run row with parsed summary.
     get_conn().execute(
@@ -752,33 +815,71 @@ def _capture_triage(req, run, exit_code) -> str | None:
     return "CHANGES_REQUESTED"
 
 
-def _capture_audit(req, run, result, kind) -> tuple[str, str]:
+def _capture_audit(req, run, result, kind) -> tuple[tuple[str, str], str | None]:
+    """Write AUDIT_<TASK>.md, classify the verdict, recategorize the task.
+
+    Returns ((art_id, 'audit'), new_status). new_status is 'CHANGES_REQUESTED'
+    when the audit body contains a FAIL/BLOCKED/ISSUES_FOUND verdict — this
+    pushes the task back into the worker lane so the fix loop runs until the
+    audit comes back clean. A PASS verdict leaves status untouched (we don't
+    auto-DONE an audit target because the task might already BE done, or the
+    audit might be exploratory with no prior work-in-flight). Unknown / no
+    verdict → no status change; the operator sees the AUDIT artifact and
+    decides.
+    """
     task_id = req.task_id
     path = _shared_dir() / f"AUDIT_{task_id}.md"
-    lines = [
+    # Best-effort read of the transcript tail — this is also what we scan
+    # for keyword verdicts, since Opus auditors render the verdict as part
+    # of the final assistant text and it lives in last_lines.
+    try:
+        tail = "\n".join(run.last_lines[-120:])
+    except Exception:
+        tail = ""
+    # Classify from the transcript tail first, then augment with whatever
+    # the worker wrote into RESULT (status/summary).
+    verdict, verdict_tail = _classify_audit(tail)
+    if verdict is None and result:
+        verdict, verdict_tail = _classify_audit(
+            " ".join(str(v) for v in result.values() if isinstance(v, str))
+        )
+
+    header = [
         f"# AUDIT_{task_id}",
         "",
         f"- run: `{req.run_id}`",
         f"- role: `{req.role}`",
         f"- kind: `{kind}`",
+        f"- verdict: `{verdict or 'INDETERMINATE'}`",
         "",
     ]
+    body_lines = list(header)
     if result:
-        lines += ["## RESULT_JSON", "", "```json", json.dumps(result, indent=2), "```", ""]
-    try:
-        tail = "\n".join(run.last_lines[-120:])
-    except Exception:
-        tail = ""
-    lines += ["## Transcript tail", "", "```", tail, "```", ""]
-    body = "\n".join(lines)
+        body_lines += ["## RESULT_JSON", "", "```json", json.dumps(result, indent=2), "```", ""]
+    body_lines += ["## Transcript tail", "", "```", tail, "```", ""]
+    body = "\n".join(body_lines)
     path.write_text(body, encoding="utf-8")
     art_id = _write_artifact_row(
         kind="AUDIT",
         path=path,
-        title=f"AUDIT_{task_id}",
+        title=f"AUDIT_{task_id} ({verdict or 'INDETERMINATE'})",
         summary=(result or {}).get("summary") if result else "",
         content=body,
         task_ref=task_id,
     )
     _link(task_id, art_id, "audit")
-    return art_id, "audit"
+
+    new_status: str | None = None
+    if verdict == "FAIL":
+        # Kick the task back into the worker lane so the fix loop runs.
+        # Block reason carries the audit's own phrasing so the operator
+        # sees WHY on the card without opening the audit artifact.
+        reason = verdict_tail or f"audit flagged issues (see AUDIT_{task_id}.md)"
+        _set_block(task_id, f"audit: {reason[:200]}")
+        new_status = "CHANGES_REQUESTED"
+    elif verdict == "PASS":
+        # A clean audit clears any stale audit-driven block but leaves
+        # the task's lane status alone — the task might already be DONE
+        # and re-auditing shouldn't churn its lane placement.
+        _clear_block(task_id)
+    return (art_id, "audit"), new_status
