@@ -2,7 +2,7 @@
   "task_id": "SESSION_SLUG_LOSS_CAP_001",
   "type": "surgical risk containment fix",
   "priority": "MEDIUM",
-  "status": "QUEUED",
+  "status": "DONE",
   "issued": "2026-04-11",
   "subsystem": "entry gates / loss containment / bot_core",
   "title": "Ban a slug for the rest of the session after per-slug dollar loss cap is hit",
@@ -20,6 +20,6 @@
   ],
   "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_SESSION_SLUG_LOSS_CAP_001.md",
   "result_path": "06_OUTBOX_FROM_WORKER/RESULT_SESSION_SLUG_LOSS_CAP_001.json",
-  "assigned_role": "SONNET_WORKER",
+  "assigned_role": "HAIKU_WORKER",
   "acceptance": "- Further entries on a slug are blocked after the slug reaches the configured session loss cap\n- Threshold is configurable via .env\n- Rejection is logged in standard gate format\n- No files outside allowed scope modified\n- python -m py_compile bot_core.py passes\n- python -m py_compile core/risk.py passes if modified"
 }

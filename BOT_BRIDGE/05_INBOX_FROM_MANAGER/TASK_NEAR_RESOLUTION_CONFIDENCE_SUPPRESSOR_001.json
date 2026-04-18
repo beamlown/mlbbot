@@ -2,7 +2,7 @@
   "task_id": "NEAR_RESOLUTION_CONFIDENCE_SUPPRESSOR_001",
   "type": "imported_from_board",
   "priority": "MEDIUM",
-  "status": "ACTIVE",
+  "status": "DONE",
   "issued": "2026-04-17",
   "subsystem": "model / confidence / near-resolution",
   "title": "Add confidence suppressor for near-zero/near-one market prices in recommendation_api.py",

@@ -1,54 +1,17 @@
 {
   "task_id": "DASH_009",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "",
   "title": "Fix resolved paper trade cards — PnL, Current price, team name",
-  "objective": "Resolved paper trade cards show '—' for both PnL and Current price, and display 'mlb-se' (mangled slug) instead of team names. Three root-cause bugs, all in buildUnifiedPositionCards() and renderUnifiedPositions() in dashboard.html. Fix all three.",
-  "allowed_files": ["dashboard.html"],
-  "do_not_touch": ["dashboard_server.py", "launch_all.py", "bot_core.py", "core/", "mlb_model/"],
-
-  "context": {
-    "symptom": "Resolved paper trade cards show: Current = '—', PnL display = '—', team = 'mlb-se'. Command bar shows correct P&L (+$30.79) but the cards show nothing.",
-    "root_cause_1": "buildUnifiedPositionCards() reads r.unrealized_pnl_dollars for the PnL display (line ~710) and r.current_price for the Current stat box (line ~738). These are shadow rec fields. Paper trades from the DB have pnl_usd and exit_px respectively — but those names don't match. So both show '—'.",
-    "root_cause_2": "For closed paper trades where no shadow rec is available (yesterday's games are date-filtered), r.tracked_team and r.home_team are both null. The fallback at line ~720 calls shortTeam(r.market_slug) which runs 'mlb-sea-laa-2026-04-04'.split(' ').pop().slice(0,6) = 'mlb-se'. TEAM_ABBR only maps full city+team names, not slug abbreviations.",
-    "root_cause_3": "gameCtxPill (line ~714) requires r.away_team && r.home_team — both null for the same reason as root_cause_2. Pill is blank. This is auto-fixed by fixing root_cause_2."
-  },
-
-  "deliverables": [
-    {
-      "label": "Fix 1 — PnL fallback to pnl_usd",
-      "file": "dashboard.html",
-      "where": "buildUnifiedPositionCards() — near line 704 where unrlzdUsd is declared",
-      "change": "Change the declaration of unrlzdUsd from:\n  const unrlzdUsd = r.unrealized_pnl_dollars;\nTo:\n  const unrlzdUsd = r.unrealized_pnl_dollars ?? r.pnl_usd ?? null;\n\nThis makes resolved paper trades show their actual realized P&L from the DB."
-    },
-    {
-      "label": "Fix 2 — Current price fallback to exit_px",
-      "file": "dashboard.html",
-      "where": "buildUnifiedPositionCards() — near line 738 where Current stat box renders fmtPx(r.current_price)",
-      "change": "Before the pos-stats HTML block, add:\n  const currentPx = r.current_price ?? (r.resolved ? r.exit_px : null);\n\nThen change the Current stat box value from:\n  <div class=\"stat-val gold\">${fmtPx(r.current_price)}</div>\nTo:\n  <div class=\"stat-val gold\">${fmtPx(currentPx)}</div>"
-    },
-    {
-      "label": "Fix 3 — Slug parser for team names",
-      "file": "dashboard.html",
-      "where": "Add helper function near shortTeam (line ~471), and update buildUnifiedPositionCards() game/teamDisplay logic",
-      "change": "Step A — add helper near line 471 (after shortTeam):\n\nconst slugToGameParts = slug => {\n  const m = (slug||'').match(/^mlb-([a-z]+)-([a-z]+)-\\d{4}-\\d{2}-\\d{2}$/);\n  return m ? { away: m[1].toUpperCase(), home: m[2].toUpperCase() } : null;\n};\n\nStep B — in buildUnifiedPositionCards(), replace the existing game and pos-team lines:\n\nCurrently (lines ~676 and ~720):\n  const game = r.away_team && r.home_team ? `${shortTeam(r.away_team)} @ ${shortTeam(r.home_team)}` : '';\n  ...\n  <div class=\"pos-team\">${r.tracked_team || shortTeam(r.home_team || r.market_slug || '?')}</div>\n\nReplace with:\n  const _slugParts = (!r.home_team && !r.away_team) ? slugToGameParts(r.market_slug) : null;\n  const _homeTeam  = r.home_team || (_slugParts && _slugParts.home) || null;\n  const _awayTeam  = r.away_team || (_slugParts && _slugParts.away) || null;\n  const game = _awayTeam && _homeTeam ? `${_awayTeam} @ ${_homeTeam}` : '';\n  ...\n  <div class=\"pos-team\">${r.tracked_team || game || shortTeam(r.market_slug || '?')}</div>"
-    }
+  "allowed_files": [
+    "dashboard.html"
   ],
-
-  "acceptance_criteria": [
-    "Resolved paper trade cards show a dollar amount for PnL (e.g. '+$53.00') not '—'",
-    "Resolved paper trade cards show a price in the Current stat box (e.g. '100.0¢' for a resolved YES, or the exit_px in cents) not '—'",
-    "Resolved paper trade cards show team names like 'SEA @ LAA' not 'mlb-se'",
-    "Open paper trades (if any) still work correctly — no regression",
-    "Shadow-only position cards still work correctly — no regression",
-    "No changes to any server-side files"
-  ],
-
-  "verification": [
-    "Open dashboard in browser. With the 2 resolved paper trades (mlb-sea-laa-2026-04-04) visible:",
-    "1. PnL display must show a dollar value, not '—'",
-    "2. Current stat box must show a price in cents (the exit price from DB), not '—'",
-    "3. Team display must show something like 'SEA @ LAA', not 'mlb-se'",
-    "4. Confirm no JS console errors"
-  ],
-
-  "rollback": "Revert dashboard.html only. Server is unaffected."
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_DASH_009.md",
+  "review_path": "07_REVIEWS/REVIEW_DASH_009.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- Resolved paper trade cards show a dollar amount for PnL (e.g. '+$53.00') not '—'\n- Resolved paper trade cards show a price in the Current stat box (e.g. '100.0¢' for a resolved YES, or the exit_px in cents) not '—'\n- Resolved paper trade cards show team names like 'SEA @ LAA' not 'mlb-se'\n- Open paper trades (if any) still work correctly — no regression\n- Shadow-only position cards still work correctly — no regression\n- No changes to any server-side files"
 }

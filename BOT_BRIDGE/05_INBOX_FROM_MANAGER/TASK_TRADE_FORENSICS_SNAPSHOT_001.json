@@ -2,7 +2,7 @@
   "task_id": "TRADE_FORENSICS_SNAPSHOT_001",
   "type": "surgical observability improvement",
   "priority": "MEDIUM",
-  "status": "QUEUED",
+  "status": "DONE",
   "issued": "2026-04-11",
   "subsystem": "trade observability / entry forensics",
   "title": "Persist a compact forensic snapshot for every new trade entry",
@@ -20,6 +20,7 @@
   ],
   "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_TRADE_FORENSICS_SNAPSHOT_001.md",
   "result_path": "06_OUTBOX_FROM_WORKER/RESULT_TRADE_FORENSICS_SNAPSHOT_001.json",
-  "assigned_role": "SONNET_WORKER",
+  "review_path": "07_REVIEWS/REVIEW_TRADE_FORENSICS_SNAPSHOT_001.md",
+  "assigned_role": "SONNET_MANAGER",
   "acceptance": "- Each new trade stores a compact forensic snapshot containing the required fields\n- Persistence path is documented and readable for future audits\n- No files outside allowed scope modified\n- python -m py_compile bot_core.py passes if modified\n- python -m py_compile core/paper_exec.py passes if modified"
 }

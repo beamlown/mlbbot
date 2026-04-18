@@ -1,15 +1,11 @@
 {
   "task_id": "CONFIDENCE_HISTORY_AUDIT_001",
-  "title": "Historical confidence audit — recent recommendations/trades vs new 0.60 hard floor",
-  "priority": "HIGH",
-  "subsystem": "read-only audit",
-  "status": "OPEN",
   "type": "read-only — no code edits, no runtime edits, no .env changes, no DB writes, no process restarts",
-
-  "objective": "Determine whether the new MIN_ENTRY_CONFIDENCE=0.60 hard floor is likely to materially reduce trade frequency by auditing recent recommendation/trade confidence values. Produce a factual confidence distribution and pass-rate estimate for recent activity.",
-
-  "question_to_answer": "Would the new MIN_ENTRY_CONFIDENCE=0.60 gate have blocked most recent recommendations/trades, or are there enough recent signals at or above 0.60 for the bot to still trade normally?",
-
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "read-only audit",
+  "title": "Historical confidence audit — recent recommendations/trades vs new 0.60 hard floor",
   "allowed_files": [
     "Any local log files containing recent recommendation outputs with confidence values",
     "Any local log files containing bridge/open-trade entries with confidence values",
@@ -19,114 +15,9 @@
     "sports_bot_v2 logs if they contain confidence-bearing recommendation or trade records",
     "Code files — read-only — only the smallest set needed to locate where confidence is emitted or persisted (e.g. the log/emit call site, the DB column name). Do not read full files unless the confidence field cannot be found without it."
   ],
-
-  "do_not_touch": [
-    "Any production code file — no edits",
-    "Any .env file",
-    "Any process or runtime control file",
-    "dashboard.html",
-    "dashboard_server.py",
-    "bot_core.py",
-    "core/risk.py",
-    "core/paper_exec.py",
-    "launch_all.py",
-    "Any file not needed to answer the confidence question",
-    "The DB — no INSERT, UPDATE, DELETE, DROP, or schema changes"
-  ],
-
-  "required_read_scope": [
-    "Step 1 — find where confidence is logged or persisted: check sports_bot_v2 logs and mlb_model output files first. If not found, do a narrow grep for 'confidence' in log paths only.",
-    "Step 2 — extract the most recent N recommendation/trade records that contain confidence values.",
-    "Step 3 — if confidence is in trades_sports.db, run a SELECT query to get confidence column for recent rows.",
-    "Step 4 — produce the distribution. Do not expand scope beyond what is needed for steps 1–3."
-  ],
-
-  "preferred_evidence_sources_in_order": [
-    "1. Recent recommendation output files or logs containing confidence",
-    "2. Recent bridge/open-trade log entries containing confidence",
-    "3. trades_sports.db SELECT if confidence is stored there",
-    "4. Minimal code reading only to locate the confidence field/log call"
-  ],
-
-  "deliverables": {
-    "1_sample_window": {
-      "description": "State the exact sample window analyzed",
-      "required_fields": [
-        "last N recommendations examined (exact count)",
-        "last N trades examined (exact count)",
-        "exact time window covered (start timestamp — end timestamp)"
-      ]
-    },
-    "2_confidence_distribution": {
-      "description": "Bin all observed confidence values from the sample",
-      "bins": [
-        "count < 0.50",
-        "count 0.50–0.549",
-        "count 0.55–0.599",
-        "count 0.60–0.649",
-        "count 0.65–0.699",
-        "count 0.70+"
-      ]
-    },
-    "3_hard_floor_impact": {
-      "description": "Summarize the direct impact of a 0.60 floor on recent activity",
-      "required_fields": [
-        "percent of recent recommendations/trades that would PASS a 0.60 floor",
-        "percent that would FAIL",
-        "qualitative estimate: lightly reduced / moderately reduced / heavily reduced trade frequency"
-      ]
-    },
-    "4_trade_specific_view": {
-      "description": "For recently executed trades specifically",
-      "required_fields": [
-        "count of executed trades with confidence >= 0.60",
-        "count of executed trades with confidence < 0.60",
-        "list of last 10–25 executed trades with: trade_id or slug, confidence, side, outcome if available"
-      ]
-    },
-    "5_recommendation_specific_view": {
-      "description": "For recently emitted recommendations specifically",
-      "required_fields": [
-        "count of recommendations with confidence >= 0.60",
-        "count of recommendations with confidence < 0.60",
-        "if recommendation confidence and executed-trade confidence differ, explain why (e.g. bridge filtering, rounding, field mapping)"
-      ]
-    },
-    "6_conclusion": {
-      "description": "Manager-actionable conclusion",
-      "required_fields": [
-        "Is 0.60 a realistic floor given recent signal quality?",
-        "If not realistic: what floor would preserve reasonable trade frequency? (e.g. 0.55, 0.58)",
-        "Confidence in the conclusion: HIGH / MEDIUM / LOW based on data quality and sample size"
-      ]
-    }
-  },
-
-  "required_metadata_in_result": [
-    "WHERE confidence is actually stored or logged (exact file path or DB column)",
-    "WHETHER the audit used recommendation history, trade history, or both — and which was more complete",
-    "WHETHER any confidence data was missing, unavailable, or had to be inferred"
-  ],
-
-  "acceptance_criteria": [
-    "read-only confirmed — no files modified, no DB writes",
-    "exact sample window stated (timestamps)",
-    "numerical distribution produced across all 6 bins",
-    "explicit PASS count and FAIL count against 0.60 stated",
-    "trade-specific list provided (at least 10 rows if available)",
-    "conclusion states whether 0.60 is realistic and offers alternative if not",
-    "result written to: C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_CONFIDENCE_HISTORY_AUDIT_001.json"
-  ],
-
-  "rollback": "N/A — read-only task. No changes made, nothing to roll back.",
-
-  "worker_notes": [
-    "Do not do a broad repo sweep.",
-    "Do not read every file.",
-    "If you cannot find confidence in logs within 3–4 targeted lookups, check the DB schema for a confidence column and run a SELECT.",
-    "If confidence is not stored anywhere, say so explicitly and report what IS stored (e.g. only market_id and side, no confidence column).",
-    "Do not invent or estimate confidence values — only report what is actually in the data.",
-    "If sample size is small (< 10 records), note this clearly and adjust confidence in conclusion accordingly.",
-    "Write the result to 06_OUTBOX_FROM_WORKER only. Do not write anywhere else."
-  ]
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_CONFIDENCE_HISTORY_AUDIT_001.md",
+  "review_path": "07_REVIEWS/REVIEW_CONFIDENCE_HISTORY_AUDIT_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- read-only confirmed — no files modified, no DB writes\n- exact sample window stated (timestamps)\n- numerical distribution produced across all 6 bins\n- explicit PASS count and FAIL count against 0.60 stated\n- trade-specific list provided (at least 10 rows if available)\n- conclusion states whether 0.60 is realistic and offers alternative if not\n- result written to: C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_CONFIDENCE_HISTORY_AUDIT_001.json"
 }

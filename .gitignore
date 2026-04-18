@@ -24,11 +24,10 @@ env/
 # Node
 node_modules/
 
-# Runtime state
-runtime/bot.pid
-runtime/launcher.pid
-runtime/state.json
-runtime/ob_snapshots/
+# Runtime state — everything under any `runtime/` dir is ephemeral
+# (pidfiles, per-session state, order-book snapshots, market dumps).
+runtime/
+**/runtime/
 
 # Databases
 *.db

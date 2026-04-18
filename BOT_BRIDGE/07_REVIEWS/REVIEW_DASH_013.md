@@ -1,22 +1,14 @@
 # REVIEW_DASH_013
 
-Decision: APPROVED
+- reviewer run: `RUN_50F9D59D9674`
+- reviewer role: `SONNET_MANAGER`
+- exit code: 1
 
-## What passed
+## Decision: **CHANGES_REQUESTED**
 
-- **Scope**: only `dashboard.html` modified — matches allowed_files exactly. No server files touched.
-- **Fix confirmed**: lines 898-899 in `renderShadowFeed()`:
-  ```javascript
-  const statusChip = gameStatusChip(r);
-  const inn = (statusChip === 'LIVE' && r.inning) ? ` i${r.inning}` : '';
-  ```
-  Exact match to handoff spec. Reuses the DASH_012-corrected `gameStatusChip()`. ✅
-- **Rollback**: `dashboard.html` only — revertable.
+## Transcript tail
 
-## What failed
-
-- None.
-
-## Next action
-
-Board idle. No queued tasks.
+```
+[system]
+[system]
+```

@@ -1,5 +1,7 @@
 # HANDOFF: MLB_DAILY_PREV_DAY_UPDATER_BUILD_001
 
+## Status: QUEUED — reassigned to SONNET_WORKER (HAIKU_WORKER failed to produce output on two prior attempts)
+
 ## What you are doing
 Build the daily previous-day MLB ingestion path after the stats foundation spec and season backfill are complete.
 
