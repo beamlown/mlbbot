@@ -1,9 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Not found{% endblock %}
+{% block title %}Rain Delay · Control Plane{% endblock %}
 {% block content %}
-<section class="empty" style="padding:2rem">
-  <h2>Not found</h2>
-  <p>{{ path }}</p>
-  <a class="btn" href="{{ url_for('tasks.board') }}">Back to board</a>
+<section class="rain-delay-page">
+  <div class="rain-delay-bg" aria-hidden="true"></div>
+  <h1 class="rain-delay-title">⛈ RAIN DELAY</h1>
+  <p class="rain-delay-message">No play at that URL.</p>
+  <a class="cta-step-up" href="{{ url_for('tasks.board') }}">⟵ RETURN TO DUGOUT</a>
 </section>
 {% endblock %}

@@ -24,10 +24,12 @@ from .db import get_conn
 
 
 WORKFLOW_LANES: tuple[str, ...] = (
+    "DRAFT",
     "READY_FOR_WORKER",
     "RUNNING",
     "AWAITING_REVIEW",
     "CHANGES_REQUESTED",
+    "BLOCKED",
     "DONE",
     "LIVE",
     "AUDIT_QUEUE",
@@ -36,15 +38,25 @@ WORKFLOW_LANES: tuple[str, ...] = (
 
 
 LANE_DISPLAY = {
-    "READY_FOR_WORKER":  "Ready for Worker",
-    "RUNNING":           "Running",
-    "AWAITING_REVIEW":   "Awaiting Review",
-    "CHANGES_REQUESTED": "Changes Requested",
-    "DONE":              "Done (staged)",
-    "LIVE":              "Live",
-    "AUDIT_QUEUE":       "Audit Queue",
-    "ARCHIVED":          "Archived",
+    "DRAFT":             "On Deck",
+    "READY_FOR_WORKER":  "At Bat",
+    "RUNNING":           "In Play",
+    "AWAITING_REVIEW":   "Close Play",
+    "CHANGES_REQUESTED": "Foul Ball",
+    "BLOCKED":           "Rain Delay",
+    "DONE":              "Safe",
+    "LIVE":              "In The Books",
+    "AUDIT_QUEUE":       "Bullpen",
+    "ARCHIVED":          "Trophy Case",
 }
+
+# Lanes that render on the loop-back row rather than the main strip.
+LOOPBACK_LANES: tuple[str, ...] = ("CHANGES_REQUESTED",)
+
+# Lanes considered "in-flight" for stale detection.
+IN_FLIGHT_LANES: frozenset[str] = frozenset(
+    {"READY_FOR_WORKER", "AWAITING_REVIEW", "CHANGES_REQUESTED"}
+)
 
 
 # Artifact kinds that count as a completed worker result.
@@ -159,26 +171,45 @@ def derive_state(task: dict) -> str:
     if _has_active_run(tid):
         return "RUNNING"
 
+    # BLOCKED takes precedence over READY_FOR_WORKER / AWAITING_REVIEW.
+    # Either explicit status or a non-empty block_reason marks it.
+    if raw_status == "BLOCKED" or (task.get("block_reason") or "").strip():
+        return "BLOCKED"
+
     has_result = _has_artifact_of(tid, _RESULT_KINDS)
     has_review = _has_artifact_of(tid, _REVIEW_KINDS)
     decision = _latest_review_decision(tid)
+
+    # DRAFT: pre-promotion. The task exists in the DB but no HANDOFF artifact
+    # has been exported to 05_INBOX yet. raw_status=PENDING + no HANDOFF
+    # distinguishes this from READY_FOR_WORKER which requires an inbox file.
+    if raw_status in ("DRAFT", "PENDING") and not _has_artifact_of(tid, {"HANDOFF"}):
+        if not has_result and decision is None:
+            return "DRAFT"
 
     # Explicitly-flagged audit queue wins over DONE.
     if raw_status == "DONE" and task.get("outcome") and "AUDIT" in (task.get("outcome") or "").upper():
         return "AUDIT_QUEUE"
 
     if decision == "APPROVED" or raw_status == "DONE":
-        # A DONE task splits into three buckets so the operator can tell at
-        # a glance what's deployed vs what's only staged vs what's just old
-        # historical completion:
-        #   - SHIPPED patch  → LIVE        (running in production)
-        #   - PENDING patch  → DONE        (staged for next release)
-        #   - no patch       → ARCHIVED    (historical, no action needed)
+        # A DONE task splits into four buckets so the operator can tell at
+        # a glance what's deployed vs what's only staged vs what's hot-live
+        # without a ship vs what's just old historical completion:
+        #   - SHIPPED patch                 → LIVE
+        #   - PENDING patch + restart=none  → LIVE (hot change, no ship needed;
+        #                                           still carried in patch notes)
+        #   - PENDING patch + needs restart → DONE (staged until ship + restart)
+        #   - no patch                      → ARCHIVED (historical)
         p = _patch_status_for(tid)
         if p == "SHIPPED":
             return "LIVE"
         if p is None:
             return "ARCHIVED"
+        # Patch is PENDING. If this task needs no process restart to take
+        # effect, it's already live — skip the 'staged' intermediate state.
+        scope = (task.get("restart_scope") or "both").strip().lower()
+        if scope == "none":
+            return "LIVE"
         return "DONE"
     if decision in ("CHANGES_REQUESTED", "FAIL") or raw_status == "CHANGES_REQUESTED":
         return "CHANGES_REQUESTED"
@@ -196,10 +227,90 @@ def derive_state(task: dict) -> str:
     return "READY_FOR_WORKER"
 
 
+_NEW_TASK_WINDOW_SECONDS: float = 2 * 60 * 60       # 2 hours
+_STALE_TASK_WINDOW_SECONDS: float = 2 * 24 * 60 * 60  # 2 days
+
+
+def _parse_iso(value: str | None) -> float | None:
+    if not value:
+        return None
+    from datetime import datetime
+    try:
+        # Accept both "...Z" and "+00:00" suffixes.
+        v = value.rstrip("Z")
+        return datetime.fromisoformat(v).timestamp()
+    except Exception:
+        return None
+
+
+def derive_age_bucket(task: dict, state: str | None = None) -> str:
+    """Classify the task's freshness for the board UI.
+
+    Returns one of:
+      "new"    — first seen in the last 2 hours
+      "stale"  — sitting in an in-flight lane for more than 2 days with
+                 no transition
+      "active" — anything else
+    """
+    import time as _t
+    now = _t.time()
+    first_seen = _parse_iso(task.get("age_first_seen")) or _parse_iso(task.get("created_at"))
+    if first_seen is not None and (now - first_seen) <= _NEW_TASK_WINDOW_SECONDS:
+        return "new"
+    last_trans = _parse_iso(task.get("last_transition_ts")) or _parse_iso(task.get("updated_at"))
+    st = (state or task.get("workflow_state") or derive_state(task))
+    if (
+        last_trans is not None
+        and st in IN_FLIGHT_LANES
+        and (now - last_trans) > _STALE_TASK_WINDOW_SECONDS
+    ):
+        return "stale"
+    return "active"
+
+
+def _extract_track(task: dict) -> str | None:
+    """Best-effort extract TRACK: A|B from the HANDOFF content.
+
+    Looks up the most recent HANDOFF artifact linked to this task and
+    scans its first 40 lines for a `TRACK:` declaration. Returns "A",
+    "B", or None.
+    """
+    tid = task.get("task_id")
+    if not tid:
+        return None
+    conn = get_conn()
+    row = conn.execute(
+        """SELECT a.content FROM task_artifacts ta
+             JOIN artifacts a ON a.artifact_id = ta.artifact_id
+            WHERE ta.task_id=? AND a.kind='HANDOFF'
+            ORDER BY a.mtime DESC LIMIT 1""",
+        (tid,),
+    ).fetchone()
+    if not row or not row["content"]:
+        return None
+    for line in (row["content"] or "").splitlines()[:40]:
+        stripped = line.strip()
+        if stripped.upper().startswith("TRACK:"):
+            val = stripped.split(":", 1)[1].strip().upper()
+            if val in ("A", "B"):
+                return val
+            return None
+    return None
+
+
 def annotate(task: dict) -> dict:
-    """Return `task` with a `workflow_state` key set (pure copy)."""
+    """Return `task` with `workflow_state`, `age_bucket`, `attempt_num`,
+    and `track` keys set (pure copy)."""
     out = dict(task)
-    out["workflow_state"] = derive_state(task)
+    state = derive_state(task)
+    out["workflow_state"] = state
+    out["age_bucket"] = derive_age_bucket(task, state)
+    try:
+        attempt = int(task.get("attempt") or 1)
+    except (TypeError, ValueError):
+        attempt = 1
+    out["attempt_num"] = max(1, attempt)
+    out["track"] = _extract_track(task)
     return out
 
 

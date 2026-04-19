@@ -12,12 +12,14 @@ from flask import Flask, g, render_template
 from .config import SETTINGS
 from .db import init_db, get_conn
 from .bridge.importer import import_bot_bridge
+from .startup_check import enforce_on_boot
 from .routes.tasks import bp as tasks_bp
 from .routes.artifacts import bp as artifacts_bp
 from .routes.system import bp as system_bp
 from .routes.actions import bp as actions_bp
 from .routes.runs import bp as runs_bp
 from .routes.patches import bp as patches_bp
+from .routes.roster import bp as roster_bp
 from .roles import ROLE_INFO
 from .workflow import WORKFLOW_LANES, LANE_DISPLAY
 
@@ -30,6 +32,10 @@ def create_app() -> Flask:
         static_folder=str(pkg_dir / "static"),
     )
     app.config["SETTINGS"] = SETTINGS
+
+    # Run anti-drift guardrails before touching the DB or the bridge.
+    # Any FAIL aborts boot unless CONTROL_PLANE_FORCE_START=1 is set.
+    enforce_on_boot()
 
     # Bootstrap DB + import BOT_BRIDGE once at process start.
     with app.app_context():
@@ -122,6 +128,24 @@ def create_app() -> Flask:
                 }
         except Exception:
             pending_patch_banner = None
+        # Dugout OS scoreboard summary — per-lane counts + guardrail fail count.
+        from .workflow import bucket as _bucket
+        all_tasks = [dict(r) for r in conn.execute("SELECT * FROM tasks").fetchall()]
+        bucketed = _bucket(all_tasks)
+        lane_counts = {lane: len(rows) for lane, rows in bucketed.items()}
+        try:
+            from .startup_check import run_all as _run_guardrails
+            results = _run_guardrails()
+            guardrail_fails = sum(1 for r in results if not r.ok)
+        except Exception:
+            guardrail_fails = 0
+        from .stats import persona_stats as _ps
+        roster_rows = conn.execute(
+            "SELECT * FROM agent_profiles "
+            "WHERE status='ACTIVE' AND enabled=1 "
+            "ORDER BY jersey_number"
+        ).fetchall()
+        roster_stats = {r["profile_id"]: _ps(r["profile_id"]) for r in roster_rows}
         return {
             "ROLE_INFO": ROLE_INFO,
             "ACTING_ROLE": acting_role,
@@ -131,6 +155,10 @@ def create_app() -> Flask:
             "LANE_DISPLAY": LANE_DISPLAY,
             "CLAUDE_STATUS": claude_status,
             "PENDING_PATCH": pending_patch_banner,
+            "LANE_COUNTS": lane_counts,
+            "GUARDRAIL_FAILS": guardrail_fails,
+            "ROSTER": [dict(r) for r in roster_rows],
+            "ROSTER_STATS": roster_stats,
         }
 
     app.register_blueprint(tasks_bp)
@@ -139,6 +167,7 @@ def create_app() -> Flask:
     app.register_blueprint(actions_bp)
     app.register_blueprint(runs_bp)
     app.register_blueprint(patches_bp)
+    app.register_blueprint(roster_bp)
 
     @app.errorhandler(404)
     def _404(e):

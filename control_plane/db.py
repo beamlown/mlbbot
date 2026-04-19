@@ -13,7 +13,7 @@ from typing import Iterator
 from .config import SETTINGS
 
 
-SCHEMA = """
+SCHEMA = r"""
 CREATE TABLE IF NOT EXISTS schema_version (
   version    INTEGER PRIMARY KEY,
   applied_at TEXT NOT NULL
@@ -216,6 +216,36 @@ CREATE TABLE IF NOT EXISTS known_files (
 );
 CREATE INDEX IF NOT EXISTS idx_known_files_basename ON known_files(basename);
 CREATE INDEX IF NOT EXISTS idx_known_files_root     ON known_files(root);
+
+-- task_events: audit trail for every state transition. One row per
+-- transition; `actor` names the role or subsystem that triggered it
+-- (e.g. "worker", "reviewer", "control_plane", "operator"). This is the
+-- single source of truth for "why did this task move?"
+CREATE TABLE IF NOT EXISTS task_events (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  task_id       TEXT NOT NULL,
+  from_state    TEXT,
+  to_state      TEXT NOT NULL,
+  trigger       TEXT NOT NULL,
+  actor         TEXT NOT NULL,
+  attempt       INTEGER NOT NULL DEFAULT 1,
+  artifact_path TEXT,
+  detail        TEXT,
+  created_at    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_task_events_task ON task_events(task_id, created_at DESC);
+
+-- quarantined_artifacts: files that landed in the wrong folder or lacked
+-- a writer-attribution header. Importer moves them to 99_QUARANTINE\ and
+-- records the original path + reason so the operator can inspect.
+CREATE TABLE IF NOT EXISTS quarantined_artifacts (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  original_path   TEXT NOT NULL,
+  quarantine_path TEXT NOT NULL,
+  reason          TEXT NOT NULL,
+  detected_at     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_quarantine_time ON quarantined_artifacts(detected_at DESC);
 """
 
 
@@ -353,7 +383,187 @@ def init_db() -> None:
     # step, or {"patch_id": "PATCH_X", "synthesis": true} for the final.
     # capture.py reads this to route the finalize hook to the orchestrator.
     _add_column_if_missing(conn, "runs", "patch_review_meta", "TEXT")
+    # State-machine telemetry (added 2026-04-18):
+    #   attempt            — rework counter (1 on create, ++ on re-open)
+    #   age_first_seen     — iso timestamp the task was first imported/created
+    #   last_transition_ts — iso timestamp of the most recent state change
+    _add_column_if_missing(conn, "tasks", "attempt", "INTEGER NOT NULL DEFAULT 1")
+    _add_column_if_missing(conn, "tasks", "age_first_seen", "TEXT")
+    _add_column_if_missing(conn, "tasks", "last_transition_ts", "TEXT")
+    # Roster gamification (added 2026-04-18, Dugout OS):
+    #   status           — ACTIVE | RELEASED
+    #   signed_at        — iso ts when persona joined the roster
+    #   released_at      — iso ts when persona was released (NULL if active)
+    #   released_reason  — operator-supplied reason
+    #   jersey_number    — unique number across all rows (active + released)
+    _add_column_if_missing(conn, "agent_profiles", "status",
+                           "TEXT NOT NULL DEFAULT 'ACTIVE'")
+    _add_column_if_missing(conn, "agent_profiles", "signed_at",      "TEXT")
+    _add_column_if_missing(conn, "agent_profiles", "released_at",    "TEXT")
+    _add_column_if_missing(conn, "agent_profiles", "released_reason","TEXT")
+    _add_column_if_missing(conn, "agent_profiles", "jersey_number",  "INTEGER")
+    # Dugout OS — restart-scope on tasks (added 2026-04-18):
+    #   none           — hot change; already live the moment it's approved
+    #                    (docs, spec, dashboard cosmetic, CSS-only).
+    #   control_plane  — needs the CP Flask process relaunched.
+    #   bot            — needs the betting bot process relaunched.
+    #   both           — needs both. Safe default; anything touching shared
+    #                    modules or data models.
+    _add_column_if_missing(conn, "tasks", "restart_scope",
+                           "TEXT NOT NULL DEFAULT 'both'")
+    _backfill_restart_scope()
+    _backfill_roster_fields()
     _seed_agent_profiles()
+
+
+def log_task_event(
+    task_id: str,
+    from_state: str | None,
+    to_state: str,
+    trigger: str,
+    actor: str,
+    artifact_path: str | None = None,
+    detail: str | None = None,
+    attempt: int | None = None,
+) -> None:
+    """Write a row to `task_events` and update `tasks.last_transition_ts`.
+
+    Called from importer (on detected state change) and from routes/actions
+    (on operator-driven mutations). Idempotency is the caller's problem —
+    this just appends.
+    """
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    conn = get_conn()
+    # Resolve attempt from the task row if not supplied.
+    if attempt is None:
+        row = conn.execute(
+            "SELECT attempt FROM tasks WHERE task_id=?", (task_id,)
+        ).fetchone()
+        attempt = (row["attempt"] if row and "attempt" in row.keys() else 1) or 1
+    conn.execute(
+        """INSERT INTO task_events
+           (task_id, from_state, to_state, trigger, actor, attempt,
+            artifact_path, detail, created_at)
+           VALUES (?,?,?,?,?,?,?,?,?)""",
+        (task_id, from_state, to_state, trigger, actor, attempt,
+         artifact_path, detail, now),
+    )
+    conn.execute(
+        "UPDATE tasks SET last_transition_ts=? WHERE task_id=?",
+        (now, task_id),
+    )
+
+
+_DEFAULT_JERSEYS = {
+    "haiku_worker":         7,
+    "sonnet_manager":       42,
+    "sonnet_triage":        11,
+    "opus_auditor":         99,
+    "opus_patch_reviewer":  1,
+}
+
+
+_VALID_RESTART_SCOPES = frozenset({"none", "control_plane", "bot", "both"})
+
+
+_RESTART_SCOPE_HINTS = (
+    # (substring match on lowercased subsystem, resulting scope)
+    ("docs",           "none"),
+    ("doc",            "none"),
+    ("spec",           "none"),
+    ("notes",          "none"),
+    ("dashboard",      "control_plane"),
+    ("control_plane",  "control_plane"),
+    ("ui",             "control_plane"),
+    ("template",       "control_plane"),
+    ("css",            "none"),
+    ("bot",            "bot"),
+    ("runner",         "bot"),
+    ("sports_bot",     "bot"),
+    ("mlb_model",      "bot"),
+    ("ingest",         "bot"),
+    ("sizing",         "bot"),
+    ("decision",       "bot"),
+    ("baseball",       "bot"),
+)
+
+
+def _restart_scope_for_subsystem(subsystem: str | None) -> str:
+    """Heuristic guess for a task's restart scope from its subsystem label.
+
+    Returns 'none' | 'control_plane' | 'bot' | 'both'. Safe default is 'both';
+    operators can always override in the UI.
+    """
+    s = (subsystem or "").strip().lower()
+    if not s:
+        return "both"
+    for needle, scope in _RESTART_SCOPE_HINTS:
+        if needle in s:
+            return scope
+    return "both"
+
+
+def _backfill_restart_scope() -> None:
+    """Populate restart_scope for tasks that pre-date the column.
+
+    Only touches rows where restart_scope is NULL or the SQL-level default
+    ('both') AND the subsystem gives a confident hint. If the heuristic
+    returns 'both', we leave the row as-is (no signal either way).
+    """
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT task_id, subsystem, restart_scope FROM tasks"
+    ).fetchall()
+    for r in rows:
+        current = (r["restart_scope"] or "both").strip().lower()
+        if current != "both":
+            continue  # operator-edited; don't override
+        guess = _restart_scope_for_subsystem(r["subsystem"])
+        if guess == "both":
+            continue  # no confident hint; leave default
+        conn.execute(
+            "UPDATE tasks SET restart_scope=? WHERE task_id=?",
+            (guess, r["task_id"]),
+        )
+
+
+def _backfill_roster_fields() -> None:
+    """One-time seed of cosmetic columns for personas that pre-date the migration.
+
+    - status: leave 'ACTIVE' default; nothing to do.
+    - signed_at: earliest run.created_at with this profile_id, else now().
+    - jersey_number: pull from _DEFAULT_JERSEYS, else min unused 1..99.
+    """
+    from datetime import datetime, timezone
+    conn = get_conn()
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    rows = conn.execute(
+        "SELECT profile_id, signed_at, jersey_number FROM agent_profiles"
+    ).fetchall()
+    used = {r["jersey_number"] for r in rows if r["jersey_number"] is not None}
+    for r in rows:
+        pid = r["profile_id"]
+        if not r["signed_at"]:
+            earliest = conn.execute(
+                "SELECT MIN(created_at) AS t FROM runs WHERE role IN "
+                "(SELECT role FROM agent_profiles WHERE profile_id=?)",
+                (pid,),
+            ).fetchone()
+            signed = (earliest["t"] if earliest and earliest["t"] else now)
+            conn.execute(
+                "UPDATE agent_profiles SET signed_at=? WHERE profile_id=?",
+                (signed, pid),
+            )
+        if r["jersey_number"] is None:
+            jn = _DEFAULT_JERSEYS.get(pid)
+            if jn is None or jn in used:
+                jn = next(n for n in range(1, 100) if n not in used)
+            conn.execute(
+                "UPDATE agent_profiles SET jersey_number=? WHERE profile_id=?",
+                (jn, pid),
+            )
+            used.add(jn)
 
 
 def _seed_agent_profiles() -> None:

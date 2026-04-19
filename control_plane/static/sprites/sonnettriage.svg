@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"
+     shape-rendering="crispEdges">
+  <!-- Sonnet · Triage — Advance Scout: figure with binoculars -->
+  <rect x="5"  y="1"  width="6" height="2"/>   <!-- cap -->
+  <rect x="4"  y="3"  width="8" height="1"/>   <!-- brim -->
+  <rect x="6"  y="4"  width="4" height="2"/>   <!-- face -->
+  <rect x="3"  y="5"  width="3" height="2"/>   <!-- binoc L -->
+  <rect x="10" y="5"  width="3" height="2"/>   <!-- binoc R -->
+  <rect x="5"  y="7"  width="6" height="4"/>   <!-- jersey -->
+  <rect x="4"  y="7"  width="1" height="3"/>   <!-- arm L -->
+  <rect x="11" y="7"  width="1" height="3"/>   <!-- arm R -->
+  <rect x="6"  y="11" width="2" height="3"/>
+  <rect x="8"  y="11" width="2" height="3"/>
+  <rect x="5"  y="14" width="3" height="1"/>
+  <rect x="8"  y="14" width="3" height="1"/>
+</svg>

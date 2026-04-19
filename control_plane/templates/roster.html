@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Front Office · Dugout OS{% endblock %}
+{% block content %}
+<section class="front-office">
+  <h2 class="sidebar-scoreboard-h">FRONT OFFICE — active roster</h2>
+  <div class="front-office-grid">
+    {% for p in active %}
+      {% set s = stats[p.profile_id] %}
+      <article class="player-card player-card--full" style="--accent: {{ p.color }}">
+        <div class="player-card-jersey">{{ p.jersey_number }}</div>
+        <div class="player-card-name">{{ p.display }}</div>
+        <div class="player-card-role">{{ p.role|replace('_',' ')|title }}</div>
+        <div class="player-card-stats">
+          AVG {{ s.AVG }} · HR {{ s.HR }} · RBI {{ s.RBI }} · G {{ s.G }} ·
+          K {{ s.K }} · BB {{ s.BB }} · ERA {{ s.ERA }}
+        </div>
+        <div class="player-card-tagline">{{ p.tagline or '' }}</div>
+        <div class="player-card-meta">signed {{ p.signed_at[:10] }}</div>
+        <button class="btn-pixel-arcade btn-pixel-danger"
+                onclick="releasePersona('{{ p.profile_id }}', '{{ p.display|e }}')">RELEASE</button>
+      </article>
+    {% endfor %}
+    {% for role in vacant %}
+      <article class="player-card player-card--vacant">
+        <div class="player-card-jersey">?</div>
+        <div class="player-card-name">OPEN TRYOUT</div>
+        <div class="player-card-role">{{ role|replace('_',' ')|title }}</div>
+        <button class="btn-pixel-arcade" onclick="signPersona('{{ role }}')">🎟 SIGN REPLACEMENT</button>
+      </article>
+    {% endfor %}
+  </div>
+  <p class="front-office-link">
+    <a href="{{ url_for('roster.graveyard') }}">⚰ View the Graveyard / Hall of Fame →</a>
+  </p>
+</section>
+
+<script>
+async function releasePersona(profileId, name) {
+  const reason = prompt(`Release ${name}? Reason:`, '');
+  if (reason === null) return;
+  const res = await postJSON('/api/roster/' + profileId + '/release', {reason});
+  if (res.ok && res.json.ok) {
+    toast('released ' + name);
+    setTimeout(() => location.reload(), 500);
+  } else {
+    toast('release failed: ' + (res.json.error || res.status), false);
+  }
+}
+async function signPersona(role) {
+  const name = prompt(`Sign a new ${role}? Name (blank for random):`, '');
+  if (name === null) return;
+  const body = name ? {name} : {};
+  const res = await postJSON('/api/roster/' + role + '/sign', body);
+  if (res.ok && res.json.ok) {
+    toast('signed ' + res.json.name + ' (#' + res.json.jersey_number + ')');
+    setTimeout(() => location.reload(), 500);
+  } else {
+    toast('sign failed: ' + (res.json.error || res.status), false);
+  }
+}
+</script>
+
+<style>
+/* Page-local — small enough to live inline. */
+.front-office { padding: 24px; }
+.front-office-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px; margin-top: 16px;
+}
+.player-card--full { padding: 16px; min-height: 220px; }
+.player-card--full .player-card-stats { font-size: 16px; }
+.player-card-tagline {
+  grid-column: 1 / -1; font-family: var(--font-body); font-size: 13px;
+  color: var(--chalk-dim); margin-top: 8px; font-style: italic;
+}
+.player-card-meta {
+  grid-column: 1 / -1; font-family: var(--font-mono); font-size: 11px;
+  color: var(--chalk-dim);
+}
+.player-card--vacant {
+  border-style: dashed; opacity: 0.7;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 16px;
+}
+.btn-pixel-danger { border-color: var(--foul-red); color: var(--foul-red); }
+.btn-pixel-danger:hover { background: var(--foul-red); color: var(--field-deep); }
+.front-office-link {
+  font-family: var(--font-pixel-text); font-size: 16px; margin-top: 24px;
+}
+.front-office-link a { color: var(--scoreboard-amber); text-decoration: none; }
+</style>
+{% endblock %}

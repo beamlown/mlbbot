@@ -4,18 +4,20 @@
 
 <a class="back" href="{{ url_for('artifacts.list_artifacts') }}">← Artifacts</a>
 
-<header class="task-header">
-  <div class="task-head-left">
-    <h1 class="task-title">{{ a.title or a.path.split('/')[-1] }}</h1>
-    <div class="muted">{{ a.path }}</div>
-  </div>
-  <div class="task-head-right">
-    <span class="chip"><code>{{ a.kind }}</code></span>
-    {% if a.task_ref %}
-      <a href="{{ url_for('tasks.task_detail', task_id=a.task_ref) }}" class="chip role">{{ a.task_ref }}</a>
-    {% endif %}
-  </div>
-</header>
+<section class="film-reel-header">
+  <header class="task-header">
+    <div class="task-head-left">
+      <h1 class="task-title">{{ a.title or a.path.split('/')[-1] }}</h1>
+      <div class="muted">{{ a.path }}</div>
+    </div>
+    <div class="task-head-right">
+      <span class="chip"><code>{{ a.kind }}</code></span>
+      {% if a.task_ref %}
+        <a href="{{ url_for('tasks.task_detail', task_id=a.task_ref) }}" class="chip role">{{ a.task_ref }}</a>
+      {% endif %}
+    </div>
+  </header>
+</section>
 
 <pre class="artifact-body">{{ a.content or '(empty or binary)' }}</pre>
 

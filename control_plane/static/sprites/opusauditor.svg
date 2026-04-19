@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"
+     shape-rendering="crispEdges">
+  <!-- Opus — Cleanup Slugger: big stance, bat raised high on follow-through -->
+  <rect x="5"  y="1"  width="6" height="3"/>   <!-- helmet -->
+  <rect x="6"  y="4"  width="4" height="1"/>   <!-- face -->
+  <rect x="4"  y="5"  width="8" height="5"/>   <!-- jersey (bigger) -->
+  <rect x="3"  y="5"  width="1" height="4"/>   <!-- arm L -->
+  <rect x="12" y="5"  width="1" height="2"/>   <!-- upper arm R -->
+  <rect x="13" y="3"  width="1" height="4"/>   <!-- forearm R (raised) -->
+  <rect x="14" y="1"  width="1" height="4"/>   <!-- bat (raised high) -->
+  <rect x="5"  y="10" width="2" height="3"/>
+  <rect x="9"  y="10" width="2" height="3"/>
+  <rect x="4"  y="13" width="3" height="1"/>
+  <rect x="9"  y="13" width="3" height="1"/>
+</svg>

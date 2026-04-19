@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Graveyard · Hall of Fame · Dugout OS{% endblock %}
+{% block content %}
+<section class="graveyard">
+  <h2 class="sidebar-scoreboard-h">GRAVEYARD — careers ended</h2>
+  {% if not released %}
+    <p class="graveyard-empty">No retired personas yet. The roster is intact.</p>
+  {% endif %}
+  <div class="graveyard-grid">
+    {% for p in released %}
+      {% set s = stats[p.profile_id] %}
+      {% set avg_num = 0.0 if s.AVG == '—' else (s.AVG|float) %}
+      {% set is_hof = avg_num >= 0.300 or s.HR >= 10 %}
+      <article class="player-card player-card--retired {% if is_hof %}player-card--hof{% endif %}"
+               style="--accent: {{ p.color }}">
+        {% if is_hof %}<div class="hof-ribbon">🏆 HALL OF FAME</div>{% endif %}
+        <div class="player-card-jersey">{{ p.jersey_number }}</div>
+        <div class="player-card-name">{{ p.display }}</div>
+        <div class="player-card-role">{{ p.role|replace('_',' ')|title }}</div>
+        <div class="player-card-stats">
+          AVG {{ s.AVG }} · HR {{ s.HR }} · RBI {{ s.RBI }} · G {{ s.G }} ·
+          K {{ s.K }} · BB {{ s.BB }}
+        </div>
+        <div class="player-card-meta">
+          signed {{ p.signed_at[:10] if p.signed_at else '—' }} ·
+          released {{ p.released_at[:10] if p.released_at else '—' }}
+        </div>
+        {% if p.released_reason %}
+          <div class="player-card-reason">"{{ p.released_reason }}"</div>
+        {% endif %}
+        <a class="player-card-runs"
+           href="{{ url_for('artifacts.list_artifacts', profile_id=p.profile_id) }}">
+          View runs →
+        </a>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+
+<style>
+.graveyard { padding: 24px; }
+.graveyard-empty { font-family: var(--font-pixel-text); font-size: 18px; color: var(--chalk-dim); }
+.graveyard-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px; margin-top: 16px;
+}
+.player-card--retired { padding: 16px; opacity: 0.85; }
+.player-card--hof { border-color: var(--hr-gold); box-shadow: 0 0 16px rgba(255, 215, 0, 0.2); }
+.hof-ribbon {
+  font-family: var(--font-pixel); font-size: 9px;
+  background: var(--hr-gold); color: var(--field-deep);
+  padding: 4px 8px; position: absolute; top: 0; right: 0;
+}
+.player-card-reason {
+  font-family: var(--font-body); font-size: 13px; color: var(--chalk-dim);
+  font-style: italic; margin-top: 6px;
+}
+.player-card-runs { color: var(--scoreboard-amber); font-family: var(--font-pixel-text); font-size: 14px; }
+</style>
+{% endblock %}
