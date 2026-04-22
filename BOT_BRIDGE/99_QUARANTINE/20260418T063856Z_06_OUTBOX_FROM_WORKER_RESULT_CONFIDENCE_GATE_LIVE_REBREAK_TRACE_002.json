@@ -1,0 +1,59 @@
+{
+  "task_id": "CONFIDENCE_GATE_LIVE_REBREAK_TRACE_002",
+  "status": "ok",
+  "read_only_confirmed": true,
+  "summary": "Identified the bypass mechanism: Gate is called once (00:00:16 rejects 0.6286), but code path branches after first rejection. 47 sub-0.60 trades opened over ~10 hours with zero subsequent check_entry_gates logs, suggesting gate is bypassed or not reinvoked in trade loop.",
+  "core_question_answer": "How did trades 241/243/244 open below 0.60?",
+  "answer_mechanics": {
+    "observation_1": "Gate called and working at 00:00:16 for mlb-tex-lad-2026-04-11 (conf=0.6286) - REJECTED as confidence_too_low",
+    "observation_2": "By 00:01:14, model_bridge reports slug_already_open for tex-lad (someone opened it between 00:00:16 rejection and 00:01:14)",
+    "observation_3": "Zero BRIDGE OPEN log entries for trades 241-244 despite source='model_bridge' in database",
+    "observation_4": "Only ONE check_entry_gates rejection logged post-restart (00:00:16)",
+    "observation_5": "47 trades created between 00:00:29 and ~02:00 with confidence < 0.60",
+    "observation_6": "Bot process ran for ~10 hours after restart (23:59:18 to 10:57:33 next day) without restarting"
+  },
+  "root_cause_hypothesis": {
+    "primary": "Gate check called ONE TIME per loop iteration, not for each intent",
+    "mechanism": [
+      "Line 632-642: check_entry_gates() called ONCE with first intent signal",
+      "Line 643-651: If gate fails, logs rejection and continues to NEXT intent",
+      "But if gate PASSES, line 652-658: open_position() executes",
+      "CRITICAL: check_entry_gates may not be called for subsequent intents in same loop iteration"
+    ],
+    "evidence": "Only one check_entry_gates call logged at 00:00:16 for entire 10-hour period",
+    "implication": "Subsequent intents (241-244) may bypass check_entry_gates entirely if they come in same loop or different code path"
+  },
+  "code_path_analysis": {
+    "expected_flow": [
+      "for intent in bridge_intents:",
+      "  call check_entry_gates(signal)",
+      "  if gate_fails: continue  (skip this intent)",
+      "  if gate_passes: open_position()  (must pass gate first)"
+    ],
+    "observed_behavior": "Gate called once, but 47 low-confidence trades open without gate rejection logs",
+    "gap": "Either gate not being called for all intents, or alternative open_position path exists"
+  },
+  "concurrent_process_evidence": {
+    "bot_restart_pattern": "Multiple restarts before 23:59:18 gate-fix restart",
+    "last_pre_fix_restart": "2026-04-10 23:39:48",
+    "gap_to_fix_restart": "~20 minutes",
+    "fix_restart": "2026-04-10 23:59:18",
+    "next_restart": "2026-04-11 10:57:33 (10+ hours later)",
+    "observation": "Bot ran without restart for 10+ hours after patch, yet only ONE gate rejection in logs"
+  },
+  "database_evidence": {
+    "trades_sample": [
+      {"id": 241, "ts": "2026-04-11T00:00:29.211044+00:00", "conf": 0.3863, "source": "model_bridge"},
+      {"id": 243, "ts": "2026-04-11T00:14:42.677833+00:00", "conf": 0.3279, "source": "model_bridge"},
+      {"id": 244, "ts": "2026-04-11T00:37:16.018282+00:00", "conf": 0.3769, "source": "model_bridge"}
+    ],
+    "critical_absence": "ZERO matching BRIDGE OPEN log entries for any of these trade IDs"
+  },
+  "model_bridge_logs": {
+    "00_00_16_rejection": "bot_core: BRIDGE GATE REJECT [check_entry_gates] slug=mlb-tex-lad-2026-04-11 reasons=['confidence_too_low:0.6286:0.650']",
+    "00_01_14_observation": "core.model_bridge: BRIDGE GATE REJECT [open_position] slug=mlb-tex-lad-2026-04-11 reason=slug_already_open",
+    "implication": "tex-lad was opened DESPITE being rejected by check_entry_gates 58 seconds earlier"
+  },
+  "probable_root_cause": "Check if open_position() can be called without going through check_entry_gates(). Current code appears to have the gate check in correct position (line 632 before 652), but observed behavior shows trades opening without gate rejection logs. Possibilities: (1) Different code path in open_position or insert_open_trade that bypasses gate, (2) Gate check not being applied to all intents in loop, (3) Multiple intent processing paths with different gate enforcement",
+  "critical_concern": "The confidence gate fix appears syntactically correct on disk but is NOT being enforced at runtime for 47 trades. This suggests either: (a) Running code differs from on-disk code, (b) Alternative open_position paths exist, or (c) Gate is conditionally applied"
+}

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}TRADES · Dugout Dash{% endblock %}
+{% block content %}
+<section class="pane">
+
+  <div class="panel" style="margin-bottom: 16px;">
+    <h3>── OPEN POSITIONS ({{ OPEN_POSITIONS|length }}) ──</h3>
+    {% if OPEN_POSITIONS %}
+    <table id="open-positions">
+      <thead>
+        <tr><th>SLUG</th><th>SIDE</th><th>ENTRY</th><th>QTY</th><th>MARK</th><th>P&amp;L</th><th>%</th><th>MODE</th></tr>
+      </thead>
+      <tbody>
+        {% for p in OPEN_POSITIONS %}
+          {% include "partials/trade_row.html" %}
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="font-family: var(--font-pixel-text); font-size: 20px; color: var(--chalk-dim);">No open positions.</p>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h3>── CLOSED TODAY ({{ CLOSED_TODAY|length }}) ──</h3>
+    {% if CLOSED_TODAY %}
+    <table>
+      <thead>
+        <tr><th>CLOSED</th><th>SLUG</th><th>SIDE</th><th>ENTRY</th><th>EXIT</th><th>NET P&amp;L</th><th>REASON</th></tr>
+      </thead>
+      <tbody>
+        {% for c in CLOSED_TODAY %}
+        <tr>
+          <td>{{ (c.ts_close or '')[-8:] }}</td>
+          <td>{{ c.market_slug }}</td>
+          <td>{{ c.side }}</td>
+          <td>{{ '%.4f'|format(c.entry_px or 0) }}</td>
+          <td>{{ '%.4f'|format(c.exit_px or 0) }}</td>
+          <td class="{% if (c.pnl_usd or 0) >= 0 %}pnl-up{% else %}pnl-down{% endif %}">
+            {% if (c.pnl_usd or 0) >= 0 %}+${{ '%.2f'|format(c.pnl_usd or 0) }}{% else %}-${{ '%.2f'|format(-(c.pnl_usd or 0)) }}{% endif %}
+          </td>
+          <td>{{ c.reason_close or '' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="font-family: var(--font-pixel-text); font-size: 20px; color: var(--chalk-dim);">No closed trades today.</p>
+    {% endif %}
+  </div>
+
+</section>
+
+{% block scripts %}
+<script>
+window.dugoutOnTradeEntered = function (p) {
+  const tbody = document.querySelector('#open-positions tbody');
+  if (!tbody) { location.reload(); return; }
+  const tr = document.createElement('tr');
+  tr.className = 'trade-row flash-up';
+  tr.setAttribute('data-trade-id', p.trade_id);
+  tr.setAttribute('data-slug', p.slug);
+  tr.setAttribute('data-entry', p.entry_px);
+  tr.setAttribute('data-qty', p.qty);
+  tr.setAttribute('data-side', p.side);
+  tr.innerHTML =
+    '<td>' + p.slug + '</td>' +
+    '<td>' + p.side + '</td>' +
+    '<td>' + Number(p.entry_px).toFixed(4) + '</td>' +
+    '<td>' + Number(p.qty).toFixed(4) + '</td>' +
+    '<td class="mark-cell">—</td>' +
+    '<td class="pnl-cell">—</td>' +
+    '<td class="pnl-pct">—</td>' +
+    '<td>' + (p.mode || '') + '</td>';
+  tbody.insertBefore(tr, tbody.firstChild);
+};
+
+window.dugoutOnTradeExited = function (p) {
+  const row = document.querySelector('.trade-row[data-trade-id="' + p.trade_id + '"]');
+  if (row) { row.classList.add('flash-down'); setTimeout(() => row.remove(), 500); }
+};
+</script>
+{% endblock %}
+{% endblock %}

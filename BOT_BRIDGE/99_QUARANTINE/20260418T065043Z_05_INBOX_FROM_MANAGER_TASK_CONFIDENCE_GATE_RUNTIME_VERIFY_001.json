@@ -1,0 +1,29 @@
+{
+  "task_id": "CONFIDENCE_GATE_RUNTIME_VERIFY_001",
+  "type": "read-only runtime verification",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-10",
+  "subsystem": "risk / entry-gating",
+  "title": "Verify runtime enforcement of MIN_ENTRY_CONFIDENCE=0.60 against post-restart live trades",
+  "allowed_files": [
+    "trades_sports.db (SELECT only: trades WHERE id IN (223, 224))",
+    "recent bot logs",
+    "sports_bot_v2/bot_core.py",
+    "sports_bot_v2/core/risk.py",
+    "sports_bot_v2/.env",
+    "sports_bot_v2/core/model_bridge.py (ONLY if explicitly needed — justify)"
+  ],
+  "forbidden_files": [
+    "dashboard.html",
+    "dashboard_server.py",
+    "core/paper_exec.py",
+    "launch_all.py",
+    "Any file not in allowed_files list"
+  ],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_CONFIDENCE_GATE_RUNTIME_VERIFY_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_CONFIDENCE_GATE_RUNTIME_VERIFY_001.json",
+  "review_path": "07_REVIEWS/REVIEW_CONFIDENCE_GATE_RUNTIME_VERIFY_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- read_only_confirmed: true\n- No code modified, no DB writes, no restarts\n- Restart time confirmed or corrected with log evidence\n- Explicit BEFORE/AFTER verdict for trades 223 and 224\n- Explicit YES/NO on whether bridge entries use check_entry_gates()\n- Explicit YES/NO on whether 0.60 floor is loaded in live env/code\n- Explicit conclusion on whether a real bug exists\n- next_action field populated"
+}

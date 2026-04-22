@@ -101,40 +101,65 @@ class MarketStreamClient:
             event_type = item.get("event_type") or item.get("type") or item.get("event")
             self._last_message_ts = time.time()
             self._last_message_type = str(event_type)
-            logger.info("market_stream: message event_type=%s keys=%s", event_type, sorted(list(item.keys()))[:12])
+            logger.debug("market_stream: message event_type=%s keys=%s", event_type, sorted(list(item.keys()))[:12])
             if event_type == "PONG":
                 continue
-            asset_id = str(item.get("asset_id") or item.get("assetID") or item.get("asset_id_hex") or "")
-            if not asset_id:
-                self._parser_miss_count += 1
-                continue
-            with self._lock:
-                tracked = next((v for v in self._tracked.values() if v.get("asset_id") == asset_id), None)
-            if not tracked:
-                self._parser_miss_count += 1
-                continue
-            best_bid = _to_float(item.get("best_bid") or item.get("bid") or item.get("bestBid"))
-            best_ask = _to_float(item.get("best_ask") or item.get("ask") or item.get("bestAsk"))
-            last_trade = _to_float(item.get("last_trade_price") or item.get("price") or item.get("lastTradePrice"))
-            current_price = last_trade if last_trade is not None else (best_bid if best_bid is not None else best_ask)
-            spread = None
-            if best_bid is not None and best_ask is not None:
-                spread = round(best_ask - best_bid, 6)
-            GLOBAL_STATE_HUB.update_mark(
-                market_slug=tracked["market_slug"],
-                market_id=tracked["market_id"],
-                asset_id=asset_id,
-                current_price=current_price,
-                best_bid=best_bid,
-                best_ask=best_ask,
-                spread=spread,
-                source="polymarket_stream",
-            )
-            self._mark_count_received += 1
-            self._parser_hit_count += 1
-            self._last_state_hub_update_ts = time.time()
-            self._last_state_hub_update_slug = tracked["market_slug"]
-            logger.info("market_stream: state_hub updated slug=%s asset_id=%s current_price=%s", tracked["market_slug"], asset_id, current_price)
+
+            # Polymarket market-channel shapes we accept:
+            #  (A) book / top-of-book: top-level asset_id + best_bid / best_ask / last_trade_price
+            #  (B) price_change: nested `price_changes` array of per-side updates; each entry carries asset_id + price + side + best_bid/best_ask
+            #  (C) tick_size_change / other: no price data, skip
+            sub_updates: list[dict] = []
+            pc = item.get("price_changes")
+            if isinstance(pc, list) and pc:
+                for ch in pc:
+                    if isinstance(ch, dict):
+                        sub_updates.append(ch)
+            else:
+                sub_updates.append(item)
+
+            for upd in sub_updates:
+                asset_id = str(
+                    upd.get("asset_id") or upd.get("assetID") or upd.get("asset_id_hex")
+                    or item.get("asset_id") or ""
+                )
+                if not asset_id:
+                    self._parser_miss_count += 1
+                    continue
+                with self._lock:
+                    tracked = next((v for v in self._tracked.values() if v.get("asset_id") == asset_id), None)
+                if not tracked:
+                    self._parser_miss_count += 1
+                    continue
+                best_bid = _to_float(upd.get("best_bid") or upd.get("bid") or upd.get("bestBid"))
+                best_ask = _to_float(upd.get("best_ask") or upd.get("ask") or upd.get("bestAsk"))
+                last_trade = _to_float(
+                    upd.get("last_trade_price") or upd.get("price") or upd.get("lastTradePrice")
+                )
+                # price_change entries often carry `price` + `side`; that's a side-specific touch.
+                # Use it as last_trade proxy (executable-at price) when last_trade isn't provided.
+                current_price = last_trade if last_trade is not None else (best_bid if best_bid is not None else best_ask)
+                spread = None
+                if best_bid is not None and best_ask is not None:
+                    spread = round(best_ask - best_bid, 6)
+                GLOBAL_STATE_HUB.update_mark(
+                    market_slug=tracked["market_slug"],
+                    market_id=tracked["market_id"],
+                    asset_id=asset_id,
+                    current_price=current_price,
+                    best_bid=best_bid,
+                    best_ask=best_ask,
+                    spread=spread,
+                    source="polymarket_stream",
+                )
+                self._mark_count_received += 1
+                self._parser_hit_count += 1
+                self._last_state_hub_update_ts = time.time()
+                self._last_state_hub_update_slug = tracked["market_slug"]
+                logger.debug(
+                    "market_stream: state_hub updated slug=%s asset_id=%s current_price=%s",
+                    tracked["market_slug"], asset_id, current_price,
+                )
 
     def _on_error(self, ws: websocket.WebSocketApp, error: Any) -> None:
         self._last_error = str(error)

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}TAPE · Dugout Dash{% endblock %}
+{% block content %}
+
+<div class="tape-marquee">
+  <div class="tape-track" id="tape-track">
+    {% for c in CELLS %}{% include "partials/ticker_cell.html" %}{% endfor %}
+    {% for c in CELLS %}{% include "partials/ticker_cell.html" %}{% endfor %}
+  </div>
+</div>
+
+<section class="pane">
+  <div class="panel">
+    <h3>── POSITIONS · REALTIME ──</h3>
+    {% if OPEN_POSITIONS %}
+    <table id="tape-rows">
+      <thead>
+        <tr><th>SLUG</th><th>SIDE</th><th>ENTRY</th><th>MARK</th><th>P&amp;L</th><th>%</th><th>60s</th></tr>
+      </thead>
+      <tbody>
+        {% for p in OPEN_POSITIONS %}
+        <tr class="trade-row"
+            data-trade-id="{{ p.id }}"
+            data-slug="{{ p.market_slug }}"
+            data-entry="{{ p.entry_px }}"
+            data-qty="{{ p.qty }}"
+            data-side="{{ p.side }}">
+          <td>{{ p.market_slug }}</td>
+          <td>{{ p.side }}</td>
+          <td>{{ '%.4f'|format(p.entry_px or 0) }}</td>
+          <td class="mark-cell">{% if p.mark is not none %}{{ '%.4f'|format(p.mark) }}{% else %}—{% endif %}</td>
+          <td class="pnl-cell {% if p.pnl_usd is not none and p.pnl_usd >= 0 %}pnl-up{% elif p.pnl_usd is not none %}pnl-down{% endif %}">
+            {% if p.pnl_usd is not none %}{% if p.pnl_usd >= 0 %}+${{ '%.2f'|format(p.pnl_usd) }}{% else %}-${{ '%.2f'|format(-p.pnl_usd) }}{% endif %}{% else %}—{% endif %}
+          </td>
+          <td class="pnl-pct">{% if p.pnl_pct is not none %}{{ '%.1f'|format(p.pnl_pct) }}%{% else %}—{% endif %}</td>
+          <td><svg class="sparkline" data-slug="{{ p.market_slug }}"></svg></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="font-family: var(--font-pixel-text); font-size: 20px; color: var(--chalk-dim);">No open positions to tape.</p>
+    {% endif %}
+  </div>
+</section>
+
+{% block scripts %}
+<script>
+const sparkBufs = new Map();
+const SPARK_W = 240, SPARK_H = 40;
+
+function ensureBuf(slug) {
+  if (!sparkBufs.has(slug)) sparkBufs.set(slug, new Array(60).fill(null));
+  return sparkBufs.get(slug);
+}
+
+function pushTick(slug, mark) {
+  const buf = ensureBuf(slug);
+  buf.shift(); buf.push(mark);
+  renderSpark(slug, buf);
+}
+
+function renderSpark(slug, buf) {
+  const safeSlug = slug.replace(/["\\]/g,'\\$&');
+  const svg = document.querySelector('.sparkline[data-slug="' + safeSlug + '"]');
+  if (!svg) return;
+  const vals = buf.filter(v => v !== null);
+  if (vals.length < 2) { svg.innerHTML = ''; return; }
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const span = (hi - lo) || 1e-6;
+  svg.setAttribute('viewBox', `0 0 ${SPARK_W} ${SPARK_H}`);
+  const barW = SPARK_W / 60;
+  let bars = '';
+  buf.forEach((v, i) => {
+    if (v === null) return;
+    const h = ((v - lo) / span) * (SPARK_H - 4) + 2;
+    const x = i * barW;
+    const y = SPARK_H - h;
+    const color = (i > 0 && buf[i-1] !== null && v < buf[i-1]) ? 'var(--foul-red)' : 'var(--scoreboard-green)';
+    bars += `<rect x="${x}" y="${y}" width="${Math.max(1,barW-1)}" height="${h}" fill="${color}"/>`;
+  });
+  svg.innerHTML = bars;
+}
+
+window.dugoutOnMarkUpdate = function (p) {
+  pushTick(p.slug, p.mark);
+};
+
+setInterval(() => {
+  sparkBufs.forEach((buf, slug) => {
+    const last = buf[buf.length - 1];
+    if (last !== null) { buf.shift(); buf.push(last); renderSpark(slug, buf); }
+  });
+}, 1000);
+
+fetch('/api/tape.json').then(r => r.json()).then(j => {
+  (j.cells || []).forEach(c => { if (c.mark !== null && c.mark !== undefined) pushTick(c.slug, c.mark); });
+});
+</script>
+{% endblock %}
+{% endblock %}

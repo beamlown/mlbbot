@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/johnny/Desktop/BOT_BRIDGE/01_RULES/**)",
+      "Read(//c/Users/johnny/Desktop/sports_bot_v2/runtime/**)",
+      "Bash(powershell -Command \"Get-CimInstance Win32_Process -Filter \\\\\"ProcessId=37164 or ProcessId=37184\\\\\" | Select-Object ProcessId, CommandLine, ExecutablePath | Format-List\")",
+      "Read(//c/Users/johnny/Desktop/mlbbot/.claude-roles/auditor/**)"
+    ]
+  }
+}

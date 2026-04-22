@@ -1,0 +1,32 @@
+{
+  "task_id": "TRADE_ATTRIBUTION_SCHEMA_001",
+  "status": "ok",
+  "summary": "Attribution schema migration completed successfully. Added 13 columns to trades table with idempotent migration, created meta table for version tracking, and implemented TradeAttribution dataclass with classify_trade() and write_jsonl() functions.",
+  "db_columns_added": [
+    "entry_model_prob",
+    "entry_market_prob",
+    "expected_edge_pct",
+    "actual_fill_px",
+    "actual_fill_size",
+    "exit_reason",
+    "exit_model_prob",
+    "exit_market_prob",
+    "hold_seconds",
+    "resolved_winner",
+    "model_side_was_right",
+    "trade_class",
+    "attribution_version"
+  ],
+  "indexes_added": [
+    "idx_trades_trade_class",
+    "idx_trades_exit_reason"
+  ],
+  "attribution_module_path": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\attribution.py",
+  "migration_idempotency_proof": "Ran migration twice in test: first run created all 13 columns and 2 indexes (31 total columns after), second run completed with no additional changes (still 31 columns). Column count remained constant, confirming idempotency.",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\db.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\attribution.py"
+  ],
+  "notes": "Migration is integrated into init_db() which is called at startup. Existing trades data is preserved with NULL values for new columns. Meta table added to track attribution_schema_version=1. All 5 trade_class enum values tested and working: MODEL_WIN_EXPECTED, MODEL_WIN_LUCKY, MODEL_LOSS_EXPECTED, MODEL_LOSS_EXECUTION, UNRESOLVED.",
+  "next_steps": "Ready for TRADE_ATTRIBUTION_WIRING_001 to add attribution data capture in paper execution and wiring logic to populate these columns during trade lifecycle."
+}

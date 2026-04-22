@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.pyo
+logs/
+runtime/
+trades_sports.db
+trades_sports.db-*
+.env

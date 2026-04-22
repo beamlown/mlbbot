@@ -1,0 +1,50 @@
+{
+  "task_id": "REPLAY_INPUT_CAPTURE_001",
+  "title": "Capture orderbook + mark + model inputs + decision per discovery loop for replay",
+  "priority": "MEDIUM",
+  "type": "code-writing task",
+  "track": "Track D — replay harness (P2)",
+  "issued": "2026-04-18",
+  "subsystem": "sports_bot_v2 main loop + capture layer",
+  "status": "QUEUED",
+  "assigned_role": "SONNET_WORKER",
+  "depends_on": "TRADE_ATTRIBUTION_WIRING_001",
+  "objective": "Durably capture the inputs and outputs of every discovery loop so alternate configs can be replayed offline against real historical state.",
+  "paper_only_note": "Paper-only.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\state_hub.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\replay_capture.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\replay_captures",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py"
+  ],
+  "forbidden_actions": [
+    "Modify the model itself",
+    "Modify discovery decision logic",
+    "Change attribution schema",
+    "Build the replay harness",
+    "Build the sweep CLI",
+    "Delete anything from runtime/ob_snapshots/",
+    "Touch real-money paths"
+  ],
+  "required_work": [
+    "1. Audit existing runtime/ob_snapshots/ and recommendation_api model input fields.",
+    "2. Build core/replay_capture.py writing JSONL to runtime/replay_captures/YYYY-MM-DD.jsonl.",
+    "3. Wire capture call into the main loop at the point decisions are made.",
+    "4. Capture record includes ts, loop_id, event_slug, registry_match, orderbook, mark, model_inputs, model_output, discovery_decision.",
+    "5. Provide a sample file with >= 5 records from a live short run."
+  ],
+  "acceptance_criteria": [
+    "New capture file appears during a short live run",
+    "At least 5 records captured and documented",
+    "All model input fields the model actually uses are captured",
+    "Zero modifications to model or decision logic",
+    "Existing ob_snapshots unchanged / preserved"
+  ],
+  "verification": [
+    "tail runtime/replay_captures/YYYY-MM-DD.jsonl and paste 5 records",
+    "List model input fields captured",
+    "Paste analysis of existing ob_snapshots and whether its content is superseded or merged"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_REPLAY_INPUT_CAPTURE_001.json"
+}

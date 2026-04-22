@@ -1,0 +1,18 @@
+{
+  "task_id": "PAPER_BRIDGE_001",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "CHANGES_REQUESTED",
+  "issued": "2026-04-17",
+  "subsystem": "paper execution / model bridge",
+  "title": "Build guarded paper execution bridge from mlb_model recommendations to sports_bot_v2",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_PAPER_BRIDGE_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_PAPER_BRIDGE_001.json",
+  "assigned_role": "HAIKU_WORKER",
+  "acceptance": "- model_bridge.py exists with all required gates implemented\n- ENABLE_MODEL_BRIDGE = False is present at top of model_bridge.py and defaults to False in submitted patch\n- get_approved_intents() returns empty list and logs BRIDGE DISABLED when ENABLE_MODEL_BRIDGE is False\n- log deduplication: only latest entry per slug is evaluated, NO_TRADE entries are discarded before gating\n- bot_core.py calls model_bridge and passes approved intents to paper_exec\n- moneyline-only gate enforced — test that a spread recommendation is rejected\n- same-day date gate enforced — test that a future-dated recommendation is rejected\n- staleness gates enforced — rec age, game state age, book age all checked\n- duplicate position gate enforced — second intent for same slug is rejected\n- paper trade created when all gates pass — position appears in state.json or DB\n- source label 'model_bridge' present on created position (exact string)\n- no changes to paper_exec.py, risk.py, signal_base.py\n- no real execution path exists — paper only"
+}

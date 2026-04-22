@@ -1,0 +1,53 @@
+{
+  "task_id": "REPLAY_SWEEP_CLI_001",
+  "timestamp": "20260418_124810",
+  "n_configs": 2,
+  "n_trades_evaluated": 278,
+  "elapsed_seconds": 0.046235084533691406,
+  "configs": [
+    {
+      "config": "baseline",
+      "overrides": {
+        "MIN_ENTRY_CONFIDENCE": 0.55,
+        "MIN_CONFIDENCE": 0.5
+      },
+      "total_evaluated": 278,
+      "winners_blocked": 55,
+      "losers_blocked": 131,
+      "winners_passed": 16,
+      "losers_passed": 70,
+      "blocked_pnl_saved_usd": 1928.51,
+      "blocked_pnl_lost_usd": 2664.24,
+      "estimated_pnl_delta_usd": -735.72,
+      "sl_clusters_avoided": 11,
+      "block_reasons": {
+        "confidence_too_low": 167,
+        "entry_price_too_low": 19,
+        "extreme_sanity_floor": 2,
+        "extreme_sanity_ceiling": 1
+      }
+    },
+    {
+      "config": "baseline",
+      "overrides": {
+        "MIN_ENTRY_CONFIDENCE": 0.55,
+        "MIN_CONFIDENCE": 0.5
+      },
+      "total_evaluated": 278,
+      "winners_blocked": 55,
+      "losers_blocked": 131,
+      "winners_passed": 16,
+      "losers_passed": 70,
+      "blocked_pnl_saved_usd": 1928.51,
+      "blocked_pnl_lost_usd": 2664.24,
+      "estimated_pnl_delta_usd": -735.72,
+      "sl_clusters_avoided": 11,
+      "block_reasons": {
+        "confidence_too_low": 167,
+        "entry_price_too_low": 19,
+        "extreme_sanity_floor": 2,
+        "extreme_sanity_ceiling": 1
+      }
+    }
+  ]
+}

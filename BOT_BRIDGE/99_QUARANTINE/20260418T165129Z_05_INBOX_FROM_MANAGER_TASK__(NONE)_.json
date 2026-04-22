@@ -1,0 +1,14 @@
+{
+  "task_id": "_(NONE)_",
+  "type": "imported_from_board",
+  "priority": "MEDIUM",
+  "status": "QUEUED",
+  "issued": "2026-04-18",
+  "subsystem": "",
+  "title": "_(none)_",
+  "allowed_files": [],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF__(NONE)_.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT__(NONE)_.json",
+  "assigned_role": "HAIKU_WORKER"
+}

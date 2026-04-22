@@ -1,0 +1,53 @@
+{
+  "task_id": "REPLAY_SWEEP_CLI_001",
+  "title": "CLI for single + sweep replay: N configs × date range → ranked comparison table + JSON output",
+  "priority": "MEDIUM",
+  "type": "code-writing task",
+  "track": "Track D — replay harness (P2)",
+  "issued": "2026-04-18",
+  "subsystem": "sports_bot_v2 replay tooling",
+  "status": "QUEUED",
+  "assigned_role": "SONNET_WORKER",
+  "depends_on": "REPLAY_HARNESS_BUILD_001",
+  "objective": "Payoff for the replay track: an operator-friendly CLI that sweeps multiple configs against a date range and prints a ranked comparison, multiplying learning velocity.",
+  "paper_only_note": "Offline replay only.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\tools\\replay.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\configs",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\configs\\baseline.yaml",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\configs\\gate_sweep.yaml",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\results"
+  ],
+  "forbidden_actions": [
+    "Modify the harness core (that was REPLAY_HARNESS_BUILD_001)",
+    "Change the model",
+    "Change attribution schema",
+    "Modify bot_core live paths",
+    "Touch BOT_BRIDGE contents",
+    "Add dashboard/UI for results in this task",
+    "Touch real-money paths"
+  ],
+  "required_work": [
+    "1. Extend tools/replay.py with --single and --sweep modes and YAML config loading.",
+    "2. Implement cross-product sweep expansion (list-valued keys).",
+    "3. Run configs (threads OK) and print ranked comparison table to stdout + text file.",
+    "4. Write full per-config ReplayResult JSON to results/sweep_TIMESTAMP.json.",
+    "5. Provide baseline.yaml and gate_sweep.yaml examples.",
+    "6. Run a 3-7 day × several configs sweep and include summary in result."
+  ],
+  "acceptance_criteria": [
+    "--single runs one config end-to-end and prints summary",
+    "--sweep runs N configs and prints sorted comparison table",
+    "YAML sweep config expands list values into cross-product",
+    "Output files written to results/",
+    "7-day × 10 configs target: finishes in < 2 minutes OR report actual time + suggestion",
+    "No harness or live-code modification"
+  ],
+  "verification": [
+    "Paste CLI invocation and stdout output",
+    "Show text table from a real sweep run",
+    "Show results/sweep_*.json excerpt",
+    "Report sweep runtime"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_REPLAY_SWEEP_CLI_001.json"
+}

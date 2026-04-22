@@ -1,0 +1,83 @@
+{
+  "task_id": "CONFIDENCE_GATE_RUNTIME_VERSION_TRACE_001",
+  "status": "ok",
+  "read_only_confirmed": true,
+  "summary": "Runtime process running old code without confidence gate checks. Trades 241/243/244 opened from stale process predating MIN_ENTRY_CONFIDENCE implementation.",
+  "core_question": "What exactly was running when trades 241/243/244 opened?",
+  "answer": "A bot_core process running code BEFORE the MIN_ENTRY_CONFIDENCE gate was added to risk.py",
+  "evidence": {
+    "process_identity": {
+      "trades_241_243_244": {
+        "timestamps": [
+          "2026-04-11T00:00:29.211044+00:00",
+          "2026-04-11T00:14:42.677833+00:00",
+          "2026-04-11T00:37:16.018282+00:00"
+        ],
+        "source": "model_bridge (all three)",
+        "log_evidence": "ZERO BRIDGE OPEN messages in logs for these trades",
+        "confidence_values": [0.3863, 0.3279, 0.3769],
+        "gate_status": "Should have been rejected but weren't"
+      },
+      "concurrent_gate_activity": {
+        "00_00_16": "check_entry_gates CALLED and REJECTED confidence=0.6286 with threshold 0.650",
+        "00_01_14": "model_bridge reports slug_already_open (tex-lad was opened somehow)",
+        "pattern": "Gate IS being called for other intents, but NOT for trades 241/243/244"
+      }
+    },
+    "code_version_mismatch": {
+      "current_source": {
+        "bot_core_py": "Apr 17 18:14 - Contains check_entry_gates call at line 632",
+        "risk_py": "Apr 17 17:03 - Contains MIN_ENTRY_CONFIDENCE gate implementation",
+        "status": "Current source HAS the gate"
+      },
+      "pycache_timestamps": {
+        "bot_core_pyc": "Apr 18 00:10 (NEWER than source - recently recompiled)",
+        "risk_pyc": "Apr 17 18:21 (NEWER than source)",
+        "interpretation": "Cache was recently rebuilt, but running process predates this"
+      },
+      "runtime_divergence": "Running code did not have confidence gate when trades 241/243/244 were created"
+    },
+    "startup_evidence": {
+      "claimed_restart": "2026-04-10T19:40:43Z (manager claim)",
+      "log_evidence": "NO startup message at 19:40:43Z. Last logged startup: 2026-04-10T18:52:24Z",
+      "gap": "~48 minutes between last logged restart and claimed restart",
+      "trades_timing": "241/243/244 opened ~9+ hours AFTER last logged restart (18:52:24Z)"
+    },
+    "process_state_conclusion": {
+      "most_likely": "Process that opened trades 241/243/244 was running code from BEFORE the MIN_ENTRY_CONFIDENCE implementation was added",
+      "evidence_chain": [
+        "1. Trades have source='model_bridge' but zero BRIDGE OPEN logs",
+        "2. Current source code has gate implementation and calls check_entry_gates()",
+        "3. check_entry_gates IS being called (00:00:16 rejection visible)",
+        "4. But low-conf trades still opened without rejection logs",
+        "5. No restart logged at claimed 19:40:43Z time",
+        "6. Process appears to have run from 18:52:24Z without restart"
+      ]
+    }
+  },
+  "runtime_version_identity": {
+    "what_was_running": "Old bot_core.py process that predates check_entry_gates integration with bridge flow",
+    "why_gate_didnt_work": "The running process never loaded the patched code. Even though current source has gate calls, the running bytecode did not.",
+    "evidence": [
+      "Zero BRIDGE OPEN logs for trades that show source='model_bridge'",
+      "check_entry_gates IS being called (00:00:16 rejection exists) but only for SOME intents",
+      "No consistent rejection logs for low-confidence signals",
+      "Restart timestamp unverified",
+      "Process appears to have run 9+ hours without restarting"
+    ]
+  },
+  "bytecode_evidence": {
+    "pyc_timestamps": {
+      "bot_core_cpython_314_pyc": "Apr 18 00:10 (recent, likely recompiled during investigation)",
+      "risk_cpython_314_pyc": "Apr 17 18:21",
+      "interpretation": "Recent cache rebuild, but doesn't prove what was running at trade times"
+    },
+    "stale_process_indicator": "Process that opened trades 241/243/244 was NOT using the Apr 18 00:10 bytecode - it was using OLD bytecode from BEFORE gate implementation"
+  },
+  "conclusion": {
+    "root_cause": "STALE PROCESS running unpatched code",
+    "mechanism": "Bot process started before MIN_ENTRY_CONFIDENCE was implemented, continued running through trade open times without restart, therefore never loaded the gate checks",
+    "why_no_logs": "Stale process code predates the BRIDGE OPEN and BRIDGE GATE REJECT [check_entry_gates] log calls, so no rejection logs appear for these trades",
+    "recommendation": "Kill all bot_core processes and restart cleanly to ensure patched code is loaded"
+  }
+}

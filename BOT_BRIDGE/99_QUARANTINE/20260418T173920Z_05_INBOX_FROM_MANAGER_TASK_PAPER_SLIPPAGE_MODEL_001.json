@@ -1,0 +1,20 @@
+{
+  "task_id": "PAPER_SLIPPAGE_MODEL_001",
+  "type": "code-writing task",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-18",
+  "subsystem": "sports_bot_v2 paper execution",
+  "title": "Add realistic walk-the-book + slippage buffer to paper execution",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\orderbook.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\types.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_PAPER_SLIPPAGE_MODEL_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_PAPER_SLIPPAGE_MODEL_001.json",
+  "assigned_role": "HAIKU_WORKER",
+  "acceptance": "- Walk-the-book correctly computes VWAP from orderbook depth\n- Partial fill behavior works when size exceeds available depth\n- Slippage is applied and configurable; toggleable to disabled returns VWAP unchanged\n- Fill record populates actual_fill_px field used by attribution wiring\n- No existing decision logic changed"
+}

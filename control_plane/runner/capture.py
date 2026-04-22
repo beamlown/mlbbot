@@ -115,9 +115,19 @@ def _rel(p: Path) -> str:
         return str(p).replace("\\", "/")
 
 
+_ANNOTATION_RX = re.compile(r"\s*\([^)]*\)\s*$")
+
+
 def _norm_path(p: str) -> str:
-    """Collapse a path to forward-slash form for set comparison."""
-    return (p or "").strip().replace("\\", "/").lstrip("./")
+    """Collapse a path to forward-slash form for set comparison.
+
+    Strips a single trailing parenthetical annotation (e.g. " (NEW)",
+    " (used, not modified)", " (MODIFIED - details)") so sloppy worker
+    RESULTs compare cleanly against bare allowed_files paths.
+    """
+    s = (p or "").strip()
+    s = _ANNOTATION_RX.sub("", s).strip()
+    return s.replace("\\", "/").lstrip("./")
 
 
 def _set_block(task_id: str, reason: str, *, blocked_on: str | None = None) -> None:
@@ -150,6 +160,168 @@ def _clear_block(task_id: str) -> None:
         "updated_at=? WHERE task_id=?",
         (now, task_id),
     )
+
+
+# Per-task manager-attempt cap. After this many manager runs on the same
+# task without the task reaching DONE, stop auto-dispatching so a human
+# sees the pattern instead of watching an infinite ping-pong loop.
+MAX_MANAGER_ATTEMPTS = 2
+
+
+def _auto_dispatch_worker(task_id: str) -> None:
+    """Enqueue a HAIKU_WORKER run for a task that a manager just unparked.
+
+    Called after a manager run completes. Only fires if the task is no
+    longer blocked and is in a worker-eligible state.
+    """
+    import logging
+    log = logging.getLogger(__name__)
+    conn = get_conn()
+
+    row = conn.execute("SELECT * FROM tasks WHERE task_id=?", (task_id,)).fetchone()
+    if row is None:
+        return
+    task = dict(row)
+    if task.get("block_reason") or task.get("blocked_on"):
+        log.info("auto_worker: task=%s still blocked — not dispatching", task_id)
+        return
+    if task.get("status") not in ("QUEUED", "ACTIVE", "PENDING"):
+        log.info("auto_worker: task=%s status=%s — not dispatching",
+                 task_id, task.get("status"))
+        return
+
+    profile = conn.execute(
+        "SELECT * FROM agent_profiles WHERE role='HAIKU_WORKER' AND enabled=1 "
+        "ORDER BY created_at LIMIT 1"
+    ).fetchone()
+    if profile is None:
+        log.warning("auto_worker: no enabled HAIKU_WORKER profile — skipping")
+        return
+    profile = dict(profile)
+
+    for key in ("allowed_files", "forbidden_files"):
+        try:
+            task[key] = json.loads(task.get(key) or "[]")
+        except Exception:
+            task[key] = []
+
+    import secrets as _secrets
+    from .base import RunRequest
+    from .dispatcher import DISPATCHER
+    from .cli_adapter import get_adapter
+
+    run_id = "RUN_" + _secrets.token_hex(6).upper()
+    adapter_name = profile.get("adapter") or "claude_cli"
+    try:
+        adapter = get_adapter(adapter_name)
+    except Exception as e:
+        log.warning("auto_worker: adapter %s unavailable: %r", adapter_name, e)
+        return
+
+    req = RunRequest(
+        run_id=run_id,
+        task_id=task_id,
+        role="HAIKU_WORKER",
+        adapter=adapter_name,
+        task=task,
+        created_by="auto_dispatcher",
+        extra_prompt=None,
+    )
+    try:
+        prompt_text = adapter.build_prompt(req)
+        argv = adapter.build_argv(req, prompt_text)
+        stdout_transform = getattr(adapter, "transform_stdout_line", None)
+        DISPATCHER.launch(req, argv, prompt_text, stdout_transform=stdout_transform)
+        log.info("auto_worker: launched run=%s task=%s after manager", run_id, task_id)
+    except Exception as e:
+        log.warning("auto_worker: launch failed for %s: %r", task_id, e)
+
+
+def _auto_dispatch_manager(task_id: str, block_reason: str) -> None:
+    """Enqueue a SONNET_MANAGER run against a freshly-blocked task.
+
+    Bounded by MAX_MANAGER_ATTEMPTS. Imports are deferred to avoid a
+    circular dependency between capture.py and dispatcher.py at module
+    load time.
+    """
+    import logging
+    log = logging.getLogger(__name__)
+    conn = get_conn()
+
+    # Attempt cap — count prior manager runs on this task in any state.
+    prior = conn.execute(
+        """SELECT COUNT(*) c FROM runs
+            WHERE task_id=? AND role='SONNET_MANAGER'""",
+        (task_id,),
+    ).fetchone()["c"]
+    if prior >= MAX_MANAGER_ATTEMPTS:
+        log.info(
+            "auto_manager: task=%s prior=%d cap=%d — skipping, operator handles",
+            task_id, prior, MAX_MANAGER_ATTEMPTS,
+        )
+        return
+
+    # Resolve manager agent profile.
+    profile = conn.execute(
+        "SELECT * FROM agent_profiles WHERE role='SONNET_MANAGER' AND enabled=1 "
+        "ORDER BY created_at LIMIT 1"
+    ).fetchone()
+    if profile is None:
+        log.warning("auto_manager: no enabled SONNET_MANAGER profile — skipping")
+        return
+    profile = dict(profile)
+
+    # Resolve task row (same shape runs.py uses).
+    row = conn.execute("SELECT * FROM tasks WHERE task_id=?", (task_id,)).fetchone()
+    if row is None:
+        return
+    task = dict(row)
+    for key in ("allowed_files", "forbidden_files"):
+        try:
+            task[key] = json.loads(task.get(key) or "[]")
+        except Exception:
+            task[key] = []
+
+    # Build the run.
+    import secrets as _secrets
+    from .base import RunRequest
+    from .dispatcher import DISPATCHER
+    from .cli_adapter import get_adapter
+
+    run_id = "RUN_" + _secrets.token_hex(6).upper()
+    extra = (
+        f"AUTO-MANAGER DISPATCH\n"
+        f"TASK_ID={task_id}\n"
+        f"BLOCK_REASON: {block_reason}\n"
+        f"PRIOR_MANAGER_ATTEMPTS: {prior}/{MAX_MANAGER_ATTEMPTS}\n"
+        f"Follow the manager protocol in .claude-roles/manager/CLAUDE.md. "
+        f"Take exactly one action and stop."
+    )
+    adapter_name = profile.get("adapter") or "claude_cli"
+    try:
+        adapter = get_adapter(adapter_name)
+    except Exception as e:
+        log.warning("auto_manager: adapter %s unavailable: %r", adapter_name, e)
+        return
+
+    req = RunRequest(
+        run_id=run_id,
+        task_id=task_id,
+        role="SONNET_MANAGER",
+        adapter=adapter_name,
+        task=task,
+        created_by="auto_dispatcher",
+        extra_prompt=extra,
+    )
+    try:
+        prompt_text = adapter.build_prompt(req)
+        argv = adapter.build_argv(req, prompt_text)
+        stdout_transform = getattr(adapter, "transform_stdout_line", None)
+        DISPATCHER.launch(req, argv, prompt_text, stdout_transform=stdout_transform)
+        log.info("auto_manager: launched run=%s task=%s (attempt %d/%d)",
+                 run_id, task_id, prior + 1, MAX_MANAGER_ATTEMPTS)
+    except Exception as e:
+        log.warning("auto_manager: launch failed for %s: %r", task_id, e)
 
 
 def _auto_unblock_dependents(finished_task_id: str) -> None:
@@ -392,8 +564,10 @@ def finalize_run(run, exit_code: int) -> None:
                 # of sending a malformed RESULT on to the semantic triage.
                 gate_reason = _structural_gate(req.task, resolved)
                 if gate_reason:
-                    _set_block(task_id, f"structural: {gate_reason}")
+                    reason_str = f"structural: {gate_reason}"
+                    _set_block(task_id, reason_str)
                     new_status = "CHANGES_REQUESTED"
+                    _auto_dispatch_manager(task_id, reason_str)
                 else:
                     # Gate passed — auto-approve + auto-assign to the
                     # pending patch. The patch-review Opus is the ship
@@ -447,15 +621,21 @@ def finalize_run(run, exit_code: int) -> None:
                     worker_reason = (resolved.get("notes")
                                      or resolved.get("summary")
                                      or f"worker returned status={payload_status}")
-                    _set_block(
-                        task_id,
-                        f"retry cap hit ({MAX_RETRIES}): {worker_reason}",
-                    )
+                    reason_str = f"retry cap hit ({MAX_RETRIES}): {worker_reason}"
+                    _set_block(task_id, reason_str)
                     new_status = "CHANGES_REQUESTED"
+                    _auto_dispatch_manager(task_id, reason_str)
     elif task_id and kind in ("reviewer", "manager"):
         aid, new_status = _capture_review(req, run, result, exit_code)
         if aid:
             artifact_ids.append(aid)
+        # After a manager run, if the manager successfully unparked the task
+        # (REWRITE_HANDOFF / SPLIT_TASK / ACCEPT_AS_DONE actions clear the
+        # block), kick a worker at it so the loop closes without operator
+        # intervention. ACCEPT_AS_DONE leaves status=DONE so the worker
+        # dispatch is a no-op (state check in _auto_dispatch_worker).
+        if kind == "manager" and exit_code == 0:
+            _auto_dispatch_worker(task_id)
     elif task_id and kind == "triage":
         # Sonnet triage: yes → DONE + auto-assign to pending patch; no →
         # CHANGES_REQUESTED + block_reason from the triage's reason text.
@@ -743,7 +923,9 @@ def _capture_review(req, run, result, exit_code) -> tuple[tuple[str, str] | None
         # prefer RESULT.summary, fall back to the decision name.
         rsum = (result or {}).get("summary") if result else None
         reason = rsum or f"{decision} (see REVIEW_{task_id}.md)"
-        _set_block(task_id, f"reviewer: {reason}")
+        reason_str = f"reviewer: {reason}"
+        _set_block(task_id, reason_str)
+        _auto_dispatch_manager(task_id, reason_str)
     # INDETERMINATE / unknown → return new_status=None so finalize_run
     # leaves the task status untouched. The review artifact + row are
     # still written so the operator can see the crashed run.

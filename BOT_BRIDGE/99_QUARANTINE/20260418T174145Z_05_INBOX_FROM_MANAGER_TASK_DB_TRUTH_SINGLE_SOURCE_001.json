@@ -1,0 +1,19 @@
+{
+  "task_id": "DB_TRUTH_SINGLE_SOURCE_001",
+  "type": "audit + refactor",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-18",
+  "subsystem": "sports_bot_v2 dashboard",
+  "title": "Audit + enforce trades_sports.db as single source of truth for dashboard data",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_v2.html"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_DB_TRUTH_SINGLE_SOURCE_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_DB_TRUTH_SINGLE_SOURCE_001.json",
+  "assigned_role": "HAIKU_WORKER",
+  "acceptance": "- No endpoint reads paper_trades.db for historical trade data\n- Every violation is either fixed or documented with reasoning\n- Dashboard renders the same numbers post-fix (no regression in correctness)\n- Inventory + diff provided in result\n- No files outside allowed_files modified"
+}

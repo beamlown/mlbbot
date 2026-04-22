@@ -1,0 +1,44 @@
+{
+  "task_id": "REGISTRY_PREGAME_WINDOW_001",
+  "title": "Classify future-dated events as FUTURE_SCHEDULED (or expand registry window); eliminate no_registry_match log noise",
+  "priority": "LOW",
+  "type": "bug + observability",
+  "track": "Track B — observability (P1)",
+  "issued": "2026-04-18",
+  "subsystem": "mlb_model integration discovery loop",
+  "status": "QUEUED",
+  "assigned_role": "SONNET_WORKER",
+  "depends_on": null,
+  "objective": "Eliminate spurious no_registry_match log spam for future-day events by classifying them separately at parse time (or, alternatively, expanding the registry window if bot actually trades pre-game).",
+  "paper_only_note": "Paper-only. No trading-logic change.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py"
+  ],
+  "forbidden_actions": [
+    "Change bot entry gate",
+    "Change registry data source",
+    "Change matching logic for same-day events",
+    "Rename process (that is SHADOW_ENGINE_RENAME_001)",
+    "Modify BOT_BRIDGE contents",
+    "Touch real-money paths"
+  ],
+  "required_work": [
+    "1. Verify whether the bot trades pre-game (read bot_core.py + core/risk.py entry gate).",
+    "2. Choose option (a) registry window expand vs (b) FUTURE_SCHEDULED classifier — default (b).",
+    "3. Implement chosen option.",
+    "4. Replace per-event verbose registry-dump log with end-of-loop summary + single future-events line."
+  ],
+  "acceptance_criteria": [
+    "Future-day events no longer log no_registry_match with full registry dump",
+    "Summary log line reflects new classification count",
+    "No change in matching for same-day events",
+    "Rationale for (a) vs (b) documented",
+    "No files outside allowed_files modified"
+  ],
+  "verification": [
+    "Paste before/after log samples",
+    "Confirm same-day match counts unchanged across a restart",
+    "Show bot entry-gate finding (does it trade pre-game?)"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_REGISTRY_PREGAME_WINDOW_001.json"
+}

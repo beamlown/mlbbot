@@ -1,0 +1,21 @@
+{
+  "task_id": "REPLAY_INPUT_CAPTURE_001",
+  "type": "code-writing task",
+  "priority": "MEDIUM",
+  "status": "CHANGES_REQUESTED",
+  "issued": "2026-04-18",
+  "subsystem": "sports_bot_v2 main loop + capture layer",
+  "title": "Capture orderbook + mark + model inputs + decision per discovery loop for replay",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\state_hub.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\replay_capture.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\replay_captures",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_REPLAY_INPUT_CAPTURE_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_REPLAY_INPUT_CAPTURE_001.json",
+  "assigned_role": "HAIKU_WORKER",
+  "acceptance": "- New capture file appears during a short live run\n- At least 5 records captured and documented\n- All model input fields the model actually uses are captured\n- Zero modifications to model or decision logic\n- Existing ob_snapshots unchanged / preserved"
+}

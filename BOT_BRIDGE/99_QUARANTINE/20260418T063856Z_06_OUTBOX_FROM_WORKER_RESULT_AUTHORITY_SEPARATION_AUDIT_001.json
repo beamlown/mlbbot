@@ -1,0 +1,46 @@
+{
+  "task_id": "AUTHORITY_SEPARATION_AUDIT_001",
+  "status": "ok",
+  "summary": "Authority-separation audit complete. Found 1 active violation (sys.path import manipulation in mlb_model), 1 dead file reference (missing execution_guard.py), and 2 clean read-only integration points.",
+  "files_changed": [],
+  "violations": [
+    {
+      "file": "C:\Users\johnny\Desktop\mlb_model\integration\recommendation_api.py",
+      "line_range": "72-75",
+      "description": "sys.path manipulation to import from sports_bot_v2. Code does `sys.path.insert(0, ...)` to add sports_bot_v2 to import path, then imports `from sports.mlb.sharp_odds import get_sharp_prob`. This creates a bidirectional dependency: sports_bot_v2 depends on mlb_model (via model_bridge) AND mlb_model depends on sports_bot_v2 (via this import). Violates authority separation principle.",
+      "classification": "ACTIVE",
+      "recommendation": "REMOVE - mlb_model should not import from sports_bot_v2. Solution: Extract sharp_odds calculation into mlb_model or refactor to pass pre-computed odds via the recommendation data structure instead of calling back into sports_bot_v2.",
+      "gating": "Triggers when ODDS_API_KEY environment variable is set (seen at runtime)"
+    },
+    {
+      "file": "C:\Users\johnny\Desktop\mlb_model\core\execution_guard.py",
+      "line_range": "N/A",
+      "description": "File listed in allowed_files for this audit task but does not exist in filesystem. mlb_model/core/ contains only __init__.py and selfcheck.py, no execution_guard.py.",
+      "classification": "DEAD",
+      "recommendation": "CLARIFY - Either (1) remove from TASK_AUTHORITY_SEPARATION_AUDIT_001.json allowed_files list if not intended, or (2) create the file with proper execution guards if it's planned. Current state: file referenced but not present.",
+      "gating": "N/A - file does not exist"
+    }
+  ],
+  "clean_integration_points": [
+    {
+      "location": "C:\Users\johnny\Desktop\sports_bot_v2\core\model_bridge.py:19",
+      "pattern": "SHADOW_LOG_PATH = ... / 'mlb_model' / 'logs' / 'shadow_recommendations.jsonl'",
+      "status": "GATED (PROPER SEPARATION)",
+      "reason": "sports_bot_v2 reads mlb_model's shadow log file for recommendations. This is proper one-way data flow: model writes recommendations to log, bot reads them. No code imports between systems."
+    },
+    {
+      "location": "C:\Users\johnny\Desktop\sports_bot_v2\dashboard_server.py:67",
+      "pattern": "Read mlb_model shadow log for dashboard display",
+      "status": "GATED (PROPER SEPARATION)",
+      "reason": "Dashboard reads mlb_model's log for visualization. Like model_bridge, this is clean one-way data flow via log file. No code imports, no function calls."
+    }
+  ],
+  "files_audited": [
+    "C:\Users\johnny\Desktop\sports_bot_v2\bot_core.py",
+    "C:\Users\johnny\Desktop\sports_bot_v2\core\signal_base.py",
+    "C:\Users\johnny\Desktop\sports_bot_v2\core\model_bridge.py",
+    "C:\Users\johnny\Desktop\mlb_model\integration\recommendation_api.py",
+    "C:\Users\johnny\Desktop\mlb_model\core\execution_guard.py (missing)"
+  ],
+  "notes": "The violation in recommendation_api.py:72-75 is the root cause of authority-separation breakdown. The sys.path insertion happens inside _get_pregame_prob_for_game(), called from generate_recommendation_for_game(), which is the core model inference function. When ODDS_API_KEY is configured, every recommendation generation triggers this import, creating tight coupling. Recommended fix: eliminate the sys.path hack by either (1) moving sharp_odds logic into mlb_model, or (2) passing sharp odds as input to the recommendation function instead of importing it."
+}

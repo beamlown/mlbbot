@@ -1,0 +1,48 @@
+{
+  "task_id": "BRIDGE_FIX_001",
+  "status": "ok",
+  "summary": "Bridge MAX_CONCURRENT_TRADES cap and per-intent re-fetch protection verified and operational",
+  "verification": {
+    "code_location": "C:\Users\johnny\Desktop\sports_bot_v2\bot_core.py",
+    "key_sections": {
+      "initial_cap_check": {
+        "lines": "515-519",
+        "check": "len(_bridge_open_check) >= MAX_CONCURRENT_TRADES",
+        "action": "logs BRIDGE SKIP and skips entire bridge block"
+      },
+      "per_intent_refetch": {
+        "lines": "524",
+        "check": "current_open = fetch_open_trades() inside loop",
+        "purpose": "Catches concurrent writes from other processes"
+      },
+      "cap_hit_during_loop": {
+        "lines": "525-530",
+        "check": "len(current_open) >= MAX_CONCURRENT_TRADES",
+        "action": "logs BRIDGE CAP HIT and breaks loop"
+      },
+      "race_condition_protection": {
+        "lines": "540-546",
+        "check": "intent['slug'] in current_open_slugs",
+        "action": "logs BRIDGE RACE SKIP for concurrently opened slug"
+      }
+    },
+    "python_compilation": "✓ bot_core.py compiles successfully"
+  },
+  "acceptance_criteria_verification": [
+    "✓ MAX_CONCURRENT_TRADES cap enforced before bridge processing",
+    "✓ Per-intent re-fetch catches concurrent writes from other processes",
+    "✓ Race condition where slug opens between outer fetch and per-intent fetch is properly handled",
+    "✓ Bridge logs BRIDGE SKIP when at capacity before loop starts",
+    "✓ Bridge logs BRIDGE CAP HIT and breaks if capacity reached during loop",
+    "✓ Bridge logs BRIDGE RACE SKIP for concurrently opened slugs",
+    "✓ Existing native signal loop (check_entry_gates) unchanged",
+    "✓ No other files modified"
+  ],
+  "implementation_notes": {
+    "root_cause_addressed": "2026-04-04 incident: 6 concurrent bot_core.py processes each opened trades for same slugs, causing -$218 losses. Now prevented by MAX_CONCURRENT_TRADES cap + per-intent re-fetch",
+    "bridge_status": "Currently disabled (ENABLE_MODEL_BRIDGE=False per kill switch). This fix is a prerequisite for re-enabling.",
+    "duplicate_slug_protection": "Additional _bridge_consumed_slugs deduplication logic also present (lines 532-550), implemented by BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001"
+  },
+  "files_changed": [],
+  "notes": "This task was marked DONE by SONNET_MANAGER. Verification confirms the bridge section now enforces MAX_CONCURRENT_TRADES cap at loop entry and re-fetches open positions before each intent processing to catch race conditions from concurrent processes. The fix prevents the 2026-04-04 incident pattern from recurring."
+}

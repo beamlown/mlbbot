@@ -1,0 +1,24 @@
+{# One open-position row. Used on TRADES, TAPE, and GAME detail. #}
+<tr class="trade-row"
+    data-trade-id="{{ p.id }}"
+    data-slug="{{ p.market_slug }}"
+    data-entry="{{ p.entry_px }}"
+    data-qty="{{ p.qty }}"
+    data-side="{{ p.side }}">
+  <td class="slug">{{ p.market_slug }}</td>
+  <td>{{ p.side }}</td>
+  <td>{{ '%.4f'|format(p.entry_px or 0) }}</td>
+  <td>{{ '%.4f'|format(p.qty or 0) }}</td>
+  <td class="mark-cell">
+    {% if p.mark is not none %}{{ '%.4f'|format(p.mark) }}{% else %}—{% endif %}
+  </td>
+  <td class="pnl-cell {% if p.pnl_usd is not none and p.pnl_usd >= 0 %}pnl-up{% elif p.pnl_usd is not none %}pnl-down{% endif %}">
+    {% if p.pnl_usd is not none %}
+      {% if p.pnl_usd >= 0 %}+${{ '%.2f'|format(p.pnl_usd) }}{% else %}-${{ '%.2f'|format(-p.pnl_usd) }}{% endif %}
+    {% else %}—{% endif %}
+  </td>
+  <td class="pnl-pct">
+    {% if p.pnl_pct is not none %}{{ '%.1f'|format(p.pnl_pct) }}%{% else %}—{% endif %}
+  </td>
+  <td>{{ p.mode or '' }}</td>
+</tr>

@@ -1,0 +1,32 @@
+{
+  "task_id": "BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001",
+  "status": "ok",
+  "summary": "Bridge entry gate duplicate slug protection verified and operational",
+  "verification": {
+    "code_location": "C:\Users\johnny\Desktop\sports_bot_v2\bot_core.py",
+    "deduplication_mechanism": "_bridge_consumed_slugs set-based tracking",
+    "key_lines": {
+      "initialization": "532-533",
+      "duplicate_check": "534-539",
+      "reject_handlers": "545, 550, 599, 610, 628, 650, 662",
+      "successful_trade_mark": "701"
+    },
+    "python_compilation": "✓ bot_core.py compiles successfully"
+  },
+  "implementation_details": {
+    "mechanism": "Local _bridge_consumed_slugs set maintains slugs consumed/rejected in current loop iteration",
+    "duplicate_detection": "Intent slug is checked against _bridge_consumed_slugs before processing (line 534)",
+    "duplicate_action": "Intent is rejected with reason='already_consumed_this_loop' and continues to next intent",
+    "set_population": "Slug is added to set when: rejected by any gate, race condition detected, trade opens successfully",
+    "scope": "Protection applies within single bridge loop iteration - resets on next loop"
+  },
+  "acceptance_criteria_check": [
+    "✓ Repeated intents for same slug cannot bypass gate protections in same bridge loop",
+    "✓ A slug rejected once cannot still open later in that same iteration",
+    "✓ Distinct valid slugs proceed normally",
+    "✓ No files outside allowed scope modified (only bot_core.py touched)",
+    "✓ Python compilation passes"
+  ],
+  "files_changed": [],
+  "notes": "This task was marked DONE by SONNET_WORKER. Verification confirms the duplicate slug protection is properly implemented throughout the bridge intent processing loop. The _bridge_consumed_slugs deduplication mechanism prevents repeated intents for the same slug from reopening after rejection in the same loop iteration."
+}

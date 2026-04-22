@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/johnny/Desktop/BOT_BRIDGE/**)",
+      "Read(//c/Users/johnny/Desktop/mlbbot/**)"
+    ]
+  }
+}

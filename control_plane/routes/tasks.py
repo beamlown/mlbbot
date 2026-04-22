@@ -9,7 +9,7 @@ from flask import Blueprint, abort, jsonify, render_template, request
 from ..db import get_conn
 from ..models import LANES, VALID_PRIORITIES, VALID_STATUSES
 from ..bridge.importer import import_bot_bridge
-from ..workflow import WORKFLOW_LANES, LANE_DISPLAY, derive_state
+from ..workflow import WORKFLOW_LANES, LANE_DISPLAY, derive_state, annotate, LOOPBACK_LANES
 
 
 def _now_iso() -> str:
@@ -74,7 +74,7 @@ def board():
     lanes: dict[str, list[dict]] = {lane: [] for lane in WORKFLOW_LANES}
     for row in conn.execute(base_sql, params).fetchall():
         d = _task_row_dict(row)
-        d["workflow_state"] = derive_state(d)
+        d = annotate(d)  # sets workflow_state, age_bucket, attempt_num, track
         pid = d.get("patch_id")
         if pid and pid in patch_map:
             d["patch_info"] = patch_map[pid]
@@ -106,10 +106,15 @@ def board():
             d["allowed_states"] = []
         agents.append(d)
 
+    # Split lanes into the main strip and the loop-back row (rework).
+    main_lane_order = tuple(l for l in WORKFLOW_LANES if l not in LOOPBACK_LANES)
+    loopback_lane_order = tuple(l for l in WORKFLOW_LANES if l in LOOPBACK_LANES)
+
     return render_template(
         "board.html",
         lanes=lanes,
-        lane_order=WORKFLOW_LANES,
+        lane_order=main_lane_order,
+        loopback_lanes=loopback_lane_order,
         lane_display=LANE_DISPLAY,
         lane_counts=lane_counts,
         subsystems=subsystems,

@@ -1,0 +1,76 @@
+{
+  "task_id": "TRADE_ATTRIBUTION_WIRING_001",
+  "status": "ok",
+  "summary": "Wired entry/exit/resolution attribution code paths with new backfill script for existing trades",
+  "wired_entry": "bot_core.py:663-701",
+  "wired_exit": "bot_core.py:824-845",
+  "wired_resolution": "bot_core.py:747-781",
+  "backfill_script_path": "C:\Users\johnny\Desktop\sports_bot_v2\tools\backfill_attribution.py",
+  "files_changed": [
+    "C:\Users\johnny\Desktop\sports_bot_v2\bot_core.py",
+    "C:\Users\johnny\Desktop\sports_bot_v2\core\db.py",
+    "C:\Users\johnny\Desktop\sports_bot_v2\tools\backfill_attribution.py",
+    "C:\Users\johnny\Desktop\sports_bot_v2\tools\__init__.py"
+  ],
+  "notes": [
+    "Entry wiring captures entry_model_prob (from signal.fair_value_estimate), entry_market_prob (from orderbook ask), expected_edge_pct, and actual_fill_px/size",
+    "Exit wiring captures exit_reason (passed from check_exit), exit_market_prob (from orderbook bid), hold_seconds (calculated from ts_open), realized_pnl from close_position",
+    "Resolution wiring populates resolved_winner (YES/NO), model_side_was_right (bool), trade_class (via classify_trade), and exit_reason=RESOLUTION",
+    "Both entry and exit attribution written to JSONL envelope with timestamp + record structure per attribution.py spec",
+    "Backfill script reconstructs from trade_forensics logs and close_reason inference, sets attribution_version=0 for incomplete, =1 for complete reconstructions",
+    "Backfill is idempotent: only updates NULL fields, sets trade_class=UNRESOLVED for non-resolved trades",
+    "No change to entry/exit decision logic, only observation/record — all wiring is read-only on existing code paths"
+  ],
+  "implementation_details": {
+    "entry_attribution_fields": [
+      "entry_model_prob: signal.fair_value_estimate or signal.confidence",
+      "entry_market_prob: ob.ask_yes/ask_no per side",
+      "expected_edge_pct: (entry_model_prob - entry_market_prob) * 100",
+      "actual_fill_px: trade.actual_fill_px (from paper_exec)",
+      "actual_fill_size: trade.qty"
+    ],
+    "exit_attribution_fields": [
+      "exit_reason: reason parameter from check_exit return",
+      "exit_model_prob: NULL (no model signal at exit)",
+      "exit_market_prob: ob.bid_yes/bid_no per side or close_data exit_px",
+      "hold_seconds: int(now - parse_utc_dt(trade.ts_open))",
+      "realized_pnl: close_data.pnl_usd"
+    ],
+    "resolution_attribution_fields": [
+      "resolved_winner: YES or NO based on exit_px at resolution (>=0.99 → YES else NO)",
+      "model_side_was_right: bool(resolved_winner matches trade.side)",
+      "trade_class: result of classify_trade(model_side_was_right, expected_edge_pct, exit_reason=RESOLUTION, realized_pnl)",
+      "exit_reason: RESOLUTION (overrides previous exit_reason)",
+      "hold_seconds: int(now - parse_utc_dt(trade.ts_open))"
+    ]
+  },
+  "db_changes": {
+    "new_function": "update_trade_attribution(trade_id, attr_data) in core/db.py",
+    "behavior": "Idempotent UPDATE via dynamic SQL, only updates non-None values in attr_data dict",
+    "schema_migration": "Already provided by TRADE_ATTRIBUTION_SCHEMA_001 task"
+  },
+  "backfill_logic": {
+    "input": "Trades with any NULL attribution column",
+    "reconstruction_sources": [
+      "trade_forensics_*.jsonl for entry confidence",
+      "reason_close mapping (market_resolved→RESOLUTION, take_profit→TP, stop_loss→SL, etc.)",
+      "exit_px inference (>=0.99→YES resolution, <=0.01→NO resolution)",
+      "pnl_usd sign for model direction check"
+    ],
+    "version_semantics": {
+      "attribution_version_0": "Best-effort reconstruction, incomplete fields, may be inaccurate",
+      "attribution_version_1": "Reliable reconstruction from multiple sources"
+    },
+    "idempotent_upsert": "Only updates NULL columns, safe to re-run"
+  },
+  "testing_guidance": [
+    "Open new trade in paper mode, verify entry attribution written to JSONL and DB",
+    "Close trade via TP/SL/exit gate, verify exit attribution fields in DB",
+    "Run resolution watcher and observe market resolution, verify resolved_winner + model_side_was_right + trade_class populated",
+    "Run backfill script with --dry-run to preview changes, then without flag to persist",
+    "Verify JSONL records use attribution_version=1 for new trades, verify backfill uses version=0/1 appropriately"
+  ],
+  "existing_trades_count": 0,
+  "backfilled_count": 0,
+  "unreconstructible_count": 0
+}
