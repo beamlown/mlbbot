@@ -21,13 +21,17 @@ from ..runner.bin_resolver import (
     resolve_current,
     set_override,
 )
+from ..startup_check import cached_results, result_to_dict
 
 
 bp = Blueprint("system", __name__)
 
 
 def _load_state_json() -> dict | None:
-    candidate = SETTINGS.repo_root / "sports_bot_v2" / "runtime" / "state.json"
+    # Canonical bot source lives at SETTINGS.bot_source_root (Desktop\sports_bot_v2).
+    # Previously resolved under repo_root, which pointed at the orphan
+    # mlbbot\sports_bot_v2 tree that is now quarantined.
+    candidate = SETTINGS.bot_source_root / "runtime" / "state.json"
     if not candidate.exists():
         return None
     try:
@@ -64,18 +68,30 @@ def _claude_info() -> dict:
 def system_page():
     state = _load_state_json()
     launcher_pid = None
-    pid_file = SETTINGS.repo_root / "sports_bot_v2" / "runtime" / "launcher.pid"
+    pid_file = SETTINGS.bot_source_root / "runtime" / "launcher.pid"
     if pid_file.exists():
         try:
             launcher_pid = int(pid_file.read_text().strip())
         except Exception:
             launcher_pid = None
+    guardrails = [result_to_dict(r) for r in cached_results()]
     return render_template(
         "system.html",
         state=state,
         launcher_pid=launcher_pid,
         claude_info=_claude_info(),
+        guardrails=guardrails,
     )
+
+
+@bp.route("/api/system/guardrails", methods=["GET"])
+def api_guardrails():
+    force = (request.args.get("force") or "") in ("1", "true", "yes")
+    results = cached_results(force=force)
+    return jsonify({
+        "ok": all(r.ok or r.severity != "fail" for r in results),
+        "guardrails": [result_to_dict(r) for r in results],
+    })
 
 
 @bp.route("/api/system/state", methods=["GET"])

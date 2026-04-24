@@ -1,0 +1,29 @@
+<div class="pos-card"
+     {% if POSITION %}data-slug="{{ POSITION.market_slug }}"
+     data-entry="{{ POSITION.entry_px }}"
+     data-qty="{{ POSITION.qty }}"
+     data-side="{{ POSITION.side }}"{% endif %}>
+  <h3>── POSITION ──</h3>
+  {% if POSITION %}
+  <div class="pos-row"><span class="k">MARKET</span><span class="v">{{ POSITION.market_slug }}</span></div>
+  <div class="pos-row"><span class="k">SIDE</span><span class="v">{{ POSITION.side }}</span></div>
+  <div class="pos-row"><span class="k">ENTRY</span><span class="v">{{ '%.4f'|format(POSITION.entry_px or 0) }}</span></div>
+  <div class="pos-row"><span class="k">MARK</span><span class="v mark-cell">{% if POSITION.mark is not none %}{{ '%.4f'|format(POSITION.mark) }}{% else %}—{% endif %}</span></div>
+  <div class="pos-row"><span class="k">QTY</span><span class="v">{{ '%.4f'|format(POSITION.qty or 0) }}</span></div>
+  <div class="pos-row">
+    <span class="k">P&amp;L</span>
+    <span class="v pnl-cell {% if (POSITION.pnl_usd or 0) >= 0 %}pnl-up{% else %}pnl-down{% endif %}">
+      {% if POSITION.pnl_usd is not none %}
+        {% if POSITION.pnl_usd >= 0 %}+${{ '%.2f'|format(POSITION.pnl_usd) }}{% else %}-${{ '%.2f'|format(-POSITION.pnl_usd) }}{% endif %}
+      {% else %}—{% endif %}
+    </span>
+  </div>
+  {% if SHADOW_REC %}
+  <div style="margin-top:12px; font-family: var(--font-pixel-text); font-size:18px; color: var(--scoreboard-amber);">
+    SHADOW REC: {{ SHADOW_REC }}
+  </div>
+  {% endif %}
+  {% else %}
+  <p style="font-family: var(--font-pixel-text); font-size: 20px; color: var(--chalk-dim);">No open position on this game.</p>
+  {% endif %}
+</div>

@@ -23,6 +23,8 @@ from .parsers import (
     parse_task_board_md,
     parse_task_json,
     task_id_from_filename,
+    validate_writer,
+    EXPECTED_WRITER_BY_FOLDER,
 )
 
 
@@ -32,6 +34,10 @@ SUBFOLDERS = (
     "07_REVIEWS",
     "08_SHARED_CONTEXT",
 )
+
+# Folders the importer walks *for quarantine enforcement only*. Writer
+# attribution is checked in these; anything mis-placed gets moved.
+WRITER_ENFORCED_FOLDERS: tuple[str, ...] = tuple(EXPECTED_WRITER_BY_FOLDER.keys())
 
 
 @dataclass
@@ -88,6 +94,19 @@ def import_bot_bridge() -> ImportReport:
         for fp in sorted(folder.iterdir()):
             if not fp.is_file():
                 continue
+            if fp.name.lower() in (".gitkeep", ".gitignore"):
+                continue
+            # Writer-attribution enforcement (2026-04-18): for folders with
+            # a writer contract, verify the file's header matches. Non-
+            # matches get moved to 99_QUARANTINE\ and skipped.
+            if sub in WRITER_ENFORCED_FOLDERS:
+                try:
+                    quarantined = _maybe_quarantine(fp, sub, report)
+                except Exception as e:
+                    report.errors.append(f"quarantine-check {fp.name}: {e!r}")
+                    quarantined = False
+                if quarantined:
+                    continue
             try:
                 _upsert_artifact(fp, report)
             except Exception as e:
@@ -467,3 +486,45 @@ def _link_artifacts_to_tasks() -> None:
             "INSERT OR IGNORE INTO task_artifacts(task_id, artifact_id, relation) VALUES (?,?,?)",
             (tid, r["artifact_id"], rel),
         )
+
+
+# ---------------------------------------------------------------------------
+# Writer-attribution enforcement / quarantine (2026-04-18)
+# ---------------------------------------------------------------------------
+
+def _maybe_quarantine(fp: Path, folder_basename: str, report: "ImportReport") -> bool:
+    """If the file violates the writer-attribution contract for its folder,
+    move it to 99_QUARANTINE and record the reason.
+
+    Returns True if the file was moved (caller should skip upsert).
+    Returns False if the file is allowed to stay (caller proceeds normally).
+    """
+    import shutil
+    try:
+        text = fp.read_text(encoding="utf-8", errors="ignore")
+    except OSError as e:
+        report.errors.append(f"read {fp.name}: {e!r}")
+        return False
+    ok, reason = validate_writer(folder_basename, text)
+    if ok:
+        return False
+    # Build quarantine destination: 99_QUARANTINE/<ts>_<origfolder>_<name>
+    q_root = SETTINGS.bridge_root / "99_QUARANTINE"
+    q_root.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    dest_name = f"{stamp}_{folder_basename}_{fp.name}"
+    dest = q_root / dest_name
+    try:
+        shutil.move(str(fp), str(dest))
+    except OSError as e:
+        report.errors.append(f"quarantine-move {fp.name}: {e!r}")
+        return False
+    conn = get_conn()
+    conn.execute(
+        """INSERT INTO quarantined_artifacts
+           (original_path, quarantine_path, reason, detected_at)
+           VALUES (?,?,?,?)""",
+        (str(fp), str(dest), reason[:500], _now_iso()),
+    )
+    report.errors.append(f"quarantined {folder_basename}/{fp.name}: {reason}")
+    return True

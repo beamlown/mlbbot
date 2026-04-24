@@ -1,0 +1,20 @@
+{
+  "task_id": "REPLAY_HARNESS_BUILD_001",
+  "type": "code-writing task",
+  "priority": "MEDIUM",
+  "status": "ACTIVE",
+  "issued": "2026-04-18",
+  "subsystem": "sports_bot_v2 replay subsystem",
+  "title": "Build replay harness: replay captured inputs under alternate configs; emit counterfactual trade set + attribution summary",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\tools\\replay.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\replay_harness.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\attribution.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\replay_capture.py"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_REPLAY_HARNESS_BUILD_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_REPLAY_HARNESS_BUILD_001.json",
+  "assigned_role": "HAIKU_WORKER",
+  "acceptance": "- Harness runs on a date range and returns a ReplayResult\n- Fidelity check shows < 5% PnL divergence from real trades on a historical config\n- All trade_class enum values representable in replay output\n- Zero changes to live code paths\n- No files outside allowed_files modified"
+}

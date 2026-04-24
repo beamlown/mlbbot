@@ -1,0 +1,119 @@
+{
+  "task_id": "CONFIDENCE_HISTORY_AUDIT_001",
+  "status": "ok",
+  "read_only_confirmed": true,
+  "summary": "CRITICAL FINDING: 0.60 confidence floor is UNREALISTIC and HEAVILY RESTRICTIVE. Only 34.9% of recent trades meet this threshold. Recommend 0.40-0.45 floor for realistic operation.",
+  "sample_window": {
+    "scope": "All historical trades in trades_sports.db",
+    "total_records": 278,
+    "data_range": {
+      "earliest": "2026-04-10T17:12:36.539919+00:00",
+      "latest": "2026-04-18T00:45:06.412457+00:00",
+      "span": "~7.3 days"
+    },
+    "confidence_range": {
+      "min": 0.2507,
+      "max": 0.8297,
+      "avg": 0.4863,
+      "median": 0.4531
+    }
+  },
+  "distribution_across_278_trades": {
+    "<0.50": {
+      "count": 156,
+      "percentage": 56.1
+    },
+    "0.50-0.549": {
+      "count": 11,
+      "percentage": 4.0
+    },
+    "0.55-0.599": {
+      "count": 14,
+      "percentage": 5.0
+    },
+    "0.60-0.649": {
+      "count": 86,
+      "percentage": 30.9
+    },
+    "0.65-0.699": {
+      "count": 3,
+      "percentage": 1.1
+    },
+    "0.70+": {
+      "count": 8,
+      "percentage": 2.9
+    }
+  },
+  "floor_impact_analysis": {
+    "0.60_floor": {
+      "pass_count": 97,
+      "fail_count": 181,
+      "pass_percentage": 34.9,
+      "fail_percentage": 65.1,
+      "severity": "EXTREMELY HEAVY - Would cut trading frequency by >60%"
+    },
+    "alternative_floors": {
+      "0.40": {
+        "pass_count": 167,
+        "pass_percentage": 60.1,
+        "assessment": "Realistic - maintains reasonable trading volume while filtering worst signals"
+      },
+      "0.45": {
+        "pass_count": 140,
+        "pass_percentage": 50.4,
+        "assessment": "Moderate - balanced between frequency and quality"
+      },
+      "0.50": {
+        "pass_count": 122,
+        "pass_percentage": 43.9,
+        "assessment": "More restrictive - noticeable volume reduction"
+      },
+      "0.55": {
+        "pass_count": 111,
+        "pass_percentage": 39.9,
+        "assessment": "Very restrictive - approaching 0.60 problematic level"
+      }
+    }
+  },
+  "recent_trades_sample": [
+    {"id": 324, "confidence": 0.8229, "ts_open": "2026-04-18T00:45:06.412457+00:00", "status": "PASS_0.60"},
+    {"id": 323, "confidence": 0.6286, "ts_open": "2026-04-11T05:00:44.879377+00:00", "status": "PASS_0.60"},
+    {"id": 322, "confidence": 0.4483, "ts_open": "2026-04-11T04:55:42.681760+00:00", "status": "FAIL_0.60"},
+    {"id": 321, "confidence": 0.8297, "ts_open": "2026-04-11T04:54:40.083787+00:00", "status": "PASS_0.60"},
+    {"id": 320, "confidence": 0.7543, "ts_open": "2026-04-11T04:53:38.927050+00:00", "status": "PASS_0.60"},
+    {"id": 319, "confidence": 0.7971, "ts_open": "2026-04-11T04:52:36.310954+00:00", "status": "PASS_0.60"},
+    {"id": 318, "confidence": 0.7040, "ts_open": "2026-04-11T04:51:35.615954+00:00", "status": "PASS_0.60"},
+    {"id": 317, "confidence": 0.6556, "ts_open": "2026-04-11T04:50:33.504613+00:00", "status": "PASS_0.60"},
+    {"id": 316, "confidence": 0.3876, "ts_open": "2026-04-11T04:44:17.941777+00:00", "status": "FAIL_0.60"},
+    {"id": 315, "confidence": 0.6429, "ts_open": "2026-04-11T04:35:02.082601+00:00", "status": "PASS_0.60"},
+    {"id": 314, "confidence": 0.3597, "ts_open": "2026-04-11T04:33:22.481752+00:00", "status": "FAIL_0.60"},
+    {"id": 313, "confidence": 0.7064, "ts_open": "2026-04-11T04:30:11.843923+00:00", "status": "PASS_0.60"},
+    {"id": 312, "confidence": 0.6429, "ts_open": "2026-04-11T04:28:12.379733+00:00", "status": "PASS_0.60"},
+    {"id": 311, "confidence": 0.3412, "ts_open": "2026-04-11T04:24:48.034000+00:00", "status": "FAIL_0.60"},
+    {"id": 310, "confidence": 0.6429, "ts_open": "2026-04-11T04:22:54.738600+00:00", "status": "PASS_0.60"}
+  ],
+  "data_sources": {
+    "confidence_storage": "Column 'confidence' in trades_sports.db table 'trades'",
+    "data_used": "All historical trades from trades_sports.db (SELECT only - no writes)",
+    "recommendation_history": "Not separately audited - confidence values derived from opened trades in DB",
+    "missing_data": "None detected - all trades have confidence values populated"
+  },
+  "conclusion": {
+    "0_60_is_realistic": false,
+    "severity": "CRITICAL - 0.60 floor is unrealistic for this system",
+    "reasoning": [
+      "System has been opening trades with median confidence of 0.45",
+      "Only 35% of recent trades meet 0.60 threshold",
+      "Average confidence across 278 trades is 0.49",
+      "56% of all trades fall below 0.50 confidence",
+      "Implementing 0.60 would reduce trading frequency by 65%"
+    ],
+    "recommended_floor": "0.40-0.45",
+    "recommended_floor_rationale": [
+      "0.40 floor: 60% of trades pass - maintains reasonable volume with quality filter",
+      "0.45 floor: 50% of trades pass - moderate restriction with better signal quality",
+      "Both are realistic given the observed confidence distribution"
+    ],
+    "implementation_notes": "If 0.60 must be deployed for risk reasons, prepare for significantly reduced trading. Consider gradually increasing floor rather than jumping to 0.60, or implement confidence-based sizing (lower confidence = smaller position) as alternative to binary gate."
+  }
+}

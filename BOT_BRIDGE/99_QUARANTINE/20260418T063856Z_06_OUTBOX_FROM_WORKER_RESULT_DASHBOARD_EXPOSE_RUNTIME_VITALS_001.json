@@ -1,0 +1,22 @@
+{
+  "status": "ok",
+  "summary": "Dashboard updated to expose all runtime vitals: rolling performance (r25/r50/r100), guard block rate + reasons, mode state (name/score/dwell/multipliers/switch_reason), bankroll detail, recent closed trades table with exit reasons, market friction counters, lifetime counters, and freshness indicator.",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_v2.html"
+  ],
+  "notes": [
+    "dashboard_v2.html is the active template served at GET /",
+    "dashboard_server.py already provides safe defaults for all required fields (guard_block_rate, guard_reasons, mode, exit_reason_counts, market_cooldowns_active, invalid_market_blocks, total_trades, loop_count, config_hash) — no changes needed there",
+    "All new sections use data already available in /api/state and /api/trades endpoints",
+    "Freshness indicator shows file age and staleness (green <30s, amber 30-120s, red if stale)",
+    "Recent closed trades filtered from /api/trades?limit=100, shows last 10 with entry/exit px, reason_close (color-coded), and P&L",
+    "Exit reason distribution rendered as bars with percentages and counts",
+    "Rolling window cards color-coded: green border if expectancy>0, red if expectancy<0",
+    "Guard block rate turns red at >75%, amber at >25%"
+  ],
+  "next_steps": [
+    "Operator can now view all critical runtime vitals without opening DevTools or checking logs",
+    "Bot should populate state.json with guard_block_rate, guard_reasons, mode, exit_reason_counts, market_cooldowns_active, invalid_market_blocks, total_trades, loop_count fields for full visibility",
+    "If bot doesn't populate these fields, dashboard will show safe defaults (0, empty arrays, neutral mode, etc.)"
+  ]
+}

@@ -147,6 +147,31 @@ def get_orderbook_snapshot(market: Market) -> OBSnapshot:
         except Exception as e:
             logger.debug("NO token OB failed for %s: %s", market.no_token_id, e)
 
+    bid_levels_yes_all = []
+    ask_levels_yes_all = []
+    bid_levels_no_all = []
+    ask_levels_no_all = []
+
+    if market.yes_token_id:
+        try:
+            ob_yes = _get_ob_from_token_endpoint(market.yes_token_id)
+            yes_bids = ob_yes.get("bids") or []
+            yes_asks = ob_yes.get("asks") or []
+            bid_levels_yes_all = [{"price": float(b.get("price", 0)), "size": float(b.get("size", 0))} for b in yes_bids]
+            ask_levels_yes_all = [{"price": float(a.get("price", 0)), "size": float(a.get("size", 0))} for a in yes_asks]
+        except Exception:
+            pass
+
+    if market.no_token_id:
+        try:
+            ob_no = _get_ob_from_token_endpoint(market.no_token_id)
+            no_bids = ob_no.get("bids") or []
+            no_asks = ob_no.get("asks") or []
+            bid_levels_no_all = [{"price": float(b.get("price", 0)), "size": float(b.get("size", 0))} for b in no_bids]
+            ask_levels_no_all = [{"price": float(a.get("price", 0)), "size": float(a.get("size", 0))} for a in no_asks]
+        except Exception:
+            pass
+
     if bid_yes is None and ask_yes is None:
         return OBSnapshot(
             bid_yes=None, ask_yes=None, bid_no=None, ask_no=None,
@@ -156,6 +181,10 @@ def get_orderbook_snapshot(market: Market) -> OBSnapshot:
             micro_ok=False,
             micro_reason="empty_book",
             fetched_at=now_iso(),
+            bid_levels_yes=bid_levels_yes_all,
+            ask_levels_yes=ask_levels_yes_all,
+            bid_levels_no=bid_levels_no_all,
+            ask_levels_no=ask_levels_no_all,
         )
 
     def _clamp(v: float | None) -> float | None:
@@ -183,6 +212,10 @@ def get_orderbook_snapshot(market: Market) -> OBSnapshot:
             micro_ok=False,
             micro_reason="spread_too_wide",
             fetched_at=now_iso(),
+            bid_levels_yes=bid_levels_yes_all,
+            ask_levels_yes=ask_levels_yes_all,
+            bid_levels_no=bid_levels_no_all,
+            ask_levels_no=ask_levels_no_all,
         )
 
     if depth_val < MIN_DEPTH_TOP5_USD:
@@ -194,6 +227,10 @@ def get_orderbook_snapshot(market: Market) -> OBSnapshot:
             micro_ok=False,
             micro_reason="depth_too_low",
             fetched_at=now_iso(),
+            bid_levels_yes=bid_levels_yes_all,
+            ask_levels_yes=ask_levels_yes_all,
+            bid_levels_no=bid_levels_no_all,
+            ask_levels_no=ask_levels_no_all,
         )
 
     return OBSnapshot(
@@ -204,4 +241,8 @@ def get_orderbook_snapshot(market: Market) -> OBSnapshot:
         micro_ok=True,
         micro_reason="",
         fetched_at=now_iso(),
+        bid_levels_yes=bid_levels_yes_all,
+        ask_levels_yes=ask_levels_yes_all,
+        bid_levels_no=bid_levels_no_all,
+        ask_levels_no=ask_levels_no_all,
     )

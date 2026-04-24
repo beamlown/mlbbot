@@ -1,8 +1,0 @@
-{
-  "status": "fail",
-  "summary": "(no RESULT_JSON emitted)",
-  "task_id": "CONFIDENCE_GATE_LIVE_REBREAK_001",
-  "role": "HAIKU_WORKER",
-  "run_id": "RUN_C72F38FB93D9",
-  "captured_at": "2026-04-17T18:13:39Z"
-}

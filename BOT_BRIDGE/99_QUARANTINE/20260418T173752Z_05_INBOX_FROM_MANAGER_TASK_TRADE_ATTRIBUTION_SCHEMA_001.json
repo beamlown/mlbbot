@@ -1,0 +1,19 @@
+{
+  "task_id": "TRADE_ATTRIBUTION_SCHEMA_001",
+  "type": "code-writing task",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-18",
+  "subsystem": "sports_bot_v2 core storage + attribution",
+  "title": "Add attribution schema + JSONL writer for per-trade audit records",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\db.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\attribution.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\trade_attribution.jsonl"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_TRADE_ATTRIBUTION_SCHEMA_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_TRADE_ATTRIBUTION_SCHEMA_001.json",
+  "assigned_role": "HAIKU_WORKER",
+  "acceptance": "- All columns listed in handoff are present after migration\n- Second run of migration is a no-op (idempotent)\n- core/attribution.py exposes TradeAttribution, classify_trade, write_jsonl\n- classify_trade correctly maps all 5 enum values given test inputs\n- No existing trades data is lost or corrupted\n- No files outside allowed_files modified"
+}

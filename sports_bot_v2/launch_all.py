@@ -19,10 +19,10 @@ LOG_DIR.mkdir(exist_ok=True)
 
 PROCESSES = [
     {
-        "name": "shadow_engine",
+        "name": "mlb_recommendation_api",
         "command": [sys.executable, "-m", "integration.recommendation_api"],
         "cwd": str(MLB_MODEL_DIR),
-        "log_file": str(LOG_DIR / "shadow_engine.log"),
+        "log_file": str(LOG_DIR / "mlb_recommendation_api.log"),
     },
     {
         "name": "bot_core",
@@ -32,7 +32,7 @@ PROCESSES = [
     },
     {
         "name": "dashboard",
-        "command": [sys.executable, "dashboard_server.py"],
+        "command": [sys.executable, "-m", "dugout_dash.run"],
         "cwd": str(SPORTS_BOT_DIR),
         "log_file": str(LOG_DIR / "dashboard.log"),
     },
@@ -47,6 +47,10 @@ PROCESSES = [
 
 def start_process(spec: dict, attempt: int = 1) -> tuple[subprocess.Popen, object]:
     log_fh = open(spec["log_file"], "a", encoding="utf-8")
+    # Add rename notice on first write to new log file
+    if spec["name"] == "mlb_recommendation_api" and log_fh.tell() == 0:
+        log_fh.write("=== MLB Recommendation API (renamed from shadow_engine) ===\n")
+        log_fh.flush()
     proc = subprocess.Popen(
         spec["command"],
         cwd=spec["cwd"],

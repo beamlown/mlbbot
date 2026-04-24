@@ -1,0 +1,42 @@
+{
+  "task_id": "ATTRIBUTION_DASHBOARD_001",
+  "status": "ok",
+  "summary": "Added Attribution section with calibration curve, edge scatter, hit rate table, and trade class breakdown panels. Implemented /api/attribution/summary and /api/attribution/edge_scatter endpoints reading from trades_sports.db only.",
+  "endpoints_added": [
+    "/api/attribution/summary",
+    "/api/attribution/edge_scatter"
+  ],
+  "panels_added": [
+    "calibration_curve",
+    "edge_scatter",
+    "hit_rate_table",
+    "trade_class_breakdown"
+  ],
+  "dashboard_file_authoritative": "dashboard_v2.html",
+  "data_source_verification": [
+    "SELECT entry_model_prob, model_side_was_right, pnl_usd, trade_class FROM trades WHERE ts_close IS NOT NULL AND ts_close >= ? AND entry_model_prob IS NOT NULL AND model_side_was_right IS NOT NULL",
+    "SELECT expected_edge_pct, pnl_usd, trade_class FROM trades WHERE ts_close IS NOT NULL AND ts_close >= ? AND expected_edge_pct IS NOT NULL AND pnl_usd IS NOT NULL"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_v2.html"
+  ],
+  "notes": [
+    "dashboard_v2.html is the authoritative dashboard file (newer version, 33KB vs 109KB original)",
+    "All four panels include sample size (n) with visual indicators for low-sample (<20) buckets",
+    "Low-sample buckets rendered muted (opacity:0.5) with tooltip 'Low sample — not statistically meaningful yet'",
+    "Calibration curve shows 45° diagonal reference line for perfect calibration",
+    "Edge scatter uses trade_class colors: MODEL_WIN_EXPECTED=#18d39e, MODEL_WIN_LUCKY=#5ab6ff, MODEL_LOSS_EXPECTED=#fbbf24, MODEL_LOSS_EXECUTION=#ff4d6d, UNRESOLVED=#91a2b6",
+    "Hit rate table includes mean P&L per confidence bucket",
+    "Trade class breakdown shows both count and net P&L per class",
+    "Attribution data fetched from /api/attribution/summary and /api/attribution/edge_scatter during poll() cycle (10s refresh)"
+  ],
+  "implementation_details": {
+    "calibration_buckets": "0.05 intervals from 0.50 to 1.00, computing predicted mean, realized win rate, mean P&L, and Brier contribution",
+    "overall_metrics": "Brier score and log loss computed across all resolved trades",
+    "canvas_rendering": "Edge scatter and calibration curve rendered with canvas API; calibration shows perfect-calibration 45° reference line",
+    "low_sample_handling": "Buckets with n<20 marked with opacity:0.5, color:var(--dim), and title tooltip describing low sample size"
+  },
+  "no_existing_panels_modified": true,
+  "no_files_outside_allowed_modified": true
+}

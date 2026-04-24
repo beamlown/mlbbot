@@ -1,0 +1,4 @@
+# Baseline configuration: current live settings
+name: baseline
+MIN_ENTRY_CONFIDENCE: 0.55
+MIN_CONFIDENCE: 0.50

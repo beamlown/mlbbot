@@ -1,0 +1,5 @@
+<span class="ticker-cell" data-slug="{{ c.slug }}" data-mark="{{ c.mark if c.mark is not none else '' }}">
+  <span class="ticker-slug">{{ c.slug[:18] }}</span>
+  <span class="ticker-mark">{% if c.mark is not none %}{{ '%.2f'|format(c.mark*100) }}¢{% else %}—{% endif %}</span>
+  <span class="ticker-dir"></span>
+</span>

@@ -1,0 +1,47 @@
+{
+  "task_id": "DB_TRUTH_SINGLE_SOURCE_001",
+  "title": "Audit + enforce trades_sports.db as single source of truth for dashboard data",
+  "priority": "MEDIUM",
+  "type": "audit + refactor",
+  "track": "Track B — observability (P1)",
+  "issued": "2026-04-18",
+  "subsystem": "sports_bot_v2 dashboard",
+  "status": "QUEUED",
+  "assigned_role": "SONNET_WORKER",
+  "depends_on": null,
+  "objective": "Guarantee every dashboard panel/endpoint reads historical trading data from trades_sports.db only, with documented exceptions for operational-state reads.",
+  "paper_only_note": "Paper-only. No trading-logic change.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_v2.html"
+  ],
+  "forbidden_actions": [
+    "Add new dashboard panels",
+    "Change attribution schema",
+    "Delete paper_trades.db",
+    "Modify bot_core or trading code",
+    "Change mark-source authority",
+    "Touch real-money paths"
+  ],
+  "required_work": [
+    "1. Inventory every /api/* endpoint and classify its data source.",
+    "2. Identify violations: paper_trades.db reads, stale in-memory caches, log-only computations, silent fallbacks.",
+    "3. Fix each violation by switching to trades_sports.db reads.",
+    "4. Document exceptions where a non-DB source is correct (e.g., runtime/state.json for live bot state)."
+  ],
+  "acceptance_criteria": [
+    "No endpoint reads paper_trades.db for historical trade data",
+    "Every violation is either fixed or documented with reasoning",
+    "Dashboard renders the same numbers post-fix (no regression in correctness)",
+    "Inventory + diff provided in result",
+    "No files outside allowed_files modified"
+  ],
+  "verification": [
+    "Paste endpoint inventory table",
+    "Paste diff for each violation",
+    "Confirm dashboard renders without error post-change",
+    "grep for paper_trades.db in dashboard code shows zero reads"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_DB_TRUTH_SINGLE_SOURCE_001.json"
+}

@@ -1,0 +1,7 @@
+{
+  "task_id": "DASHBOARD_PERFORMANCE_POLISH_001",
+  "status": "blocked",
+  "summary": "Cannot start: depends on DASHBOARD_POSITIONS_HISTORY_SYSTEM_001 being approved",
+  "files_changed": [],
+  "notes": "HANDOFF specifies 'Do not begin until: DASHBOARD_POSITIONS_HISTORY_SYSTEM_001 APPROVED'. That task has no result file and is still unclaimed in the inbox. Complete that task first, then this one can proceed."
+}

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Dugout Dash · sports_bot_v2{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Inter+Tight:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+
+<header class="scoreboard">
+  <div class="scoreboard-left">
+    <a href="{{ url_for('game.index') }}" class="brand-pixel">
+      <span class="brand-pixel-line1">DUGOUT DASH</span>
+      <span class="brand-pixel-line2">sports_bot_v2 · {{ PORT }}</span>
+    </a>
+    <span class="chip-pixel-led" title="Bot version">● BOT v{{ BOT_VERSION|default('0.4.2') }}</span>
+    <span class="chip-pixel-led" title="Live games">⚾ {{ LIVE_COUNT|default(0) }}</span>
+    <span class="chip-pixel-led" title="Open positions">💼 {{ OPEN_COUNT|default(0) }}</span>
+    <span id="sse-chip" class="chip-pixel chip-pixel--ok" title="Realtime stream">✓ LIVE</span>
+  </div>
+
+  <nav class="scoreboard-nav">
+    <a href="{{ url_for('game.index') }}"   class="nav-tab {% if ACTIVE=='game' %}active{% endif %}">[ GAME ]</a>
+    <a href="/trades" class="nav-tab {% if ACTIVE=='trades' %}active{% endif %}">[ TRADES ]</a>
+    <a href="/tape"   class="nav-tab {% if ACTIVE=='tape' %}active{% endif %}">[ TAPE ]</a>
+    <a href="/system" class="nav-tab {% if ACTIVE=='system' %}active{% endif %}">[ SYSTEM ]</a>
+    <a href="/hof"    class="nav-tab {% if ACTIVE=='hof' %}active{% endif %}">[ HALL OF FAME ]</a>
+  </nav>
+
+  <div class="scoreboard-right">
+    <span class="chip-pixel-led">💰 ${{ '%.2f'|format(BANKROLL|default(0.0)) }}</span>
+    {% if TODAY_PNL is not none %}
+    <span class="chip-pixel-led">
+      {% if TODAY_PNL >= 0 %}<span class="pnl-up">+${{ '%.2f'|format(TODAY_PNL) }}</span>
+      {% else %}<span class="pnl-down">-${{ '%.2f'|format(-TODAY_PNL) }}</span>{% endif %}
+    </span>
+    {% endif %}
+  </div>
+</header>
+
+<main>
+{% block content %}{% endblock %}
+</main>
+
+<footer class="led-ribbon">
+  <span>repo sports_bot_v2</span>
+  <span>·</span>
+  <span>db {{ DB_PATH }}</span>
+  <span>·</span>
+  <span>port {{ PORT }}</span>
+  <span>·</span>
+  <span id="sse-client-count">sse clients —</span>
+</footer>
+
+<div id="toast-root"></div>
+
+<script src="{{ url_for('static', filename='dugout.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

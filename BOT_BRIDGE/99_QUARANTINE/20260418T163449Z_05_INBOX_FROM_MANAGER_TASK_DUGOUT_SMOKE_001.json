@@ -1,0 +1,13 @@
+{
+  "task_id": "DUGOUT_SMOKE_001",
+  "type": "imported_from_board",
+  "priority": "LOW",
+  "status": "ACTIVE",
+  "issued": "2026-04-18",
+  "subsystem": "",
+  "title": "dugout smoke test",
+  "allowed_files": [],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_DUGOUT_SMOKE_001.md",
+  "assigned_role": "HAIKU_WORKER"
+}

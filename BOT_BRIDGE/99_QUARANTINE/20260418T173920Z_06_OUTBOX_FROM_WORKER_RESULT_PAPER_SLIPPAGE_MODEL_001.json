@@ -1,0 +1,104 @@
+{
+  "task_id": "PAPER_SLIPPAGE_MODEL_001",
+  "status": "ok",
+  "summary": "Implemented realistic walk-the-book + slippage buffer for paper execution. Walk-the-book computes VWAP by consuming orderbook depth; slippage buffer (default 2 cents) is applied on top and fully configurable via env vars.",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\types.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\orderbook.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "config_entries_added": [
+    "PAPER_SLIPPAGE_ENABLED",
+    "PAPER_SLIPPAGE_CENTS"
+  ],
+  "config_details": {
+    "PAPER_SLIPPAGE_ENABLED": {
+      "type": "bool",
+      "default": "true",
+      "description": "Enable walk-the-book + slippage model; when disabled, fills use best bid/ask without adjustment"
+    },
+    "PAPER_SLIPPAGE_CENTS": {
+      "type": "float",
+      "default": 2.0,
+      "description": "Slippage buffer in cents to apply on top of VWAP for both entry and exit fills"
+    }
+  },
+  "default_slippage_cents": 2.0,
+  "implementation_details": {
+    "walk_the_book_algorithm": "Consumes orderbook levels from best to worst, accumulating shares and USD spent to compute volume-weighted average price (VWAP). Tracks partial_fill flag when depth insufficient.",
+    "slippage_model": "Additive cents buffer on top of VWAP (e.g., +$0.02 for entry, -$0.02 for exit). Conservative and parameterizable.",
+    "actual_fill_px": "New field on Trade record (actual_fill_px) populated with the realized fill price including slippage, ready for attribution wiring.",
+    "logging": "Per-fill log line includes: side | desired_size | vwap | fill_px | slippage_bps | partial_fill flag"
+  },
+  "example_fills": [
+    {
+      "scenario": "Small order (1% of orderbook depth)",
+      "size_usd": 2.92,
+      "vwap_without_slippage": 0.54,
+      "slippage_cents": 2.0,
+      "fill_px_with_slippage": 0.56,
+      "slippage_bps": 200,
+      "partial": false,
+      "filled_usd": 2.92,
+      "note": "Fills entirely at level 1; VWAP matches best ask"
+    },
+    {
+      "scenario": "Medium order (50% of orderbook depth)",
+      "size_usd": 146.05,
+      "vwap_without_slippage": 0.54257,
+      "slippage_cents": 2.0,
+      "fill_px_with_slippage": 0.56257,
+      "slippage_bps": 200,
+      "partial": false,
+      "filled_usd": 146.05,
+      "note": "Consumes levels 1-3 (0.54, 0.55, 0.56); VWAP averages across all"
+    },
+    {
+      "scenario": "Large order (exceeds orderbook depth)",
+      "size_usd": 438.15,
+      "vwap_without_slippage": 0.551132,
+      "slippage_cents": 2.0,
+      "fill_px_with_slippage": 0.571132,
+      "slippage_bps": 200,
+      "partial": true,
+      "filled_usd": 292.1,
+      "note": "Consumes all available levels; partial_fill=true; worst VWAP due to deeper levels"
+    }
+  ],
+  "example_orderbook": {
+    "scenario": "Synthetic Polymarket orderbook used for examples",
+    "ask_side": [
+      {"price": 0.54, "size": 200, "usd_value": 108},
+      {"price": 0.55, "size": 150, "usd_value": 82.5},
+      {"price": 0.56, "size": 100, "usd_value": 56},
+      {"price": 0.57, "size": 80, "usd_value": 45.6}
+    ],
+    "total_depth_usd": 292.1,
+    "note": "Real orderbooks fetched from Polymarket CLOB API; levels captured in OBSnapshot.ask_levels_yes/no and bid_levels_yes/no"
+  },
+  "verification_checklist": {
+    "walk_the_book_computes_vwap": true,
+    "partial_fill_when_depth_insufficient": true,
+    "slippage_configurable": true,
+    "slippage_toggleable": true,
+    "actual_fill_px_populated": true,
+    "per_fill_logging": true,
+    "no_decision_logic_changed": true,
+    "no_bankroll_or_sizing_changed": true,
+    "no_live_execution_code_added": true
+  },
+  "integration_notes": {
+    "orderbook_snapshot_extension": "OBSnapshot now includes bid_levels_yes/no and ask_levels_yes/no (list of dicts with price/size). Populated in orderbook.py when fetching from Polymarket API.",
+    "trade_record_extension": "Trade.actual_fill_px field added, populated in open_position() with the slippage-adjusted fill price. Ready for TRADE_ATTRIBUTION_WIRING_001 downstream.",
+    "env_var_pattern": "Follows existing convention: PAPER_SLIPPAGE_ENABLED and PAPER_SLIPPAGE_CENTS read from environment with sensible defaults.",
+    "config_hash_updated": "bot_core.py CONFIG_HASH includes both new config entries so config changes trigger rebuild signals."
+  },
+  "next_steps": [
+    "Verify walk-the-book behavior in live paper trading by checking fill logs for realistic VWAP and slippage.",
+    "Compare paper fills vs actual Polymarket fills to tune default slippage_cents (2.0 is conservative starting point).",
+    "Once TRADE_ATTRIBUTION_WIRING_001 lands, verify actual_fill_px field flows through to edge attribution (expected_edge_pct vs realized_pnl).",
+    "Monitor edge measurements: if still optimistic vs live, consider increasing PAPER_SLIPPAGE_CENTS in production config."
+  ],
+  "notes": "Walk-the-book fills are most realistic when orderbook has sufficient depth. Polymarket markets vary; some thin books will hit partial_fill=true more often. Slippage model assumes conservative (not first-in-queue) position in limit order queue, suitable for paper validation. For live execution (future), would need to enhance with actual order queue position tracking."
+}

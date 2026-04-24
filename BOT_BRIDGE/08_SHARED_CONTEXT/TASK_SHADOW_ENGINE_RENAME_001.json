@@ -1,0 +1,50 @@
+{
+  "task_id": "SHADOW_ENGINE_RENAME_001",
+  "title": "Rename shadow_engine → mlb_recommendation_api across launcher, logs, dashboard",
+  "priority": "MEDIUM",
+  "type": "refactor / rename",
+  "track": "Track B — observability cleanup (P1)",
+  "issued": "2026-04-18",
+  "subsystem": "sports_bot_v2 launcher + dashboard",
+  "status": "QUEUED",
+  "assigned_role": "SONNET_WORKER",
+  "depends_on": null,
+  "objective": "Replace the legacy name shadow_engine with mlb_recommendation_api wherever it refers to the launcher process + its UI surface, to reflect what the process actually does (MLB model recommendation API).",
+  "paper_only_note": "Paper-only. Zero functional change.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_v2.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\restart_bot.bat",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\run_control_plane.bat"
+  ],
+  "forbidden_actions": [
+    "Modify mlb_model/integration/recommendation_api",
+    "Modify anything under BOT_BRIDGE/",
+    "Rename historical log files",
+    "Change any functional behavior",
+    "Touch real-money paths"
+  ],
+  "required_work": [
+    "1. Grep for every occurrence of shadow_engine in allowed files.",
+    "2. Replace with mlb_recommendation_api (case-preserving).",
+    "3. Route new log writes to logs/mlb_recommendation_api.log.",
+    "4. Update dashboard process-health label + hover tooltip.",
+    "5. Leave historical log file and all BOT_BRIDGE handoffs untouched."
+  ],
+  "acceptance_criteria": [
+    "Launcher starts the process under the new name",
+    "New writes appear in logs/mlb_recommendation_api.log",
+    "Dashboard shows the new name with explanatory tooltip",
+    "BOT_BRIDGE directory has zero modifications",
+    "No functional behavior change — process starts and logs same content"
+  ],
+  "verification": [
+    "Start launcher, paste the LAUNCHER: line showing new name",
+    "ls logs/ showing both old and new log files",
+    "Screenshot or describe dashboard label change",
+    "git status or file-diff output confirming no BOT_BRIDGE changes"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_SHADOW_ENGINE_RENAME_001.json"
+}

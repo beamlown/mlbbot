@@ -58,6 +58,107 @@ def task_id_from_filename(filename: str) -> str | None:
 
 
 # ---------------------------------------------------------------------------
+# Writer-attribution header (2026-04-18)
+#
+# Every new artifact file should begin with an HTML comment encoding who
+# wrote it, which task/patch it belongs to, and the attempt number:
+#
+#   <!-- writer: worker, task_id: FOO_001, patch_id: pending, written_at: 2026-04-18T06:12:00Z, attempt: 1 -->
+#
+# The header is the ground truth the importer uses to route writes to the
+# right folder and detect misplacements. Legacy files without this header
+# are still accepted (so we don't quarantine everything existing); the
+# enforcement is only for files dropped into writer-owned folders.
+# ---------------------------------------------------------------------------
+
+_WRITER_HEADER_RE = re.compile(
+    r"^\s*<!--\s*"
+    r"writer:\s*(?P<writer>[A-Za-z_][A-Za-z0-9_]*)\s*,\s*"
+    r"task_id:\s*(?P<task_id>[A-Za-z0-9_-]+)\s*,\s*"
+    r"patch_id:\s*(?P<patch_id>[A-Za-z0-9_-]+)\s*,\s*"
+    r"written_at:\s*(?P<written_at>[0-9T:+\-Zz.]+)\s*,\s*"
+    r"attempt:\s*(?P<attempt>\d+)\s*"
+    r"-->\s*$",
+    re.MULTILINE,
+)
+
+# Folder basename → set of legal writer values. Folders not listed here
+# are un-policed (e.g. 04_DRAFTS is operator scratch; 08_SHARED_CONTEXT
+# is legacy-mixed).
+EXPECTED_WRITER_BY_FOLDER: dict[str, frozenset[str]] = {
+    "05_INBOX_FROM_MANAGER": frozenset({"manager", "control_plane", "operator"}),
+    "06_OUTBOX_FROM_WORKER": frozenset({"worker"}),
+    "07_REVIEWS":            frozenset({"reviewer"}),
+    "08_PATCHES":            frozenset({"auditor", "control_plane", "operator"}),
+    "10_ARCHIVE":            frozenset({"control_plane"}),
+    "99_QUARANTINE":         frozenset({"control_plane"}),
+}
+
+# Folders where a missing writer header is tolerated (legacy data lives here).
+WRITER_HEADER_LENIENT_FOLDERS: frozenset[str] = frozenset({
+    "08_SHARED_CONTEXT",
+    "04_DRAFTS",
+    "01_RULES",
+    "02_PROMPTS",
+    "03_TEMPLATES",
+    "00_START_HERE",
+})
+
+
+def parse_writer_header(text: str) -> dict | None:
+    """Extract the writer-attribution header from the first 4KB of text.
+
+    Returns a dict with keys writer / task_id / patch_id / written_at /
+    attempt (attempt as int) on success, or None if no valid header.
+    """
+    if not text:
+        return None
+    head = text[:4096]
+    m = _WRITER_HEADER_RE.search(head)
+    if not m:
+        return None
+    try:
+        attempt = int(m.group("attempt"))
+    except (TypeError, ValueError):
+        attempt = 1
+    return {
+        "writer": m.group("writer").lower(),
+        "task_id": m.group("task_id").upper(),
+        "patch_id": m.group("patch_id"),
+        "written_at": m.group("written_at"),
+        "attempt": max(1, attempt),
+    }
+
+
+def validate_writer(folder_basename: str, text: str) -> tuple[bool, str]:
+    """Verify the writer header matches the folder's writer contract.
+
+    Returns (ok, reason). `ok=True` means either:
+      (a) the folder is lenient and tolerates missing headers, or
+      (b) the header exists AND its writer is in the folder's allowed set.
+
+    `ok=False` returns a short `reason` string suitable for the
+    `quarantined_artifacts.reason` column.
+    """
+    folder = folder_basename
+    allowed = EXPECTED_WRITER_BY_FOLDER.get(folder)
+    header = parse_writer_header(text)
+    if allowed is None:
+        # Un-policed folder → accept either way.
+        return True, ""
+    if header is None:
+        if folder in WRITER_HEADER_LENIENT_FOLDERS:
+            return True, ""
+        return False, f"missing writer-attribution header in {folder}"
+    if header["writer"] not in allowed:
+        return False, (
+            f"writer={header['writer']!r} not allowed in {folder} "
+            f"(expected one of {sorted(allowed)})"
+        )
+    return True, ""
+
+
+# ---------------------------------------------------------------------------
 # TASK_*.json
 # ---------------------------------------------------------------------------
 

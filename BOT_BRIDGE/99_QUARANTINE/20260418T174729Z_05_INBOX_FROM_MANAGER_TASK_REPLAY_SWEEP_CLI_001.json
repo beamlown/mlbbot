@@ -1,0 +1,20 @@
+{
+  "task_id": "REPLAY_SWEEP_CLI_001",
+  "type": "code-writing task",
+  "priority": "MEDIUM",
+  "status": "ACTIVE",
+  "issued": "2026-04-18",
+  "subsystem": "sports_bot_v2 replay tooling",
+  "title": "CLI for single + sweep replay: N configs × date range → ranked comparison table + JSON output",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\tools\\replay.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\configs",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\configs\\baseline.yaml",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\configs\\gate_sweep.yaml",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\results"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_REPLAY_SWEEP_CLI_001.md",
+  "assigned_role": "HAIKU_WORKER",
+  "acceptance": "- --single runs one config end-to-end and prints summary\n- --sweep runs N configs and prints sorted comparison table\n- YAML sweep config expands list values into cross-product\n- Output files written to results/\n- 7-day × 10 configs target: finishes in < 2 minutes OR report actual time + suggestion\n- No harness or live-code modification"
+}

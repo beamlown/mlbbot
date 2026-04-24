@@ -1,0 +1,12 @@
+# Sweep configuration: test multiple confidence thresholds
+# Lists expand into cross-product
+name: gate_sweep
+MIN_ENTRY_CONFIDENCE:
+  - 0.55
+  - 0.58
+  - 0.60
+  - 0.62
+MIN_CONFIDENCE:
+  - 0.50
+  - 0.53
+  - 0.55

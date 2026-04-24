@@ -1,0 +1,9 @@
+<a href="{{ url_for('game.detail', espn_id=g.espn_id) }}"
+   class="game-tile {% if g.espn_id == SELECTED %}selected{% endif %}">
+  <div class="teams">{{ g.away_abbr or g.away[:3] }} @ {{ g.home_abbr or g.home[:3] }}</div>
+  <div>{{ g.away_score }} – {{ g.home_score }} · <span class="state">
+    {% if g.status == 'STATUS_FINAL' %}FINAL
+    {% elif g.inning > 0 %}{{ 'T' if g.inning_half == 'top' else 'B' }}{{ g.inning }}
+    {% else %}{{ g.status_display or g.status }}{% endif %}
+  </span></div>
+</a>

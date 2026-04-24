@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep \"HANDOFF.*\\\\.md$\")",
+      "Bash(grep -v \"\\\\.claimed$\")",
+      "Read(//c/Users/johnny/Desktop/mlbbot/BOT_BRIDGE/05_INBOX_FROM_MANAGER//**)",
+      "Bash(mv \"HANDOFF_BASEBALL_POSITION_SEMANTICS_INCIDENT_001.md\" \"HANDOFF_BASEBALL_POSITION_SEMANTICS_INCIDENT_001.md.claimed\")",
+      "Bash(sqlite3 *)",
+      "Bash(mv *)",
+      "Bash(awk '{print $6, $7, $8, $9}')"
+    ]
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "task_id": "CONFIDENCE_GATE_POSTFIX_VERIFY_001",
+  "status": "fail",
+  "read_only_confirmed": true,
+  "summary": "CRITICAL REGRESSION DETECTED: 47 trades with confidence < 0.60 opened after restart, despite gate rejection log appearing at 00:00:16. Gate logs show work but trades still created - logging/execution disconnect or alternative code path.",
+  "questions_answered": {
+    "q1_restart_confirmed": {
+      "verdict": "YES",
+      "timestamp": "2026-04-10T23:59:18.631Z",
+      "evidence": "Log line: '2026-04-10 23:59:18,631 [INFO] bot_core: sports_bot_v2 starting'",
+      "post_patch": "YES - timestamp is after expected patch application (~2026-04-10T23:xx UTC)"
+    },
+    "q2_gate_rejection_logs": {
+      "verdict": "MINIMAL - Only 1 rejection found",
+      "rejection_found": true,
+      "example": {
+        "timestamp": "2026-04-11T00:00:16.347Z",
+        "message": "BRIDGE GATE REJECT [check_entry_gates] slug=mlb-tex-lad-2026-04-11 reasons=['confidence_too_low:0.6286:0.650']",
+        "signal_confidence": 0.6286,
+        "gate_threshold": 0.650
+      },
+      "pattern": "Only ONE confidence_too_low rejection logged after restart, but 47 sub-0.60 trades exist in database",
+      "interpretation": "Gate code appears to be working but either (a) vast majority of intents are not triggering gate checks, or (b) logging is suppressed"
+    },
+    "q3_no_sub_60_trades": {
+      "verdict": "FAIL - CRITICAL REGRESSION",
+      "sub_60_trades_found": 47,
+      "trades_sample": [
+        {"id": 241, "confidence": 0.3863, "ts_open": "2026-04-11T00:00:29.211044+00:00", "source": "model_bridge"},
+        {"id": 243, "confidence": 0.3279, "ts_open": "2026-04-11T00:14:42.677833+00:00", "source": "model_bridge"},
+        {"id": 244, "confidence": 0.3769, "ts_open": "2026-04-11T00:37:16.018282+00:00", "source": "model_bridge"},
+        {"id": 246, "confidence": 0.2824, "ts_open": "2026-04-11T00:56:34.399134+00:00", "source": "model_bridge"},
+        {"id": 247, "confidence": 0.3701, "ts_open": "2026-04-11T01:02:41.044097+00:00", "source": "model_bridge"}
+      ],
+      "issue": "All 47 trades have source='model_bridge' and timestamps AFTER restart, yet NO BRIDGE OPEN log entries for these trade IDs"
+    },
+    "q4_valid_entries": {
+      "verdict": "PASS - Valid entries opening normally",
+      "trades_>=_60": 37,
+      "trades_sample": [
+        {"id": 242, "confidence": 0.6326, "ts_open": "2026-04-11T00:09:19.952901+00:00", "source": "model_bridge"},
+        {"id": 245, "confidence": 0.6429, "ts_open": "2026-04-11T00:52:07.965941+00:00", "source": "model_bridge"}
+      ],
+      "interpretation": "System is opening valid trades, but simultaneously allowing sub-0.60 trades through"
+    },
+    "q5_process_freshness": {
+      "verdict": "YES - Running patched code",
+      "latest_startup": "2026-04-10T23:59:18.631Z",
+      "evidence": "Restart is post-patch and gate check_entry_gates code is present and executing (rejection log shows it runs)"
+    }
+  },
+  "critical_finding": {
+    "issue": "Logging/Execution Disconnect on Sub-60 Trades",
+    "evidence": [
+      "Gate rejects 0.6286 confidence at 00:00:16 with confidence_too_low message",
+      "But only 1 such rejection logged post-restart",
+      "Yet 47 trades with confidence < 0.60 exist in database",
+      "Zero BRIDGE OPEN log entries for any of these 47 trades"
+    ],
+    "hypothesis": [
+      "1. MOST LIKELY: These trades were NOT created by bot_core.py bridge path. They may have been:",
+      "   - Inserted by a different process/instance running old code without gate checks",
+      "   - Manually inserted into database",
+      "   - Created through a code path that doesn't log BRIDGE OPEN",
+      "   - Created by concurrent bot instance(s) not captured in main logs",
+      "",
+      "2. ALTERNATIVE: Logging is selectively suppressed for these opens but code executed anyway",
+      "   - Would imply a code path that opens but doesn't log",
+      "   - Inconsistent with observed gate rejection log (00:00:16)",
+      "",
+      "3. THIRD: Database timestamps are incorrect/post-dated relative to actual creation time"
+    ]
+  },
+  "confidence_gate_status": {
+    "code_verdict": "UNCLEAR - Gate code appears present and rejecting, but execution audit shows trades opening anyway",
+    "threshold": "0.650 (from .env MIN_ENTRY_CONFIDENCE=0.65)",
+    "check_location": "bot_core.py lines 632-651 (check_entry_gates + continue on failure)",
+    "observed_behavior": "Rejects 0.6286 confidence correctly, but 47 sub-0.60 trades opened post-restart"
+  },
+  "post_fix_status": "REGRESSION - The patch may not be actively preventing sub-0.60 trades through the bridge. Either the trades are from a different path, or there is a critical bug in execution.",
+  "recommendation": "BLOCKER - Do not proceed with bridge enablement. Investigate: (1) Check if concurrent bot processes exist, (2) Verify no alternative code paths create trades, (3) Audit trades 241-287 for log gaps or process source, (4) Confirm bot_core.py code matches running process bytecode"
+}

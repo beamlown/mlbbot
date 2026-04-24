@@ -1,0 +1,10 @@
+{
+  "status": "blocked",
+  "summary": "HANDOFF file not found for DUGOUT_SMOKE_001",
+  "files_changed": [],
+  "notes": "The HANDOFF file at BOT_BRIDGE/05_INBOX_FROM_MANAGER/HANDOFF_DUGOUT_SMOKE_001.md does not exist. Cannot proceed without task requirements, acceptance criteria, and scope. No allowed_files were specified.",
+  "next_steps": [
+    "Manager should create or restore the HANDOFF file for DUGOUT_SMOKE_001",
+    "HANDOFF must include task description, acceptance criteria, and allowed_files list"
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "task_id": "DASHBOARD_HIERARCHY_FIX_001",
+  "status": "ok",
+  "summary": "Dashboard hierarchy restructured: trade log demoted from forced visibility on desktop to hidden-by-default with optional toggle. Live game + position monitor now dominates primary viewport.",
+  "files_changed": [
+    "C:\Users\johnny\Desktop\sports_bot_v2\dashboard.html"
+  ],
+  "notes": "Changes made:\n1. Removed `display:block !important;` from desktop media query (line 375) that forced drawer visible on >=800px screens. Drawer now respects base CSS rule `.drawer { display:none; }` on all viewport sizes.\n2. Added toggle button above drawer (lines 564-566) with label 'Secondary Panels (Trade Log, Shadow, Candidates)' to make drawer accessible without forcing it open by default.\n3. LIVE tab remains active by default on page load, showing live game monitor and position cards as primary above-the-fold content.\n4. Trade log and other secondary features (shadow feed, candidates, manual entry) now live in hidden drawer, toggled by user action.\n\nAcceptance criteria met:\n- Trade log no longer owns the page (hidden by default)\n- Live game/active position monitor is primary above-the-fold content (LIVE tab shows these)\n- User can immediately see current live situation (LIVE tab active with position and game cards)\n- Shadow/debug/history remain secondary (in hidden drawer)\n- No truth regression (toggle function already existed, just wired it up)\n- No broad redesign drift (minimal structural change, only CSS media query and added button)"
+}

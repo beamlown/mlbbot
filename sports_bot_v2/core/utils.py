@@ -14,6 +14,11 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 
 
+# Maximum honored Retry-After hint in seconds. A server asking us to wait
+# longer than this is treated as misconfigured; we clamp and try again sooner.
+MAX_RETRY_AFTER_S = float(os.getenv("MAX_RETRY_AFTER_S", "120"))
+
+
 def atomic_write_json(path: str, data: Any) -> None:
     """Write JSON atomically: write to .tmp then os.replace() to destination.
     Retries rename on PermissionError (Windows file-lock race with readers)."""
@@ -66,8 +71,47 @@ def is_transient_error(exc: Exception) -> bool:
     return isinstance(exc, (urllib.error.URLError, TimeoutError, OSError))
 
 
+def _retry_after_seconds(exc: Exception) -> float | None:
+    """If exc is an HTTPError carrying a Retry-After header, return seconds to wait.
+
+    Accepts both numeric delta-seconds and HTTP-date forms per RFC 9110 §10.2.3.
+    Returns None if header is missing or unparseable.
+    """
+    if not isinstance(exc, urllib.error.HTTPError):
+        return None
+    try:
+        raw = exc.headers.get("Retry-After") if exc.headers else None
+    except AttributeError:
+        raw = None
+    if not raw:
+        return None
+    text = str(raw).strip()
+    # Numeric delta-seconds form
+    try:
+        return float(text)
+    except (TypeError, ValueError):
+        pass
+    # HTTP-date form
+    try:
+        from email.utils import parsedate_to_datetime
+        from datetime import datetime, timezone
+        dt = parsedate_to_datetime(text)
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        delta = (dt - datetime.now(timezone.utc)).total_seconds()
+        return delta if delta > 0 else 0.0
+    except (TypeError, ValueError):
+        return None
+
+
 def retry_with_backoff(fn: Callable, retries: int = 3, backoff_ms: int = 500) -> Any:
-    """Exponential backoff + jitter on transient errors."""
+    """Exponential backoff + jitter on transient errors.
+
+    If the server returns HTTP 429 with a numeric `Retry-After` header, sleep for
+    that many seconds instead of the computed backoff.
+    """
     attempt = 0
     while True:
         try:
@@ -75,8 +119,13 @@ def retry_with_backoff(fn: Callable, retries: int = 3, backoff_ms: int = 500) ->
         except Exception as exc:
             if attempt >= retries or not is_transient_error(exc):
                 raise
-            sleep_ms = backoff_ms * (2 ** attempt) + random.randint(0, max(50, backoff_ms // 3))
-            time.sleep(sleep_ms / 1000.0)
+            hinted = _retry_after_seconds(exc)
+            if hinted is not None and hinted > 0:
+                sleep_s = min(hinted, MAX_RETRY_AFTER_S)
+            else:
+                sleep_ms = backoff_ms * (2 ** attempt) + random.randint(0, max(50, backoff_ms // 3))
+                sleep_s = sleep_ms / 1000.0
+            time.sleep(sleep_s)
             attempt += 1
 
 

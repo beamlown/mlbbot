@@ -45,6 +45,10 @@ class OBSnapshot:
     micro_ok: bool
     micro_reason: str         # "" when ok; "spread_too_wide"|"depth_too_low"|"stale_data"|"empty_book"
     fetched_at: str = ""
+    bid_levels_yes: list[dict] = field(default_factory=list)  # [{"price": x, "size": y}, ...]
+    ask_levels_yes: list[dict] = field(default_factory=list)
+    bid_levels_no: list[dict] = field(default_factory=list)
+    ask_levels_no: list[dict] = field(default_factory=list)
 
 
 @dataclass
@@ -129,6 +133,7 @@ class Trade:
     mode: str
     status: str               # "open" | "closed"
     source: str = "bot"
+    actual_fill_px: float | None = None  # entry price reflecting real walk-the-book + slippage
 
 
 @dataclass
