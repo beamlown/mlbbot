@@ -1,0 +1,26 @@
+{
+  "task_id": "TRADE_FORENSICS_SNAPSHOT_001",
+  "type": "surgical observability improvement",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-11",
+  "subsystem": "trade observability / entry forensics",
+  "title": "Persist a compact forensic snapshot for every new trade entry",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py",
+    "Any mlb_model file",
+    "Any file not listed above"
+  ],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_TRADE_FORENSICS_SNAPSHOT_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_TRADE_FORENSICS_SNAPSHOT_001.json",
+  "review_path": "07_REVIEWS/REVIEW_TRADE_FORENSICS_SNAPSHOT_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- Each new trade stores a compact forensic snapshot containing the required fields\n- Persistence path is documented and readable for future audits\n- No files outside allowed scope modified\n- python -m py_compile bot_core.py passes if modified\n- python -m py_compile core/paper_exec.py passes if modified"
+}

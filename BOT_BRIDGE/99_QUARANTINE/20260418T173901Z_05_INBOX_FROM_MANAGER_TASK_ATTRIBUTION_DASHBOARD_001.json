@@ -1,0 +1,19 @@
+{
+  "task_id": "ATTRIBUTION_DASHBOARD_001",
+  "type": "code-writing task",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-18",
+  "subsystem": "sports_bot_v2 dashboard",
+  "title": "Add Attribution section to dashboard: calibration curve, edge scatter, hit-rate table, trade-class breakdown",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_v2.html"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_ATTRIBUTION_DASHBOARD_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_ATTRIBUTION_DASHBOARD_001.json",
+  "assigned_role": "HAIKU_WORKER",
+  "acceptance": "- Two new /api/attribution/* endpoints exist and return the documented JSON shape\n- Four new panels render in the authoritative dashboard file\n- Every panel reads from trades_sports.db only (grep proof in result)\n- Low-sample (n<20) buckets render muted with tooltip\n- No existing panel is altered\n- No files outside allowed_files modified"
+}

@@ -1,0 +1,20 @@
+{
+  "task_id": "AUTHORITY_SEPARATION_AUDIT_001",
+  "type": "unspecified",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "authority-model",
+  "title": "Audit remaining authority-separation violations between mlb_model and sports_bot_v2",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\signal_base.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\core\\execution_guard.py"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_AUTHORITY_SEPARATION_AUDIT_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- Every allowed file was read and searched\n- Violation list covers all five allowed files\n- Each violation entry has: file, line range, description, gated/dead/active classification, recommended disposition\n- No code was changed\n- Result written to 06_OUTBOX_FROM_WORKER as RESULT_AUTHORITY_SEPARATION_AUDIT_001.json"
+}

@@ -1,0 +1,22 @@
+{
+  "task_id": "TRADE_ATTRIBUTION_WIRING_001",
+  "type": "code-writing task",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-18",
+  "subsystem": "sports_bot_v2 + mlb_model integration",
+  "title": "Wire entry/exit/resolution code paths to populate attribution fields; backfill existing trades",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\resolution_watcher.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\tools\\backfill_attribution.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\attribution.py"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_TRADE_ATTRIBUTION_WIRING_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_TRADE_ATTRIBUTION_WIRING_001.json",
+  "assigned_role": "HAIKU_WORKER",
+  "acceptance": "- A new paper trade exercised end-to-end writes non-NULL values for all attribution columns at the appropriate lifecycle point\n- Resolution correctly populates trade_class per enum rules\n- Backfill script is idempotent and distinguishes reliable (attribution_version=1) from best-effort (attribution_version=0)\n- No change in entry/exit decision behavior\n- No files outside allowed_files modified"
+}

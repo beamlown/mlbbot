@@ -1,0 +1,14 @@
+{
+  "status": "blocked",
+  "summary": "Task is DEFERRED — activation condition not met. Requires ≥30 trades opened after 2026-04-11T10:57:33 UTC (clean restart). Current count: 0. No clean-era trades exist; bot last traded 2026-04-11T05:00 UTC (zombie-process era). Do not dispatch to a worker until activation condition is reached.",
+  "task_id": "CLEAN_RUNTIME_WINDOW_AUDIT_001",
+  "role": "MANAGER",
+  "run_id": "RUN_MANAGER_DEFERRED_CHECK",
+  "captured_at": "2026-04-17T20:30:00Z",
+  "activation_condition": {
+    "required": "n_clean_era_trades >= 30",
+    "current": 0,
+    "anchor_ts": "2026-04-11T10:57:33Z"
+  },
+  "allowed_files_note": "trades_sports.db listed as NOT FOUND in indexed roots — task cannot run regardless; moot until activation condition is met."
+}

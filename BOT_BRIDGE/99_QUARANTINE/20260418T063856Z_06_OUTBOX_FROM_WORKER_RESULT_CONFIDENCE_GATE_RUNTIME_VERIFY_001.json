@@ -1,0 +1,83 @@
+{
+  "task_id": "CONFIDENCE_GATE_RUNTIME_VERIFY_001",
+  "status": "inconclusive",
+  "read_only_confirmed": true,
+  "answers_to_6_questions": {
+    "q1_restart_time": {
+      "manager_claim": "2026-04-10T19:40:43Z (bot_core.py PID 24800)",
+      "log_evidence": "Last 'sports_bot_v2 starting' in bot_baseball_20260410.log is at 2026-04-10T18:52:24. No explicit startup log at 19:40:43Z found.",
+      "conclusion": "Restart time claimed by manager (19:40:43Z) is NOT confirmed by log. Last logged restart is 18:52:24Z, ~48 minutes earlier.",
+      "critical": "If restart was truly at 19:40:43Z, there should be a startup log line. Absence suggests either: (a) restart happened without logging, (b) restart time is incorrect, or (c) different process."
+    },
+    "q2_trade_timestamps": {
+      "verdict": "CONFIRMED - Both trades opened AFTER claimed restart",
+      "trade_223": {
+        "confidence": 0.3353,
+        "ts_open": "2026-04-10T22:44:07.039312+00:00",
+        "delta_from_19_40_43": "+3h 3m 24s",
+        "delta_from_18_52_24": "+3h 51m 43s"
+      },
+      "trade_224": {
+        "confidence": 0.3996,
+        "ts_open": "2026-04-10T22:47:37.738110+00:00",
+        "delta_from_19_40_43": "+3h 6m 54s",
+        "delta_from_18_52_24": "+3h 55m 13s"
+      },
+      "both_below_threshold": "YES - both 0.33 and 0.39 are below gate threshold of 0.60/0.65"
+    },
+    "q3_bridge_calls_check_entry_gates": {
+      "verdict": "YES - Code structure appears correct",
+      "evidence": [
+        "Line 105: check_entry_gates imported from core.risk",
+        "Line 632: check_entry_gates() called in bridge loop",
+        "Lines 604,622,645: BRIDGE GATE REJECT [check_entry_gates] log statements present"
+      ],
+      "code_flow": "bot_core.py bridge section does call check_entry_gates() before opening trades",
+      "but_caveat": "Code calls the gate, but runtime did not enforce it for trades 223/224"
+    },
+    "q4_min_entry_confidence_loaded": {
+      "verdict": "YES - Configured and loaded",
+      ".env_value": "MIN_ENTRY_CONFIDENCE=0.65",
+      "risk_py_load": "MIN_ENTRY_CONFIDENCE = float(os.getenv('MIN_ENTRY_CONFIDENCE', '0.60'))",
+      "gate_check": "if signal_confidence < MIN_ENTRY_CONFIDENCE: return False",
+      "status": ".env has 0.65; risk.py defaults to 0.60 if env not set"
+    },
+    "q5_confidence_too_low_logs": {
+      "logs_found_before_19_40": [
+        "2026-04-10 18:33:14: threshold 0.600",
+        "2026-04-10 19:00:04: threshold 0.600",
+        "2026-04-10 19:37:15: threshold 0.600"
+      ],
+      "logs_between_19_40_and_22_40": "ZERO check_entry_gates logs in this 3-hour window",
+      "logs_after_22_40": "2026-04-10 22:40:24: No check_entry_gates logs; instead model_bridge rejections only",
+      "critical_finding": "Gate rejection logs STOP appearing after 19:37. Trade 223 opened at 22:44 with NO gate rejection logs around that time"
+    },
+    "q6_root_cause": {
+      "most_likely": "STALE PROCESS - Process never restarted after 18:52:24, so it did not load the updated .env or risk.py changes",
+      "evidence": [
+        "Last restart logged: 18:52:24Z",
+        "Manager claims restart at: 19:40:43Z (no log confirmation)",
+        "check_entry_gates logs appear until 19:37:16Z, then completely stop",
+        "Trades 223/224 open at 22:44/22:47 with zero gate rejection logs",
+        ".env shows MIN_ENTRY_CONFIDENCE=0.65, but pre-19:40 logs show threshold 0.600 (the default)",
+        "If process had restarted and loaded .env after 19:40, logs should show 0.650 threshold post-restart, not disappear entirely"
+      ],
+      "hypothesis_evaluation": {
+        "a_bridge_bypasses_gate": "UNLIKELY - Code shows gate call at line 632",
+        "b_confidence_stored_differs": "UNLIKELY - DB shows same confidence values as in logs",
+        "c_stale_process": "MOST LIKELY - Process appears to have run from 18:52:24 through 22:47:37 without restart, loading trades from model_bridge without proper gate enforcement",
+        "d_restart_mismatch": "POSSIBLE - Manager's claimed restart (19:40:43) has no log evidence; actual last restart is 18:52:24",
+        "e_gate_disabled": ".env shows 0.65, risk.py has gate code; gate not disabled",
+        "f_other": "Process may be running old bytecode from before MIN_ENTRY_CONFIDENCE gate was added, or gate enforcement was disabled in a separate change"
+      },
+      "final_assessment": "The confidence gate code EXISTS in source and IS being called (evidenced by lines 604,622,632,645), but runtime enforcement is NOT happening for trades 223/224. Most probable cause: process never restarted at claimed 19:40:43Z and continued running from 18:52:24Z without loading the updated gate code or .env values. The absence of check_entry_gates logs after 19:37:16 is the smoking gun."
+    }
+  },
+  "critical_discrepancies": [
+    "Claimed restart time (19:40:43Z) has zero log evidence",
+    "check_entry_gates logs present until 19:37:16, then completely absent until 22:44-22:47 trades open",
+    ".env shows 0.65 threshold, but pre-restart logs show 0.600 default (suggesting old process state)",
+    "Code structure shows gate is called, but runtime behavior shows it's not enforced"
+  ],
+  "recommendation": "BLOCKER - The runtime behavior does not match the code structure. Before declaring the gate working: (1) Verify that bot_core.py was actually loaded by the process with PID 24800 (check /proc/PID/exe or similar), (2) Kill any stale bot processes running from before 19:40:43, (3) Verify restart actually occurred and new code was loaded, (4) Check if there is a separate process or script opening these trades without gate checks"
+}

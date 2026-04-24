@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sports Bot Dashboard V2</title>
+<style>
+:root {
+  --bg:#081018; --panel:#0f1b2a; --panel2:#132235; --panel3:#172a40;
+  --border:#23364a; --text:#e8eef5; --muted:#91a2b6; --dim:#5f7187;
+  --green:#18d39e; --red:#ff5d7a; --gold:#f6c453; --blue:#5ab6ff; --purple:#a78bfa;
+  --radius:16px; --radius-sm:12px; --mono:'SF Mono','Cascadia Code',monospace;
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:linear-gradient(180deg,#081018,#0b1320);color:var(--text);font-family:var(--font);line-height:1.4}
+.wrap{max-width:1400px;margin:0 auto;padding-bottom:48px}
+.topbar{position:sticky;top:0;z-index:50;display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:14px 18px;background:rgba(8,16,24,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.brand{font-size:18px;font-weight:900;letter-spacing:-.4px}.sport{padding:3px 8px;border-radius:999px;background:rgba(24,211,158,.12);color:var(--green);font:700 10px var(--mono);text-transform:uppercase}
+.topstats{margin-left:auto;display:flex;gap:12px;flex-wrap:wrap;font:11px var(--mono);color:var(--muted)}
+.topstats b{color:var(--text)}
+.grid{display:grid;grid-template-columns:1.35fr .85fr;gap:18px;padding:18px}
+.section{background:rgba(15,27,42,.82);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:0 16px 40px rgba(0,0,0,.24)}
+.section-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border)}
+.section-title{font:800 12px var(--mono);letter-spacing:1px;color:var(--muted);text-transform:uppercase}.section-note{font:11px var(--mono);color:var(--dim)}
+.accounting{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px}
+.acc-box{background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px}.acc-label{font:10px var(--mono);color:var(--dim);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}.acc-val{font-size:22px;font-weight:900}
+.primary-col{display:flex;flex-direction:column;gap:18px}
+.monitor-stack{padding:14px;display:grid;gap:14px}
+.monitor-card{background:linear-gradient(180deg,rgba(23,42,64,.98),rgba(15,27,42,.98));border:1px solid var(--border);border-radius:18px;padding:16px;box-shadow:0 18px 36px rgba(0,0,0,.24)}
+.monitor-top{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;margin-bottom:14px}
+.score-block{display:flex;flex-direction:column;gap:8px}.kicker{font:800 11px var(--mono);color:var(--muted);letter-spacing:.9px;text-transform:uppercase}.matchup{font-size:16px;font-weight:800;color:var(--text)}.score{font-size:38px;font-weight:900;letter-spacing:-1.4px;line-height:1}
+.state-row{display:flex;gap:8px;flex-wrap:wrap}.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:var(--panel3);border:1px solid var(--border);font:700 11px var(--mono);color:var(--muted)}
+.pitcher{font:700 12px var(--mono);color:var(--gold)}
+.side-col{display:flex;flex-direction:column;align-items:flex-end;gap:8px}.status{padding:5px 10px;border-radius:999px;background:rgba(24,211,158,.12);color:var(--green);font:800 10px var(--mono);text-transform:uppercase;letter-spacing:1px}.action{padding:6px 12px;border-radius:999px;font:900 12px var(--mono);letter-spacing:.6px}.action.yes{background:rgba(24,211,158,.12);color:var(--green);border:1px solid rgba(24,211,158,.28)}.action.no{background:rgba(255,93,122,.12);color:var(--red);border:1px solid rgba(255,93,122,.28)}
+.monitor-body{display:grid;grid-template-columns:1.05fr .95fr;gap:14px}
+.game-box,.trade-box{background:rgba(11,20,31,.64);border:1px solid var(--border);border-radius:14px;padding:12px}
+.diamond-wrap{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center}.diamond-svg{width:80px;height:80px}.game-lines{display:flex;flex-direction:column;gap:8px}.line{display:flex;gap:10px;flex-wrap:wrap;font:11px var(--mono);color:var(--muted)}.line b{color:var(--text)}
+.trade-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.stat{background:var(--panel3);border:1px solid var(--border);border-radius:12px;padding:10px}.stat-label{font:9px var(--mono);color:var(--dim);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px}.stat-val{font-size:17px;font-weight:800;font-family:var(--mono)}.green{color:var(--green)}.red{color:var(--red)}.gold{color:var(--gold)}.blue{color:var(--blue)}
+.secondary-live{padding:12px 14px;display:flex;gap:8px;overflow:auto}.game-chip{min-width:220px;background:var(--panel2);border:1px solid var(--border);border-radius:14px;padding:12px}.game-chip .row1{display:flex;justify-content:space-between;gap:8px}.game-chip .row2{margin-top:6px;font:11px var(--mono);color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+.sidepanel{display:flex;flex-direction:column;gap:18px}.drawer{background:rgba(15,27,42,.72);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}.drawer-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border)}.drawer-body{padding:14px;max-height:520px;overflow:auto}
+.tabs{display:flex;gap:8px}.tab{padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--panel2);font:700 11px var(--mono);color:var(--muted);cursor:pointer}.tab.active{color:var(--text);border-color:var(--blue);background:rgba(90,182,255,.10)}
+.trade-list,.shadow-list{display:grid;gap:8px}.trade-item,.shadow-item{background:rgba(11,20,31,.58);border:1px solid var(--border);border-radius:12px;padding:10px 12px}.trade-item{opacity:.85}.shadow-item{opacity:.72}.item-title{font-size:12px;font-weight:700}.item-meta{margin-top:4px;font:10px var(--mono);color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
+.empty{padding:24px 16px;border:1px dashed var(--border);border-radius:14px;background:rgba(11,20,31,.45);text-align:center;color:var(--muted)}
+@media (max-width:1100px){.grid{grid-template-columns:1fr}.sidepanel{order:2}.primary-col{order:1}}
+@media (max-width:700px){.accounting{grid-template-columns:repeat(2,1fr)}.monitor-body{grid-template-columns:1fr}.monitor-top{flex-direction:column}.side-col{align-items:flex-start}.score{font-size:32px}.trade-grid{grid-template-columns:1fr 1fr}.topstats{width:100%;margin-left:0;justify-content:space-between}.grid{padding:12px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand">⚾ Sports Bot V2</div>
+    <div class="sport">MLB</div>
+    <div id="mode-pill" class="pill">mode —</div>
+    <div id="health-pill" class="pill">health —</div>
+    <div class="topstats">
+      <span>Open <b id="top-open">—</b></span>
+      <span>Bankroll <b id="top-bankroll">—</b></span>
+      <span>Avail <b id="top-avail">—</b></span>
+      <span>P/L <b id="top-pnl">—</b></span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="primary-col">
+      <div class="section">
+        <div class="section-head"><div><div class="section-title">Live Position Monitor</div><div class="section-note">Real paper positions over live baseball context</div></div><div class="section-note" id="monitor-note">positions first</div></div>
+        <div id="monitor-stack" class="monitor-stack"><div class="empty">Loading live monitor…</div></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><div class="section-title">Accounting</div><div class="section-note">truth-safe bankroll context</div></div>
+        <div class="accounting">
+          <div class="acc-box"><div class="acc-label">Available Cash</div><div class="acc-val blue" id="acc-available">—</div></div>
+          <div class="acc-box"><div class="acc-label">Capital in Trades</div><div class="acc-val gold" id="acc-committed">—</div></div>
+          <div class="acc-box"><div class="acc-label">Live Equity</div><div class="acc-val" id="acc-equity">—</div></div>
+          <div class="acc-box"><div class="acc-label">Realized P/L</div><div class="acc-val" id="acc-realized">—</div></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><div class="section-title">Other Live Games</div><div class="section-note">secondary watchlist</div></div>
+        <div id="live-strip" class="secondary-live"><div class="empty">Loading games…</div></div>
+      </div>
+    </div>
+
+    <div class="sidepanel">
+      <div class="drawer">
+        <div class="drawer-head">
+          <div><div class="section-title">Secondary Tools</div><div class="section-note">history, shadow, debug</div></div>
+          <div class="tabs">
+            <button class="tab active" data-tab="shadow">Shadow</button>
+            <button class="tab" data-tab="trades">Trade Log</button>
+          </div>
+        </div>
+        <div class="drawer-body">
+          <div id="shadow-panel" class="shadow-list"></div>
+          <div id="trades-panel" class="trade-list" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const fmtPx = n => (n == null ? '—' : (Number(n)*100).toFixed(1)+'¢');
+const fmtUsd = n => (n == null ? '—' : `${n>=0?'+$':'-$'}${Math.abs(Number(n)).toFixed(2)}`);
+const fmtAbsUsd = n => (n == null ? '—' : `$${Number(n).toFixed(2)}`);
+const shortTeam = n => ({'New York Yankees':'NYY','Boston Red Sox':'BOS','Los Angeles Dodgers':'LAD','San Francisco Giants':'SF','Chicago Cubs':'CHC','Chicago White Sox':'CWS','Houston Astros':'HOU','Atlanta Braves':'ATL','New York Mets':'NYM','Philadelphia Phillies':'PHI','Toronto Blue Jays':'TOR','Tampa Bay Rays':'TB','Baltimore Orioles':'BAL','Minnesota Twins':'MIN','Cleveland Guardians':'CLE','Detroit Tigers':'DET','Kansas City Royals':'KC','Oakland Athletics':'OAK','Seattle Mariners':'SEA','Los Angeles Angels':'LAA','Texas Rangers':'TEX','Colorado Rockies':'COL','Arizona Diamondbacks':'ARI','San Diego Padres':'SD','Miami Marlins':'MIA','Washington Nationals':'WSH','Pittsburgh Pirates':'PIT','Cincinnati Reds':'CIN','Milwaukee Brewers':'MIL','St. Louis Cardinals':'STL'}[n] || (n||'?').split(' ').pop().slice(0,6));
+const slugParts = slug => { const m=(slug||'').match(/^mlb-([a-z]+)-([a-z]+)-\d{4}-\d{2}-\d{2}$/); return m?{away:m[1].toUpperCase(),home:m[2].toUpperCase()}:null; };
+const ord = n => { const s=['th','st','nd','rd'],v=n%100; return s[(v-20)%10]||s[v]||s[0]; };
+let latest={state:null,trades:[],games:[],shadow:{recs:[]}};
+function buildDiamond(f1,f2,f3){ const g='#18d39e',e='#172a40'; return `<svg class="diamond-svg" viewBox="0 0 38 38"><rect x="15" y="4" width="8" height="8" transform="rotate(45 19 8)" fill="${f2?g:e}" rx="1"/><rect x="4" y="15" width="8" height="8" transform="rotate(45 8 19)" fill="${f3?g:e}" rx="1"/><rect x="26" y="15" width="8" height="8" transform="rotate(45 30 19)" fill="${f1?g:e}" rx="1"/><polygon points="19,34 16,31 16,28 22,28 22,31" fill="#172a40"/></svg>`; }
+function openPaperPositions(){ const shadow=Array.isArray(latest.shadow?.recs)?latest.shadow.recs:[]; return (latest.trades||[]).filter(t=>t&&t.status==='open').map(t=>{ const rec=shadow.find(r=>r.market_slug===t.market_slug); return {...t,current_price:rec?.current_price??null,home_team:rec?.home_team??null,away_team:rec?.away_team??null,inning:rec?.inning??null,game_status:rec?.game_status??null}; }); }
+function liveGames(){ return (latest.games||[]).filter(g=>{ const s=(g.status||'').toLowerCase(); return !s.includes('final')&&!s.includes('scheduled')&&!s.includes('pre')&&!s.includes('warmup');}); }
+function gameMap(){ return new Map(liveGames().map(g=>[`mlb-${shortTeam(g.away).toLowerCase()}-${shortTeam(g.home).toLowerCase()}`,g])); }
+function renderTop(){ const s=latest.state||{}; const br=s.bankroll||{}; const open=openPaperPositions().length; $('top-open').textContent=open; $('top-bankroll').textContent=fmtAbsUsd(br.current??500); $('top-avail').textContent=fmtAbsUsd(br.available_cash??br.current??500); $('top-pnl').textContent=fmtUsd(br.net_pnl??0); $('mode-pill').textContent=`mode ${(s.mode?.mode||s.mode||'neutral')}`; $('health-pill').textContent=s.stale?'health stale':'health live'; $('acc-available').textContent=fmtAbsUsd(br.available_cash??br.current??500); $('acc-committed').textContent=fmtAbsUsd(br.capital_committed??0); $('acc-realized').textContent=fmtUsd(br.net_pnl??0); const eq=openPaperPositions().reduce((a,p)=>a+((p.qty!=null&&p.current_price!=null)?Number(p.qty)*Number(p.current_price):0),0); $('acc-equity').textContent=fmtAbsUsd(eq); }
+function renderMonitor(){ const positions=openPaperPositions(); const gm=gameMap(); if(!positions.length){ const lg=liveGames(); if(!lg.length){ $('monitor-stack').innerHTML='<div class="empty">No live paper positions and no live games right now.</div>'; $('monitor-note').textContent='monitor idle'; return; } $('monitor-stack').innerHTML=lg.slice(0,2).map(g=>`<div class="monitor-card"><div class="monitor-top"><div class="score-block"><div class="kicker">Live baseball monitor</div><div class="matchup">${shortTeam(g.away)} @ ${shortTeam(g.home)}</div><div class="score">${g.away_score} · ${g.home_score}</div><div class="state-row"><span class="pill">${g.status_display||g.status||'LIVE'}</span><span class="pill">${g.inning_half?`${g.inning_half} ${ord(g.inning||0)}`:'inning —'}</span><span class="pill">${g.outs!=null?`${g.outs} outs`:'outs —'}</span><span class="pill">${g.balls!=null&&g.strikes!=null?`${g.balls}-${g.strikes}`:'count —'}</span></div>${g.away_pitcher||g.home_pitcher?`<div class="pitcher">Pitchers: ${g.away_pitcher||'?'} / ${g.home_pitcher||'?'}</div>`:''}</div><div class="side-col"><span class="status">LIVE</span></div></div><div class="monitor-body"><div class="game-box"><div class="diamond-wrap">${buildDiamond(!!g.on_first,!!g.on_second,!!g.on_third)}<div class="game-lines"><div class="line"><span>Runners <b>${[g.on_first?'1B':null,g.on_second?'2B':null,g.on_third?'3B':null].filter(Boolean).join(' / ')||'bases empty'}</b></span><span>Status <b>${g.status_display||g.status||'LIVE'}</b></span></div></div></div></div><div class="trade-box"><div class="empty">No live paper position in this game.</div></div></div></div>`).join(''); $('monitor-note').textContent='live games first'; return; }
+ $('monitor-stack').innerHTML=positions.map(p=>{ const parts=slugParts(p.market_slug||''); const key=parts?`mlb-${parts.away.toLowerCase()}-${parts.home.toLowerCase()}`:null; const g=key?gm.get(key):null; const away=g?shortTeam(g.away):(parts?.away||'?'); const home=g?shortTeam(g.home):(parts?.home||'?'); const side=(p.side||'').includes('YES')?'WIN':'LOSE'; const current=p.current_price; const committed=(p.qty!=null&&p.entry_px!=null)?Number(p.qty)*Number(p.entry_px):null; const equity=(p.qty!=null&&current!=null)?Number(p.qty)*Number(current):null; const pnl=(p.qty!=null&&p.entry_px!=null&&current!=null)?(((p.side||'').includes('YES')?(current-p.entry_px):(p.entry_px-current))*p.qty):null; return `<div class="monitor-card"><div class="monitor-top"><div class="score-block"><div class="kicker">Active baseball monitor</div><div class="matchup">${away} @ ${home}</div><div class="score">${away} ${g?g.away_score:'—'} · ${g?g.home_score:'—'} ${home}</div><div class="state-row"><span class="pill">${g?.status_display||g?.status||'Awaiting game state'}</span><span class="pill">${g?.inning_half?`${g.inning_half} ${ord(g.inning||0)}`:'inning —'}</span><span class="pill">${g?.outs!=null?`${g.outs} outs`:'outs —'}</span><span class="pill">${g?.balls!=null&&g?.strikes!=null?`${g.balls}-${g.strikes}`:'count —'}</span></div>${g?.away_pitcher||g?.home_pitcher?`<div class="pitcher">Pitchers: ${g.away_pitcher||'?'} / ${g.home_pitcher||'?'}</div>`:''}</div><div class="side-col"><span class="status">${g?.status||'LIVE'}</span><span class="action ${(p.side||'').includes('YES')?'yes':'no'}">${side}</span></div></div><div class="monitor-body"><div class="game-box"><div class="diamond-wrap">${buildDiamond(!!g?.on_first,!!g?.on_second,!!g?.on_third)}<div class="game-lines"><div class="line"><span>Runners <b>${[g?.on_first?'1B':null,g?.on_second?'2B':null,g?.on_third?'3B':null].filter(Boolean).join(' / ')||'bases empty'}</b></span></div><div class="line"><span>Held <b>${side}</b></span><span>Source <b>${p.source||'bot'}</b></span></div></div></div></div><div class="trade-box"><div class="trade-grid"><div class="stat"><div class="stat-label">Entry</div><div class="stat-val blue">${fmtPx(p.entry_px)}</div></div><div class="stat"><div class="stat-label">Current</div><div class="stat-val gold">${fmtPx(current)}</div></div><div class="stat"><div class="stat-label">Committed</div><div class="stat-val">${fmtUsd(committed)}</div></div><div class="stat"><div class="stat-label">Live Equity</div><div class="stat-val">${fmtUsd(equity)}</div></div><div class="stat"><div class="stat-label">Unrealized</div><div class="stat-val ${pnl>0?'green':pnl<0?'red':''}">${fmtUsd(pnl)}</div></div><div class="stat"><div class="stat-label">TP / SL</div><div class="stat-val">${fmtPx(p.tp_price)} / ${fmtPx(p.sl_price)}</div></div></div></div></div></div>`; }).join(''); $('monitor-note').textContent=`${positions.length} live position${positions.length===1?'':'s'}`; }
+function renderLiveStrip(){ const positions=openPaperPositions(); const activeSlugs=new Set(positions.map(p=>p.market_slug)); const chips=liveGames().slice(0,8); if(!chips.length){ $('live-strip').innerHTML='<div class="empty">No live games right now.</div>'; return; } $('live-strip').innerHTML=chips.map(g=>{ const slug=`mlb-${shortTeam(g.away).toLowerCase()}-${shortTeam(g.home).toLowerCase()}`; const active=activeSlugs.has(slug); return `<div class="game-chip" style="${active?'border-color:#18d39e;box-shadow:0 0 0 1px rgba(24,211,158,.18) inset;':''}"><div class="row1"><div class="item-title">${shortTeam(g.away)} @ ${shortTeam(g.home)}</div><div class="${active?'green':'gold'}">${active?'ACTIVE':'LIVE'}</div></div><div class="row2"><span>${g.away_score} - ${g.home_score}</span><span>${g.status_display||g.status||'LIVE'}</span><span>${g.outs!=null?`${g.outs} outs`:''}</span></div></div>`; }).join(''); }
+function renderShadow(){ const recs=(latest.shadow?.recs||[]).slice(0,8); $('shadow-panel').innerHTML=recs.length?recs.map(r=>`<div class="shadow-item"><div class="item-title">${(r.away_team&&r.home_team)?`${shortTeam(r.away_team)} @ ${shortTeam(r.home_team)}`:(r.market_slug||'shadow rec')}</div><div class="item-meta"><span>${r.action||'signal'}</span><span>${r.status_label||'OPEN'}</span><span>${r.current_price!=null?fmtPx(r.current_price):'—'}</span></div></div>`).join(''):'<div class="empty">No shadow diagnostics.</div>'; }
+function renderTrades(){ const trades=(latest.trades||[]).slice(0,20); $('trades-panel').innerHTML=trades.length?trades.map(t=>`<div class="trade-item"><div class="item-title">${(slugParts(t.market_slug||'')?`${slugParts(t.market_slug).away} @ ${slugParts(t.market_slug).home}`:(t.market_slug||'trade'))}</div><div class="item-meta"><span>${t.side||'—'}</span><span>${fmtPx(t.entry_px)}${t.exit_px!=null?` → ${fmtPx(t.exit_px)}`:''}</span><span>${t.status||'—'}</span><span>${t.pnl_usd!=null?fmtUsd(t.pnl_usd):'—'}</span></div></div>`).join(''):'<div class="empty">No trade history.</div>'; }
+async function poll(){ const [state,trades,games,shadow]=await Promise.all([fetch('/api/state').then(r=>r.json()).catch(()=>({})),fetch('/api/trades?limit=60').then(r=>r.json()).catch(()=>({trades:[]})),fetch('/api/games').then(r=>r.json()).catch(()=>({games:[]})),fetch('/api/mlb-shadow?limit=20').then(r=>r.json()).catch(()=>({recs:[]}))]); latest.state=state; latest.trades=trades.trades||[]; latest.games=games.games||[]; latest.shadow=shadow; renderTop(); renderMonitor(); renderLiveStrip(); renderShadow(); renderTrades(); }
+document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{ document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); const t=btn.dataset.tab; $('shadow-panel').style.display=t==='shadow'?'grid':'none'; $('trades-panel').style.display=t==='trades'?'grid':'none'; }));
+poll(); setInterval(poll,10000);
+</script>
+</body>
+</html>

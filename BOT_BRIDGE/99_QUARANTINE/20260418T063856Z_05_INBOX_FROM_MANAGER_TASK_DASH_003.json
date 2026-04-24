@@ -1,0 +1,15 @@
+{
+  "task_id": "DASH_003",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "",
+  "title": "Replace full scoreboard with compact games ticker",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_DASH_003.md",
+  "acceptance": "- Games section occupies a single line (or two lines if many games wrap)\n- Each chip shows: away abbr, away score, home abbr, home score, status indicator\n- Live games (with inning) have a subtle green accent\n- No full game cards with large padding\n- KPI strip and drawer are immediately visible without scrolling"
+}

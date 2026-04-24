@@ -8,7 +8,7 @@ from pathlib import Path
 
 logger = logging.getLogger("core.model_bridge")
 
-ENABLE_MODEL_BRIDGE = True
+ENABLE_MODEL_BRIDGE = os.getenv("ENABLE_MODEL_BRIDGE", "false").strip().lower() in ("1", "true", "yes", "on")
 APPROVED_MODEL_VERSIONS = {"mlb_winprob_v1_lgbm"}
 MAX_REC_AGE_SECONDS = 120
 MIN_EDGE = 0.05
@@ -19,6 +19,49 @@ SOURCE_LABEL = "model_bridge"
 SHADOW_LOG_PATH = Path(__file__).resolve().parents[2] / "mlb_model" / "logs" / "shadow_recommendations.jsonl"
 REJECT_MARKET_KEYWORDS = ("nrfi", "spread", "total", "o/u", "prop")
 MAX_LINES = 5000
+
+# mtime-triggered cache — reparse only when shadow log changes. Cuts a ~5000-line
+# read+split+json-parse sweep from every loop down to once-per-actual-update.
+_CACHE: dict[str, object] = {"mtime": 0.0, "latest_by_slug": {}}
+
+
+def _read_latest_by_slug() -> dict[str, dict]:
+    try:
+        stat = SHADOW_LOG_PATH.stat()
+    except FileNotFoundError:
+        _CACHE["mtime"] = 0.0
+        _CACHE["latest_by_slug"] = {}
+        return {}
+    mtime = stat.st_mtime
+    if mtime == _CACHE["mtime"]:
+        return _CACHE["latest_by_slug"]  # type: ignore[return-value]
+    try:
+        lines = SHADOW_LOG_PATH.read_text(encoding="utf-8").splitlines()[-MAX_LINES:]
+    except Exception as exc:
+        logger.info("BRIDGE GATE REJECT [log_read] slug=- reason=%s", exc)
+        return _CACHE["latest_by_slug"]  # type: ignore[return-value]
+    latest_by_slug: dict[str, dict] = {}
+    for raw in lines:
+        raw = raw.strip()
+        if not raw:
+            continue
+        try:
+            obj = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        action = obj.get("action")
+        if action == "NO_TRADE":
+            continue
+        slug = str(obj.get("market_slug") or "").strip()
+        if not slug:
+            continue
+        prev = latest_by_slug.get(slug)
+        if prev is None or _pick_latest_timestamp(obj) >= _pick_latest_timestamp(prev):
+            latest_by_slug[slug] = obj
+    _CACHE["mtime"] = mtime
+    _CACHE["latest_by_slug"] = latest_by_slug
+    logger.info("BRIDGE shadow-log reparsed mtime=%.3f rows=%d slugs=%d", mtime, len(lines), len(latest_by_slug))
+    return latest_by_slug
 
 
 def _parse_ts(value: str | None) -> datetime | None:
@@ -65,30 +108,7 @@ def get_approved_intents(open_slugs: set[str]) -> list[dict]:
         logger.info("BRIDGE GATE REJECT [missing_log] slug=- reason=shadow_log_missing")
         return []
 
-    try:
-        lines = SHADOW_LOG_PATH.read_text(encoding="utf-8").splitlines()[-MAX_LINES:]
-    except Exception as exc:
-        logger.info("BRIDGE GATE REJECT [log_read] slug=- reason=%s", exc)
-        return []
-
-    latest_by_slug: dict[str, dict] = {}
-    for raw in lines:
-        raw = raw.strip()
-        if not raw:
-            continue
-        try:
-            obj = json.loads(raw)
-        except json.JSONDecodeError:
-            continue
-        action = obj.get("action")
-        if action == "NO_TRADE":
-            continue
-        slug = str(obj.get("market_slug") or "").strip()
-        if not slug:
-            continue
-        prev = latest_by_slug.get(slug)
-        if prev is None or _pick_latest_timestamp(obj) >= _pick_latest_timestamp(prev):
-            latest_by_slug[slug] = obj
+    latest_by_slug = _read_latest_by_slug()
 
     if not latest_by_slug:
         logger.info(

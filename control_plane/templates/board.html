@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}Board · Control Plane{% endblock %}
+{% block content %}
+
+<section class="dot-matrix-strip" aria-label="Scouting report"><span class="strip-label">SCOUTING REPORT</span>
+<form method="get" class="filters dot-matrix-form">
+  <div class="filter-row">
+    <input type="search" name="q" value="{{ filter_q }}" placeholder="Search task_id or title…">
+    <select name="priority">
+      <option value="">priority: any</option>
+      {% for p in ['CRITICAL','HIGH','MEDIUM','LOW'] %}
+        <option value="{{ p }}" {% if filter_priority == p %}selected{% endif %}>{{ p }}</option>
+      {% endfor %}
+    </select>
+    <select name="subsystem">
+      <option value="">subsystem: any</option>
+      {% for s in subsystems %}
+        <option value="{{ s }}" {% if filter_subsystem == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn" type="submit">Apply</button>
+    <a class="btn btn-ghost" href="{{ url_for('tasks.board') }}">Reset</a>
+  </div>
+  <div class="counts">
+    {% for lane, count in lane_counts.items() %}
+      <span class="chip chip-wf-{{ lane|lower }}">{{ lane_display[lane] }} · {{ count }}</span>
+    {% endfor %}
+    <label class="chip" style="cursor:pointer;user-select:none" title="Auto-reload the board every 5s. Pauses while you are typing or dragging.">
+      <input type="checkbox" id="auto-refresh-toggle" style="vertical-align:middle;margin-right:4px">
+      <span id="auto-refresh-label">auto-refresh: off</span>
+    </label>
+  </div>
+</form>
+</section>
+
+<section class="roster-strip" aria-label="Active roster">
+  {% for p in ROSTER %}
+    {% set s = ROSTER_STATS[p.profile_id] %}
+    <article class="player-card"
+             draggable="true"
+             data-profile-id="{{ p.profile_id }}"
+             data-allowed-states='{{ p.allowed_states }}'
+             style="--accent: {{ p.color }}">
+      <div class="player-card-jersey">{{ p.jersey_number }}</div>
+      <img class="player-card-sprite sprite-pixel"
+           src="{{ url_for('static', filename='sprites/' ~ (p.role|lower|replace('_','') ~ '.svg')) }}"
+           alt="" width="48" height="48"
+           onerror="this.src='{{ url_for('static', filename='sprites/haikuworker.svg') }}'">
+      <div class="player-card-name">{{ p.display }}</div>
+      <div class="player-card-role">{{ p.role|replace('_',' ')|title }}</div>
+      <div class="player-card-stats">
+        AVG {{ s.AVG }} · HR {{ s.HR }} · RBI {{ s.RBI }} · G {{ s.G }}
+      </div>
+      <div class="player-card-xp" title="Level {{ s.level }} — {{ s.xp_pct }}% to next">
+        <div class="player-card-xp-bar" style="width: {{ s.xp_pct }}%"></div>
+      </div>
+    </article>
+  {% endfor %}
+  <a class="player-card player-card-empty" href="/roster">
+    <div class="player-card-jersey">+</div>
+    <div class="player-card-name">🎟 SIGN NEW</div>
+  </a>
+</section>
+
+{# --- loop-back (rework) row — renders above the main board strip --- #}
+{% if loopback_lanes %}
+  {% set has_loopback = loopback_lanes|selectattr('0')|list or (loopback_lanes and lanes[loopback_lanes[0]]|length > 0) %}
+  <section class="loopback-ribbon" aria-label="Rework lane">
+    <h3 class="loopback-title">⚾ FOUL BALL — back to the box</h3>
+    <div class="loopback-cards">
+    {% for lane in loopback_lanes %}
+      {% set items = lanes[lane] or [] %}
+      {% for t in items %}
+        {% include "_card_inner.html" %}
+      {% else %}
+        <div class="empty muted">no rework</div>
+      {% endfor %}
+    {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+<section class="board wf-board lane-grid">
+  {% for lane in lane_order %}
+    {% set items = lanes[lane] or [] %}
+    <div class="lane lane-pixel lane-wf-{{ lane|lower }} state--{{ lane }}" data-lane="{{ lane }}">
+      <header class="lane-pixel-header">
+        <span class="lane-pixel-name">{{ lane_display[lane] }}</span>
+        <span class="lane-pixel-count">{{ items|length }}</span>
+      </header>
+      <div class="lane-body" data-lane="{{ lane }}">
+        {% for t in items %}
+          {% include "_card_inner.html" %}
+        {% else %}
+          <div class="empty">no tasks</div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Native HTML5 drag-and-drop: player-card → task-card
+(function() {
+  let dragging = null;
+
+  document.querySelectorAll('.player-card[data-profile-id]').forEach(chip => {
+    chip.addEventListener('dragstart', (e) => {
+      dragging = {
+        profile_id: chip.dataset.profileId,
+        allowed_states: JSON.parse(chip.dataset.allowedStates || '[]'),
+        display: (chip.querySelector('.player-card-name') || chip.querySelector('.agent-name') || chip).textContent.trim(),
+      };
+      e.dataTransfer.effectAllowed = 'copy';
+      e.dataTransfer.setData('text/plain', dragging.profile_id);
+      document.body.classList.add('agent-dragging');
+      // Highlight eligible cards.
+      document.querySelectorAll('.card[data-workflow-state]').forEach(card => {
+        const st = card.dataset.workflowState;
+        if (dragging.allowed_states.includes(st)) {
+          card.classList.add('card-eligible');
+        } else {
+          card.classList.add('card-ineligible');
+        }
+      });
+    });
+    chip.addEventListener('dragend', () => {
+      dragging = null;
+      document.body.classList.remove('agent-dragging');
+      document.querySelectorAll('.card').forEach(c => {
+        c.classList.remove('card-eligible', 'card-ineligible', 'card-hover');
+      });
+    });
+  });
+
+  document.querySelectorAll('.card[data-task-id]').forEach(card => {
+    card.addEventListener('dragover', (e) => {
+      if (!dragging) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      card.classList.add('card-hover');
+    });
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('card-hover');
+    });
+    card.addEventListener('drop', async (e) => {
+      if (!dragging) return;
+      e.preventDefault();
+      const tid = card.dataset.taskId;
+      const state = card.dataset.workflowState;
+      const profile = dragging.profile_id;
+      const name = dragging.display;
+      card.classList.remove('card-hover');
+
+      const ineligible = !dragging.allowed_states.includes(state);
+      if (ineligible && !confirm(`${name} is not normally launched on a "${state}" task.\nLaunch anyway?`)) {
+        return;
+      }
+      const payload = {profile_id: profile};
+      if (ineligible) payload.force = true;
+
+      toast(`launching ${name} on ${tid}…`);
+      const res = await postJSON(`/api/tasks/${tid}/launch`, payload);
+      if (res.ok && res.json.ok) {
+        // Stay on the board so the operator can keep dragging agents onto
+        // other tasks without having to navigate back. The task card link
+        // is still clickable for anyone who wants to watch this run live.
+        toast(`run ${res.json.run.run_id} started — click the card to watch`);
+      } else {
+        const j = res.json || {};
+        toast(`launch failed: ${j.error || res.status}${j.detail ? ' — ' + j.detail : ''}`, false);
+      }
+    });
+  });
+})();
+
+// Auto-refresh: reload the board every 5s when enabled. Pauses while the
+// user is typing in a filter/search input or mid drag-and-drop, so it
+// never interrupts active interaction.
+(function() {
+  const KEY = 'cp.board.autoRefresh';
+  const INTERVAL_MS = 5000;
+  const cb = document.getElementById('auto-refresh-toggle');
+  const label = document.getElementById('auto-refresh-label');
+  if (!cb || !label) return;
+
+  let timer = null;
+  function apply(on) {
+    label.textContent = 'auto-refresh: ' + (on ? 'on' : 'off');
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch (_) {}
+    if (timer) { clearInterval(timer); timer = null; }
+    if (on) {
+      timer = setInterval(() => {
+        const el = document.activeElement;
+        const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT');
+        const dragging = document.body.classList.contains('agent-dragging');
+        if (typing || dragging) return;
+        // Preserve query string (filters) so a refresh doesn't reset them.
+        window.location.reload();
+      }, INTERVAL_MS);
+    }
+  }
+
+  let initial = false;
+  try { initial = localStorage.getItem(KEY) === '1'; } catch (_) {}
+  cb.checked = initial;
+  apply(initial);
+  cb.addEventListener('change', () => apply(cb.checked));
+})();
+</script>
+{% endblock %}

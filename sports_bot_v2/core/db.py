@@ -63,15 +63,88 @@ def _db_conn(op: str = "db"):
                 pass
 
 
+def _ensure_meta_table() -> None:
+    """Create meta table if it doesn't exist."""
+    with _db_conn("ensure_meta_table") as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS meta (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+        """)
+        conn.commit()
+
+
+def _migrate_attribution_schema() -> None:
+    """Idempotent migration: add attribution columns to trades table."""
+    with _db_conn("migrate_attribution_schema") as conn:
+        # Check if columns already exist
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(trades)")
+        existing_cols = {row[1] for row in cursor.fetchall()}
+
+        cols_to_add = [
+            ("entry_model_prob", "REAL"),
+            ("entry_market_prob", "REAL"),
+            ("expected_edge_pct", "REAL"),
+            ("actual_fill_px", "REAL"),
+            ("actual_fill_size", "REAL"),
+            ("exit_reason", "TEXT"),
+            ("exit_model_prob", "REAL"),
+            ("exit_market_prob", "REAL"),
+            ("hold_seconds", "INTEGER"),
+            ("resolved_winner", "TEXT"),
+            ("model_side_was_right", "INTEGER"),
+            ("trade_class", "TEXT"),
+            ("attribution_version", "INTEGER"),
+        ]
+
+        added_cols = []
+        for col_name, col_type in cols_to_add:
+            if col_name not in existing_cols:
+                try:
+                    conn.execute(f"ALTER TABLE trades ADD COLUMN {col_name} {col_type}")
+                    added_cols.append(col_name)
+                except sqlite3.OperationalError as e:
+                    logger.warning("Column %s already exists or error: %s", col_name, e)
+
+        if added_cols:
+            conn.commit()
+            logger.info("DB migration: added attribution columns: %s", added_cols)
+
+        # Add indexes
+        try:
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_trades_trade_class ON trades(trade_class)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_trades_exit_reason ON trades(exit_reason)")
+            conn.commit()
+            logger.info("DB migration: added attribution indexes")
+        except sqlite3.Error as e:
+            logger.warning("DB migration: index creation error: %s", e)
+
+
+def _update_migration_marker() -> None:
+    """Mark attribution schema migration as complete."""
+    _ensure_meta_table()
+    with _db_conn("update_migration_marker") as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
+            ("attribution_schema_version", "1")
+        )
+        conn.commit()
+
+
 def init_db() -> None:
     with _db_conn("init_db") as conn:
         conn.executescript(_CREATE_SQL)
         conn.commit()
     try:
-        with _db_conn("migrate_source_col") as conn:
-            conn.execute("ALTER TABLE trades ADD COLUMN source TEXT DEFAULT 'bot'")
-            conn.commit()
-        logger.info("DB migration: added source column")
+        with _db_conn("check_source_col") as conn:
+            _cols = {r[1] for r in conn.execute("PRAGMA table_info(trades)").fetchall()}
+        if "source" not in _cols:
+            with _db_conn("migrate_source_col") as conn:
+                conn.execute("ALTER TABLE trades ADD COLUMN source TEXT DEFAULT 'bot'")
+                conn.commit()
+            logger.info("DB migration: added source column")
     except sqlite3.OperationalError:
         pass
     try:
@@ -84,6 +157,11 @@ def init_db() -> None:
         logger.info("DB migration: ensured unique open-slug index")
     except sqlite3.Error as e:
         logger.warning("DB migration: failed to ensure unique open-slug index: %s", e)
+
+    # Run attribution schema migration
+    _migrate_attribution_schema()
+    _update_migration_marker()
+
     logger.info("DB initialized at %s", DB_PATH)
 
 
@@ -143,6 +221,27 @@ def close_trade(trade_id: int, close_data: dict) -> None:
         conn.commit()
         logger.info("Closed trade id=%d reason=%s pnl=%.4f",
                     trade_id, close_data.get("reason_close"), close_data.get("pnl_usd", 0.0))
+
+
+def update_trade_attribution(trade_id: int, attr_data: dict) -> None:
+    """Update attribution columns on a trade row. Only updates non-None values."""
+    with _db_conn("update_attribution") as conn:
+        # Build dynamic UPDATE statement
+        cols_to_update = []
+        values = []
+        for key, val in attr_data.items():
+            if val is not None:
+                cols_to_update.append(f"{key}=?")
+                values.append(val)
+
+        if not cols_to_update:
+            return
+
+        values.append(trade_id)
+        sql = f"UPDATE trades SET {','.join(cols_to_update)} WHERE id=?"
+        conn.execute(sql, values)
+        conn.commit()
+        logger.debug("Updated attribution on trade id=%d: %s", trade_id, list(attr_data.keys()))
 
 
 def fetch_open_trades() -> list[Trade]:

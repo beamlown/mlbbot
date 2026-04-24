@@ -1,0 +1,111 @@
+{
+  "task_id": "CONFIDENCE_GATE_LIVE_REBREAK_001",
+  "status": "ok",
+  "read_only_confirmed": true,
+  "summary": "Identified confidence gate bypass: model_bridge has lower MIN_CONFIDENCE (0.25) than bot_core risk checks (0.60-0.65), allowing intents to pass bridge but then be rejected by check_entry_gates. However, trades 241/243/244 appear to have been created on 2026-04-11 despite meeting low confidence, suggesting either timing gap in deployment or insufficient restart enforcement.",
+  "restart_timing": {
+    "established": true,
+    "log_evidence": "Multiple bot restarts visible in bot_baseball_20260410.log between 09:13 and 18:52. Last explicit 'starting' message at 2026-04-10 18:52:24. Trades 241/243/244 have timestamps 2026-04-11 00:00:29 onwards (after log file date boundary)."
+  },
+  "trades_verdict": {
+    "trade_241": {
+      "opened_on": "2026-04-11T00:00:29.211044+00:00",
+      "confidence": 0.3863,
+      "side": "BUY_YES",
+      "slug": "mlb-oak-nym-2026-04-10",
+      "source": "model_bridge",
+      "status": "OPENED_WITH_LOW_CONFIDENCE"
+    },
+    "trade_243": {
+      "opened_on": "2026-04-11T00:14:42.677833+00:00",
+      "confidence": 0.3279,
+      "side": "BUY_YES",
+      "slug": "mlb-wsh-mil-2026-04-10",
+      "source": "model_bridge",
+      "status": "OPENED_WITH_LOW_CONFIDENCE"
+    },
+    "trade_244": {
+      "opened_on": "2026-04-11T00:37:16.018282+00:00",
+      "confidence": 0.3769,
+      "side": "BUY_NO",
+      "slug": "mlb-bos-stl-2026-04-10",
+      "source": "model_bridge",
+      "status": "OPENED_WITH_LOW_CONFIDENCE"
+    },
+    "before_after_restart": "UNCLEAR - trades appear post-restart per timestamps, but logs do NOT show BRIDGE OPEN entries for these trade IDs. No corresponding entries in bot_baseball_20260411.log showing when/how they were opened."
+  },
+  "current_gate_rejection_evidence": {
+    "gate_exists": true,
+    "rejection_observed": true,
+    "example_rejections": [
+      "2026-04-10 20:10:11,346: BRIDGE GATE REJECT [check_entry_gates] slug=mlb-wsh-mil-2026-04-10 reasons=['confidence_too_low:0.3155:0.600']",
+      "2026-04-10 20:36:35,903: BRIDGE GATE REJECT [check_entry_gates] slug=mlb-bos-stl-2026-04-10 reasons=['confidence_too_low:0.3537:0.600']"
+    ],
+    "note": "These rejections are dated 2026-04-10 (BEFORE trades 241/243/244 timestamps), showing the gate WAS working on 04-10."
+  },
+  "root_cause_analysis": {
+    "primary_issue": "Multi-tier confidence threshold mismatch",
+    "issue_details": {
+      "model_bridge_tier": {
+        "file": "core/model_bridge.py",
+        "line": 15,
+        "threshold": 0.25,
+        "behavior": "Passes any intent with confidence >= 0.25"
+      },
+      "bot_core_tier": {
+        "file": "core/risk.py",
+        "check_line": 165-168,
+        "threshold": "MIN_ENTRY_CONFIDENCE from .env",
+        "env_value": 0.65,
+        "code_default": 0.60,
+        "actual_rejection": 0.60,
+        "behavior": "Rejects intents with confidence < 0.60 (observed in logs)"
+      },
+      "mismatch_consequence": "model_bridge's 0.25 floor is MUCH lower than bot's 0.60 floor, but bot_core should catch and reject. This is working as designed based on 04-10 logs."
+    },
+    "secondary_issue": "Timestamp/logging discrepancy for trades 241/243/244",
+    "discrepancy_details": {
+      "observation": "Trades 241/243/244 exist in database with ts_open on 2026-04-11 00:00:29 onwards",
+      "expectation": "Should see BRIDGE OPEN trade=241/243/244 messages in bot_baseball_20260411.log",
+      "reality": "No BRIDGE OPEN messages found for these trade IDs in any log",
+      "possible_explanations": [
+        "1. Trades were inserted directly to database bypassing normal code path (administrative/manual insertion)",
+        "2. Log entries were suppressed or not flushed for these specific opens",
+        "3. Trades were created by a different bot instance or process not captured in main logs",
+        "4. Database timestamps are inaccurate or don't reflect actual creation time"
+      ]
+    }
+  },
+  "current_live_gate_status": {
+    "verdict": "YES, gate rejection IS currently working",
+    "evidence": "04-10 logs show repeated confidence_too_low rejections with threshold 0.60",
+    "current_configuration": {
+      "MIN_ENTRY_CONFIDENCE_env": "0.65",
+      "MIN_ENTRY_CONFIDENCE_code_default": "0.60",
+      "MIN_CONFIDENCE_model_bridge": "0.25",
+      "check_entry_gates_called": "YES (line 632 in bot_core.py)"
+    }
+  },
+  "critical_finding": "The trades 241/243/244 do not appear in logs as BRIDGE OPEN despite existing in database. This suggests they may have been created outside the normal bot_core code path, or there is a gap between code that is running and logs being generated. The confidence gate logic itself appears sound based on 04-10 rejection evidence, but these specific trades bypass the audit trail.",
+  "recommendations": {
+    "immediate": [
+      "Audit database insert logs or application logs to find where trades 241/243/244 were inserted",
+      "Verify trades 241/243/244 are not from manual database operations",
+      "Check if log flushing or buffering is suppressing BRIDGE OPEN entries for these trades"
+    ],
+    "next_steps": [
+      "Correlate trade_forensics_*.jsonl logs to see if trades 241/243/244 appear there",
+      "Check if there are concurrent bot processes writing to database",
+      "Verify ENABLE_MODEL_BRIDGE gate state at time of trade opens on 04-11"
+    ]
+  },
+  "files_reviewed": [
+    "C:\Users\johnny\Desktop\sports_bot_v2\trades_sports.db",
+    "C:\Users\johnny\Desktop\sports_bot_v2\logs\bot_baseball_20260410.log",
+    "C:\Users\johnny\Desktop\sports_bot_v2\logs\bot_baseball_20260411.log",
+    "C:\Users\johnny\Desktop\sports_bot_v2\bot_core.py",
+    "C:\Users\johnny\Desktop\sports_bot_v2\core\risk.py",
+    "C:\Users\johnny\Desktop\sports_bot_v2\core\model_bridge.py",
+    "C:\Users\johnny\Desktop\sports_bot_v2\.env"
+  ]
+}

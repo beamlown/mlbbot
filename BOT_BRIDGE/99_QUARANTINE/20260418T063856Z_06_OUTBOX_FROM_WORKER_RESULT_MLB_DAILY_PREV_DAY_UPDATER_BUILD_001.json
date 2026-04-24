@@ -1,0 +1,8 @@
+{
+  "status": "fail",
+  "summary": "(no RESULT_JSON emitted and no RESULT file written)",
+  "task_id": "MLB_DAILY_PREV_DAY_UPDATER_BUILD_001",
+  "role": "HAIKU_WORKER",
+  "run_id": "RUN_B87A566D27D3",
+  "captured_at": "2026-04-17T20:01:16Z"
+}

@@ -1,0 +1,50 @@
+{
+  "task_id": "MLB_DATA_INVENTORY_AUDIT_001",
+  "title": "Inventory all existing MLB model data, shadow logs, trade history, and cached stats assets",
+  "priority": "HIGH",
+  "type": "read-only audit",
+  "track": "Track B — data foundation",
+  "issued": "2026-04-11",
+  "subsystem": "mlb_model data foundation / historical artifacts",
+  "status": "DONE",
+  "objective": "Produce a complete inventory of all MLB-related data already available for model rebuilding, including coverage, storage locations, schema shape, and obvious gaps.",
+  "paper_only_note": "This is paper-only / observation-mode work. No model implementation or live strategy change is authorized from this task.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\**",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\**",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\logs\\shadow_recommendations.jsonl"
+  ],
+  "allowed_subsystems": [
+    "mlb_model data directories",
+    "shadow recommendation logs",
+    "paper trade outcome history",
+    "runtime caches and stats artifacts relevant to MLB model rebuilding"
+  ],
+  "forbidden_actions": [
+    "Edit any code",
+    "Edit any data file",
+    "Run backfill or ingestion writes",
+    "Change live runtime configuration",
+    "Broad repo sweep outside the allowed MLB/data artifacts"
+  ],
+  "required_work": [
+    "1. Inventory all MLB-related data sources currently present.",
+    "2. Classify each source by type: raw stats, engineered features, logs, outcomes, caches, model artifacts, or unknown.",
+    "3. Estimate date coverage and season coverage where possible.",
+    "4. Identify obviously missing or stale areas without proposing fixes yet.",
+    "5. Produce a coverage map and gap list suitable for the next gap-map task."
+  ],
+  "acceptance_criteria": [
+    "Complete inventory list with file/path locations",
+    "Coverage estimate for each major artifact family",
+    "Obvious gap list separated from confirmed inventory",
+    "No files modified"
+  ],
+  "verification": [
+    "Quote the major artifact families found",
+    "State date/season coverage where determinable",
+    "State what could not be determined from read-only inspection"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_DATA_INVENTORY_AUDIT_001.json"
+}

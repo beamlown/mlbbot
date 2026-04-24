@@ -1,0 +1,15 @@
+{
+  "task_id": "DASH_014",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "dashboard_server",
+  "title": "Win rate for paper trades + fix BUY_NO TP/SL",
+  "allowed_files": [
+    "dashboard_server.py"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_DASH_014.md",
+  "acceptance": "- GET /api/state returns r25 object with win_rate, wins, losses, expectancy, sample_size\n- win_rate is a float 0.0-1.0 (or null if no closed trades)\n- BUY_YES tp_price = min(0.99, entry * 1.85) — e.g. entry=0.41 → tp=0.759\n- BUY_NO tp_price = max(0.01, 1.0 - entry * 1.85) — e.g. entry=0.41 → tp=0.241 (a LOW yes price, which is a WIN for NO holder)\n- BUY_YES sl_price = max(0.01, entry * 0.80)\n- BUY_NO sl_price = min(0.99, entry * 1.20)\n- No other files modified"
+}

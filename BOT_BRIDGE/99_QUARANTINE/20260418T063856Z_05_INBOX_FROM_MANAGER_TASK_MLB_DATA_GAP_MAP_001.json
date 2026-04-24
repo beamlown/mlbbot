@@ -1,0 +1,19 @@
+{
+  "task_id": "MLB_DATA_GAP_MAP_001",
+  "type": "read-only audit",
+  "priority": "HIGH",
+  "status": "CHANGES_REQUESTED",
+  "issued": "2026-04-11",
+  "subsystem": "mlb_model data completeness",
+  "title": "Map missing current-season MLB data and classify must-have versus optional for rebuild",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\**",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\**",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_MLB_DATA_GAP_MAP_001.md",
+  "review_path": "07_REVIEWS/REVIEW_MLB_DATA_GAP_MAP_001.md",
+  "assigned_role": "OPUS_AUDITOR",
+  "acceptance": "- Explicit missing-data map\n- Priority classification for each major gap\n- No files modified"
+}

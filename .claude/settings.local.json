@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mv HANDOFF_BRIDGE_CONTRACT_001.md HANDOFF_BRIDGE_CONTRACT_001.md.claimed)",
+      "Read(//c/c/Users/johnny/Desktop/mlbbot/BOT_BRIDGE/05_INBOX_FROM_MANAGER/**)",
+      "Bash(gh pr *)",
+      "Read(//c/Users/johnny/Desktop/sports_bot_v2/core/**)",
+      "Read(//c/Users/johnny/Desktop/sports_bot_v2/**)",
+      "Read(//c/Users/johnny/Desktop/mlb_model/integration/**)"
+    ]
+  }
+}

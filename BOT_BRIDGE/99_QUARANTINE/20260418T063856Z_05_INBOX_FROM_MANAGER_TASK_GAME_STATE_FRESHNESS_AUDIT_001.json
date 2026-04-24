@@ -1,0 +1,25 @@
+{
+  "task_id": "GAME_STATE_FRESHNESS_AUDIT_001",
+  "type": "read-only audit",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-11",
+  "subsystem": "model / game-state freshness / recommendation timing",
+  "title": "Audit whether recommendation-time game-state data is stale, missing, lagging, or insufficient",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "Any mlb_model file not listed above",
+    "Any file not listed above"
+  ],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_GAME_STATE_FRESHNESS_AUDIT_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_GAME_STATE_FRESHNESS_AUDIT_001.json",
+  "assigned_role": "SONNET_WORKER",
+  "acceptance": "- Audit classifies score, inning, outs, and base-state separately\n- Caching or lag points are identified if present\n- No files modified",
+  "review_path": "07_REVIEWS/REVIEW_GAME_STATE_FRESHNESS_AUDIT_001.md"
+}

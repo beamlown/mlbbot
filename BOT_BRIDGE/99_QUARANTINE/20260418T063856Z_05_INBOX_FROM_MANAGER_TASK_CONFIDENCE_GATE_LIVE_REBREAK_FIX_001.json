@@ -1,0 +1,22 @@
+{
+  "task_id": "CONFIDENCE_GATE_LIVE_REBREAK_FIX_001",
+  "type": "surgical code fix",
+  "priority": "HIGH",
+  "status": "ARCHIVED",
+  "issued": "2026-04-10",
+  "subsystem": "risk / entry-gating / bridge open flow",
+  "title": "Fix live confidence gate rebreak so sub-0.60 signals cannot open after gate rejection",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py",
+    "Any file not listed above"
+  ],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_CONFIDENCE_GATE_LIVE_REBREAK_FIX_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_CONFIDENCE_GATE_LIVE_REBREAK_FIX_001.json",
+  "assigned_role": "HAIKU_WORKER",
+  "acceptance": "- No live bridge path can call open_position() for a signal rejected by check_entry_gates()\n- Sub-0.60 signals cannot open after a confidence_too_low rejection in the same loop/runtime path\n- Valid >=0.60 signals still proceed normally\n- No files outside allowed scope are modified unless explicitly documented under conditional scope\n- python -m py_compile bot_core.py passes\n- If model_bridge.py is modified, python -m py_compile core/model_bridge.py passes"
+}

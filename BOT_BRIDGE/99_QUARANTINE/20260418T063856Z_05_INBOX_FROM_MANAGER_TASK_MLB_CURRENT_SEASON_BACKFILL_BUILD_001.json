@@ -1,0 +1,20 @@
+{
+  "task_id": "MLB_CURRENT_SEASON_BACKFILL_BUILD_001",
+  "type": "code-writing task",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-12",
+  "subsystem": "mlb_model current-season backfill",
+  "title": "Backfill full current-season MLB completed-game stats into the canonical store",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\scripts\\**",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\data\\**",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\MODEL_REBUILD_TRACK_001.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_STATS_FOUNDATION_SPEC_001.json"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_MLB_CURRENT_SEASON_BACKFILL_BUILD_001.md",
+  "review_path": "07_REVIEWS/REVIEW_MLB_CURRENT_SEASON_BACKFILL_BUILD_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- Season-to-date completed MLB coverage is backfilled into the canonical raw store\n- Output matches the approved storage/schema target\n- Rerun safety / dedupe behavior is documented\n- No unrelated files modified"
+}

@@ -1,0 +1,48 @@
+{
+  "task_id": "TRADE_ATTRIBUTION_SCHEMA_001",
+  "title": "Add attribution schema + JSONL writer for per-trade audit records",
+  "priority": "HIGH",
+  "type": "code-writing task",
+  "track": "Track A — attribution spine (P0)",
+  "issued": "2026-04-18",
+  "subsystem": "sports_bot_v2 core storage + attribution",
+  "status": "QUEUED",
+  "assigned_role": "SONNET_WORKER",
+  "depends_on": null,
+  "objective": "Extend the trades DB schema and add a dedicated attribution module + JSONL writer so every paper trade can produce a complete audit record. This is the foundation for downstream wiring, dashboard, and replay tasks.",
+  "paper_only_note": "Paper-only. No real-money code paths.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\db.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\attribution.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\trade_attribution.jsonl"
+  ],
+  "forbidden_actions": [
+    "Modify bot_core.py or core/paper_exec.py (that is TRADE_ATTRIBUTION_WIRING_001)",
+    "Modify dashboard or dashboard_server.py",
+    "Change model or recommendation code",
+    "Drop or rename existing DB columns",
+    "Change bankroll or sizing logic",
+    "Change real-money code paths"
+  ],
+  "required_work": [
+    "1. Add attribution columns to trades table via idempotent ALTER TABLE migration.",
+    "2. Create core/attribution.py with TradeAttribution dataclass, classify_trade() and JSONL writer.",
+    "3. Add meta table row attribution_schema_version = 1.",
+    "4. Migration must be safe to rerun without effect."
+  ],
+  "acceptance_criteria": [
+    "All columns listed in handoff are present after migration",
+    "Second run of migration is a no-op (idempotent)",
+    "core/attribution.py exposes TradeAttribution, classify_trade, write_jsonl",
+    "classify_trade correctly maps all 5 enum values given test inputs",
+    "No existing trades data is lost or corrupted",
+    "No files outside allowed_files modified"
+  ],
+  "verification": [
+    "Run bot_core startup migration twice — confirm second run adds no columns",
+    "Show PRAGMA table_info(trades) output before/after",
+    "Show one synthesized TradeAttribution record written to runtime/trade_attribution.jsonl",
+    "Show meta.attribution_schema_version row"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_TRADE_ATTRIBUTION_SCHEMA_001.json"
+}

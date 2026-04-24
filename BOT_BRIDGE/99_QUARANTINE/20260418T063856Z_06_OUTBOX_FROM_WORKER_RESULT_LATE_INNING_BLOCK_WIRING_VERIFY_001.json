@@ -1,0 +1,55 @@
+{
+  "revision": 2,
+  "mode_used": "WORKER MODE",
+  "task_selected": "LATE_INNING_BLOCK_WIRING_VERIFY_001",
+  "correction_reason": "Initial audit missed explicit inline gate at bot_core.py:590-600. This gate is active and enforces LATE_INNING_BLOCK in the live bridge entry path.",
+  "files_read": [
+    "C:\Users\johnny\Desktop\BOT_BRIDGE\01_RULES\WORKER_RULES.md",
+    "C:\Users\johnny\Desktop\BOT_BRIDGE\08_SHARED_CONTEXT\CLAUDE_TASK_BOARD.md",
+    "C:\Users\johnny\Desktop\BOT_BRIDGE\08_SHARED_CONTEXT\CLAUDE_STATUS.md",
+    "C:\Users\johnny\Desktop\BOT_BRIDGE\_tmp_late_inning_packet\BOT_BRIDGE_MANAGER_PACKET_LATE_INNING_VERIFY\05_INBOX_FROM_MANAGER\TASK_LATE_INNING_BLOCK_WIRING_VERIFY_001.json",
+    "C:\Users\johnny\Desktop\BOT_BRIDGE\_tmp_late_inning_packet\BOT_BRIDGE_MANAGER_PACKET_LATE_INNING_VERIFY\05_INBOX_FROM_MANAGER\HANDOFF_LATE_INNING_BLOCK_WIRING_VERIFY_001.md",
+    "C:\Users\johnny\Desktop\sports_bot_v2\.env",
+    "C:\Users\johnny\Desktop\mlb_model\integration\recommendation_api.py",
+    "C:\Users\johnny\Desktop\sports_bot_v2\core\model_bridge.py",
+    "C:\Users\johnny\Desktop\sports_bot_v2\core\risk.py",
+    "C:\Users\johnny\Desktop\sports_bot_v2\bot_core.py"
+  ],
+  "files_changed": [],
+  "verification_performed": [
+    "Confirmed LATE_INNING_BLOCK exists in .env at line 99: LATE_INNING_BLOCK=7",
+    "Traced recommendation creation path in recommendation_api.py to confirm it populates inning field but does not read LATE_INNING_BLOCK config",
+    "Traced bridge approval path in model_bridge.py to confirm it preserves inning field but does not read LATE_INNING_BLOCK config",
+    "Traced bot_core.py bridge loop (lines 523-701) which calls get_approved_intents() and iterates through returned intents",
+    "Located explicit inline gate at bot_core.py:590-600 that reads LATE_INNING_BLOCK and enforces late-inning rejection"
+  ],
+  "proven": [
+    {
+      "point": "LATE_INNING_BLOCK is loaded from config in bot_core.py at module level (line 107) and is actively used in the live entry path",
+      "evidence": "Line 107 of bot_core.py: LATE_INNING_BLOCK = int(os.getenv('LATE_INNING_BLOCK', '7'))"
+    },
+    {
+      "point": "The active live entry path is recommendation_api.py -> model_bridge.py -> bot_core.py bridge loop, with inline late-inning enforcement before check_entry_gates()",
+      "evidence": "bot_core.py lines 522-600: get_approved_intents() returns intents, bridge loop processes each, late-inning gate fires at line 590 before entry gating at line 632"
+    },
+    {
+      "point": "The explicit inline gate at bot_core.py:590-600 reads LATE_INNING_BLOCK and rejects intents where inning >= LATE_INNING_BLOCK",
+      "evidence": "Lines 585-600: extracts intent.get('inning'), validates to int, compares against LATE_INNING_BLOCK, logs BRIDGE GATE REJECT [late_inning_block], increments _guard_block_count, and continues"
+    },
+    {
+      "point": "Inning data is preserved end-to-end from recommendation creation through bridge intent to the enforcement gate",
+      "evidence": "recommendation_api.py includes inning in returned Recommendation, model_bridge.py preserves it in intent dict, bot_core.py extracts it at line 585 for gating"
+    },
+    {
+      "point": "LATE_INNING_BLOCK enforcement is active in the live entry path and successfully blocks late-inning entries via bridge loop inline gate, not delegated to risk.py",
+      "evidence": "bot_core.py:590 gate fires inside bridge loop iteration, sets _guard_block_count += 1 and appends to loop_guard_reasons, proving it is reached in live execution flow"
+    }
+  ],
+  "ruled_out": [
+    "Ruled out: LATE_INNING_BLOCK config value missing or not loaded",
+    "Ruled out: inning data missing from recommendations",
+    "Ruled out: inning data lost between bridge approval and entry gating",
+    "Ruled out: LATE_INNING_BLOCK not wired into the live entry path"
+  ],
+  "recommended_next_step": "The wiring is confirmed active. Next investigation should verify whether the gate triggers correctly in live conditions with real game state data. If late-inning entries still occur despite the gate, audit should check: (1) whether game state snap.inning is correctly populated from ESPN, (2) whether LATE_INNING_BLOCK value (7) is appropriate for the intended behavior, (3) whether stale inning data causes gate bypass, (4) whether the gate is firing but being overridden by downstream logic."
+}

@@ -1,0 +1,19 @@
+{
+  "task_id": "MLB_MODEL_INPUT_PATH_AUDIT_001",
+  "type": "read-only audit",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-11",
+  "subsystem": "mlb_model feature flow / recommendation path",
+  "title": "Trace exactly what features and game/market context reach the model and recommendation layer today",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\sports\\mlb\\**",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\core\\**"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_MLB_MODEL_INPUT_PATH_AUDIT_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- Exact feature/context inventory at the model boundary\n- Exact path from source state to recommendation output\n- Clear missing-context list\n- No files modified"
+}

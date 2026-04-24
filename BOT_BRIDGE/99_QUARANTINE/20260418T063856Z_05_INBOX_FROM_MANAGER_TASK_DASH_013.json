@@ -1,0 +1,17 @@
+{
+  "task_id": "DASH_013",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "",
+  "title": "Fix shadow feed ticker — inning shown for pre-game recs",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_DASH_013.md",
+  "review_path": "07_REVIEWS/REVIEW_DASH_013.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- Shadow ticker rows for pre-game recs show only the matchup — no inning number\n- Shadow ticker rows for live in-game recs still show the inning (e.g. 'SEA@LAA i3')\n- No JS console errors"
+}

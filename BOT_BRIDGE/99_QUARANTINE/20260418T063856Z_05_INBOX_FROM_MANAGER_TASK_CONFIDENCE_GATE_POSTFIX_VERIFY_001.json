@@ -1,0 +1,25 @@
+{
+  "task_id": "CONFIDENCE_GATE_POSTFIX_VERIFY_001",
+  "type": "read-only post-fix runtime verification",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-10",
+  "subsystem": "risk / entry-gating",
+  "title": "Verify check_entry_gates() is live post-restart: confirm gate rejections and no sub-0.60 bridge entries",
+  "allowed_files": [
+    "recent bot logs",
+    "trades_sports.db (SELECT only)",
+    "sports_bot_v2/bot_core.py (read-only, ONLY if startup log is ambiguous)"
+  ],
+  "forbidden_files": [
+    "core/risk.py",
+    ".env",
+    "dashboard_server.py",
+    "dashboard.html",
+    "launch_all.py",
+    "Any file not in allowed list"
+  ],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_CONFIDENCE_GATE_POSTFIX_VERIFY_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- read_only_confirmed: true\n- Restart timing established (confirmed or explicitly marked unconfirmed)\n- Explicit PASS/FAIL on sub-0.60 trades since restart\n- Explicit YES/NO on gate rejection log evidence\n- Overall verdict with gate_is_live value"
+}

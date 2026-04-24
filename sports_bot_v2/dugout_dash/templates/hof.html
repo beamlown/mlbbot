@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}HALL OF FAME · Dugout Dash{% endblock %}
+{% block content %}
+<section class="pane">
+  <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;">
+    <h2 style="font-family: var(--font-pixel); color: var(--scoreboard-amber);">HALL OF FAME</h2>
+    <a class="tazz-watch-btn" href="{{ url_for('hof.refresh') }}">⟳ REFRESH</a>
+  </div>
+
+  <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:16px;">
+
+    <div class="pos-card" style="border-color: var(--hr-gold);">
+      <h3>── BATTING AVG ──</h3>
+      <div style="font-family: var(--font-pixel); font-size: 32px; color: var(--hr-gold); text-align:center; padding: 12px 0;">
+        {% if BATTING_AVG is not none %}.{{ '%03d'|format((BATTING_AVG * 1000)|int) }}{% else %}.---{% endif %}
+      </div>
+    </div>
+
+    <div class="pos-card">
+      <h3>── SLUGGING ──</h3>
+      <div class="pos-row"><span class="k">AVG WIN</span><span class="v pnl-up">{% if SLUGGING is not none %}+${{ '%.2f'|format(SLUGGING) }}{% else %}—{% endif %}</span></div>
+    </div>
+
+    <div class="pos-card" style="border-color: var(--foul-red);">
+      <h3>── ERA ──</h3>
+      <div class="pos-row"><span class="k">AVG LOSS</span><span class="v pnl-down">{% if ERA is not none %}-${{ '%.2f'|format(-ERA) }}{% else %}—{% endif %}</span></div>
+    </div>
+
+    <div class="pos-card">
+      <h3>── MVP DAY ──</h3>
+      {% if MVP_DAY %}
+      <div class="pos-row"><span class="k">DATE</span><span class="v">{{ MVP_DAY.day }}</span></div>
+      <div class="pos-row"><span class="k">P&amp;L</span><span class="v pnl-up">+${{ '%.2f'|format(MVP_DAY.pnl) }}</span></div>
+      {% else %}<p style="font-family: var(--font-pixel-text); font-size: 20px; color: var(--chalk-dim);">None yet.</p>{% endif %}
+    </div>
+
+    <div class="pos-card">
+      <h3>── NO-HITTER ──</h3>
+      {% if NO_HITTER %}
+      <div class="pos-row"><span class="k">COUNT</span><span class="v">{{ NO_HITTER.count }}</span></div>
+      <div class="pos-row"><span class="k">LATEST</span><span class="v">{{ NO_HITTER.most_recent }}</span></div>
+      {% else %}<p style="font-family: var(--font-pixel-text); font-size: 20px; color: var(--chalk-dim);">None yet.</p>{% endif %}
+    </div>
+
+    <div class="pos-card" style="border-color: var(--hr-gold);">
+      <h3>── DYNASTY 🏆 ──</h3>
+      {% if DYNASTY %}
+      <div class="pos-row"><span class="k">TEAM</span><span class="v">{{ DYNASTY.team }}</span></div>
+      <div class="pos-row"><span class="k">P&amp;L</span><span class="v {% if DYNASTY.pnl >= 0 %}pnl-up{% else %}pnl-down{% endif %}">{% if DYNASTY.pnl >= 0 %}+${{ '%.2f'|format(DYNASTY.pnl) }}{% else %}-${{ '%.2f'|format(-DYNASTY.pnl) }}{% endif %}</span></div>
+      {% else %}<p style="font-family: var(--font-pixel-text); font-size: 20px; color: var(--chalk-dim);">No closed trades yet.</p>{% endif %}
+    </div>
+
+    <div class="pos-card">
+      <h3>── ROOKIE OF THE YEAR ──</h3>
+      {% if ROOKIE %}
+      <div class="pos-row"><span class="k">TEAM</span><span class="v">{{ ROOKIE.team }}</span></div>
+      <div class="pos-row"><span class="k">P&amp;L</span><span class="v pnl-up">+${{ '%.2f'|format(ROOKIE.pnl) }}</span></div>
+      {% else %}<p style="font-family: var(--font-pixel-text); font-size: 20px; color: var(--chalk-dim);">None yet.</p>{% endif %}
+    </div>
+
+  </div>
+
+  <div class="panel" style="margin-top:16px;">
+    <h3>── TEAM RECORDS ──</h3>
+    {% if TEAM_RECORDS %}
+    <table>
+      <thead><tr><th>TEAM</th><th>W</th><th>L</th><th>BA</th><th>P&amp;L</th></tr></thead>
+      <tbody>
+        {% for r in TEAM_RECORDS %}
+        <tr>
+          <td>{{ r.team }}</td>
+          <td>{{ r.wins }}</td>
+          <td>{{ r.losses }}</td>
+          <td>{% if r.batting_avg is not none %}.{{ '%03d'|format((r.batting_avg * 1000)|int) }}{% else %}.---{% endif %}</td>
+          <td class="{% if r.pnl >= 0 %}pnl-up{% else %}pnl-down{% endif %}">{% if r.pnl >= 0 %}+${{ '%.2f'|format(r.pnl) }}{% else %}-${{ '%.2f'|format(-r.pnl) }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p style="font-family: var(--font-pixel-text); font-size: 20px; color: var(--chalk-dim);">No closed trades yet.</p>{% endif %}
+  </div>
+
+</section>
+{% endblock %}

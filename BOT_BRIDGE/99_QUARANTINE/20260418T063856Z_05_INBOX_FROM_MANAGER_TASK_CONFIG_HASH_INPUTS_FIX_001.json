@@ -1,0 +1,25 @@
+{
+  "task_id": "CONFIG_HASH_INPUTS_FIX_001",
+  "type": "surgical code fix",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-11",
+  "subsystem": "config hashing / runtime truth",
+  "title": "Fix config hash inputs so runtime hash reflects real live gate and anti-repeat variables",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\state_hub.py",
+    "Any mlb_model file",
+    "Any file not listed in allowed_files"
+  ],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_CONFIG_HASH_INPUTS_FIX_001.md",
+  "review_path": "07_REVIEWS/REVIEW_CONFIG_HASH_INPUTS_FIX_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- Hash input set includes at minimum: MIN_ENTRY_CONFIDENCE, MIN_ENTRY_PRICE, MAX_TRADES_PER_MARKET, LATE_INNING_BLOCK, AUTO_STOP_LOSS_PCT\n- All pre-existing vars remain in the list (no accidental removals)\n- Any session-level anti-repeat env vars present in source at execution time are included\n- Input list is explicitly ordered for determinism\n- No gate logic, thresholds, or trade decisions changed\n- No files outside allowed scope modified\n- python -m py_compile passes for every changed file"
+}

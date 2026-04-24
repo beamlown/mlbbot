@@ -1,0 +1,15 @@
+{
+  "task_id": "NEAR_RESOLUTION_CONFIDENCE_SUPPRESSOR_001",
+  "type": "imported_from_board",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "model / confidence / near-resolution",
+  "title": "Add confidence suppressor for near-zero/near-one market prices in recommendation_api.py",
+  "allowed_files": [
+    "mlb_model/integration/recommendation_api.py"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_NEAR_RESOLUTION_CONFIDENCE_SUPPRESSOR_001.md",
+  "assigned_role": "HAIKU_WORKER"
+}

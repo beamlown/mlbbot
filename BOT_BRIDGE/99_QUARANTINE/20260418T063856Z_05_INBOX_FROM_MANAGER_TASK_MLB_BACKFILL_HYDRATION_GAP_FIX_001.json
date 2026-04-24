@@ -1,0 +1,18 @@
+{
+  "task_id": "MLB_BACKFILL_HYDRATION_GAP_FIX_001",
+  "type": "code-writing task",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-12",
+  "subsystem": "mlb_model current-season backfill / hydration coverage",
+  "title": "Fix missing pitcher/bullpen hydration and enforce completed season-to-date coverage in MLB backfill",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\scripts\\**",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\data\\foundation\\mlb_statsapi\\season=2026\\**",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\MLB_STATS_FOUNDATION_SPEC_001.md"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_MLB_BACKFILL_HYDRATION_GAP_FIX_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- pitcher_game_logs is populated where source data is available, or explicit source-unavailable classification is documented in the manifest/results\n- bullpen_context is populated where derivable, or explicit source-unavailable classification is documented\n- coverage window reflects completed season-to-date only\n- No unrelated files modified"
+}

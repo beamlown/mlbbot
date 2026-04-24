@@ -1,0 +1,15 @@
+{
+  "task_id": "DASH_005",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "",
+  "title": "Add bridge_enabled field to /api/state response",
+  "allowed_files": [
+    "dashboard_server.py"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_DASH_005.md",
+  "acceptance": "- /api/state JSON response contains bridge_enabled key with value true or false\n- Value reflects the actual ENABLE_MODEL_BRIDGE constant in core/model_bridge.py\n- No crash if import fails — graceful fallback to False\n- No other fields in /api/state changed"
+}

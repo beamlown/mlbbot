@@ -1,0 +1,18 @@
+{
+  "task_id": "BRIDGE_CONTRACT_001",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "bridge_contract",
+  "title": "Expand bridge contract to preserve richer mlb_model recommendation payload",
+  "allowed_files": [
+    "core/model_bridge.py",
+    "bot_core.py",
+    "integration/recommendation_api.py",
+    "integration/recommendation_schema.py"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_BRIDGE_CONTRACT_001.md",
+  "acceptance": "- bridge contract is explicitly richer than before\n- model-issued confidence/size/TP/SL fields are preserved end-to-end where present\n- no new strategy logic is added\n- no truth regression"
+}

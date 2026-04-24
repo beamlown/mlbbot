@@ -82,6 +82,22 @@ def _get_pregame_prob_for_game(home_team: str, away_team: str, date: str) -> flo
     return 0.54
 
 
+def _suppress_confidence_for_extreme_prices(confidence: float, ask_yes: float, ask_no: float) -> float:
+    """
+    Suppress confidence when market prices are near 0 or 1.
+    Extreme prices indicate high market certainty; our model edge becomes less meaningful.
+    """
+    EXTREME_THRESHOLD = 0.05  # prices < 5% or > 95%
+    SUPPRESSION_FACTOR = 0.7  # reduce confidence by 30% when either side is extreme
+
+    if ask_yes is not None and (ask_yes < EXTREME_THRESHOLD or ask_yes > 1.0 - EXTREME_THRESHOLD):
+        confidence *= SUPPRESSION_FACTOR
+    if ask_no is not None and (ask_no < EXTREME_THRESHOLD or ask_no > 1.0 - EXTREME_THRESHOLD):
+        confidence *= SUPPRESSION_FACTOR
+
+    return max(0.0, min(1.0, confidence))
+
+
 def generate_recommendation_for_game(
     home_team: str,
     away_team: str,
@@ -168,11 +184,33 @@ def generate_recommendation_for_game(
         action_candidate = "NO_TRADE"
         edge_candidate = max(edge_yes, edge_no)
 
+    # Near-resolution suppressor: cap confidence at 0.0 and suppress trades
+    # when entry-side market price is near-zero (< 0.10)
+    near_resolution_suppressed = False
+    near_res_threshold = float(os.getenv("NEAR_RESOLUTION_PRICE_THRESHOLD", "0.10"))
+    if action_candidate == "BUY_YES":
+        if edges["p_cost_yes"] < near_res_threshold:
+            action_candidate = "NO_TRADE"
+            near_resolution_suppressed = True
+    elif action_candidate == "BUY_NO":
+        if edges["p_cost_no"] < near_res_threshold:
+            action_candidate = "NO_TRADE"
+            near_resolution_suppressed = True
+
     if action_candidate == "NO_TRADE":
         # Still build a full recommendation for shadow logging
         size_tier = "none"
         size_mult = 0.0
-        gate_reasons = [f"edge_too_small:yes={edge_yes:.4f},no={edge_no:.4f}"]
+        if near_resolution_suppressed:
+            # Include which side and price triggered the suppression
+            if edges["p_cost_yes"] < near_res_threshold:
+                gate_reasons = [f"near_resolution_suppressor:yes_price={edges['p_cost_yes']:.4f}<{near_res_threshold}"]
+            elif edges["p_cost_no"] < near_res_threshold:
+                gate_reasons = [f"near_resolution_suppressor:no_price={edges['p_cost_no']:.4f}<{near_res_threshold}"]
+            else:
+                gate_reasons = ["near_resolution_suppressor"]
+        else:
+            gate_reasons = [f"edge_too_small:yes={edge_yes:.4f},no={edge_no:.4f}"]
     else:
         gate_reasons = []
         strong_edge = float(os.getenv("STRONG_EDGE_THRESHOLD", "0.08"))
@@ -199,12 +237,17 @@ def generate_recommendation_for_game(
     if gate_reasons:
         reasons.extend(gate_reasons[:3])
 
-    max_spread = float(os.getenv("MAX_SPREAD", "0.035"))
-    spread_quality = 1.0 - (market.spread or 0.0) / max_spread if market.spread is not None else 0.8
-    spread_quality = max(0.0, min(1.0, spread_quality))
-    min_edge = float(os.getenv("MIN_EDGE_THRESHOLD", "0.05"))
-    edge_score = min(1.0, max(0.0, (edge_candidate - min_edge) / 0.10 + 0.5))
-    confidence = round(edge_score * infer_result.data_quality * spread_quality, 4)
+    if action_candidate == "NO_TRADE" and near_resolution_suppressed:
+        confidence = 0.0
+    else:
+        max_spread = float(os.getenv("MAX_SPREAD", "0.035"))
+        spread_quality = 1.0 - (market.spread or 0.0) / max_spread if market.spread is not None else 0.8
+        spread_quality = max(0.0, min(1.0, spread_quality))
+        min_edge = float(os.getenv("MIN_EDGE_THRESHOLD", "0.05"))
+        edge_score = min(1.0, max(0.0, (edge_candidate - min_edge) / 0.10 + 0.5))
+        confidence = edge_score * infer_result.data_quality * spread_quality
+        confidence = _suppress_confidence_for_extreme_prices(confidence, market.ask_yes, market.ask_no)
+        confidence = round(confidence, 4)
 
     is_home = normalize(tracked_team) == normalize(home_team)
 

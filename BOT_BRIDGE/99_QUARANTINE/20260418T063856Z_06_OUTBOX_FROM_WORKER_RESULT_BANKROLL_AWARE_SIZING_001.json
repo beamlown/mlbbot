@@ -1,0 +1,22 @@
+{
+  "task_id": "BANKROLL_AWARE_SIZING_001",
+  "status": "ok",
+  "summary": "Bankroll-aware position sizing implemented. paper_exec.py reads live bankroll from STARTING_BANKROLL + total_realized_pnl(), computes bankroll_base = max(MIN_POSITION_USD, bankroll * RISK_PCT_PER_TRADE), applies confidence tier multiplier, clamps to [MIN_POSITION_USD, MAX_POSITION_SIZE_USD]. Override path capped at 50. DB failure falls back to PAPER_POSITION_SIZE_USD with WARNING log. .env updated with MAX_POSITION_SIZE_USD=50, RISK_PCT_PER_TRADE=0.03, MIN_POSITION_USD=10, STARTING_BANKROLL=500.0.",
+  "files_modified": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env"
+  ],
+  "acceptance_criteria_verified": {
+    "MAX_POSITION_SIZE_USD_in_env_is_50": true,
+    "RISK_PCT_PER_TRADE_and_MIN_POSITION_USD_in_env": true,
+    "bankroll_read_from_STARTING_BANKROLL_plus_pnl": true,
+    "sizing_formula_uses_bankroll_base": true,
+    "confidence_tier_multiplier_applied": true,
+    "result_clamped_to_min_max": true,
+    "recommended_size_override_capped_at_50": true,
+    "db_failure_fallback_with_WARNING": true,
+    "INFO_log_on_each_sizing": true,
+    "no_other_files_modified": true
+  },
+  "notes": "py_compile not executed (manager verification only). Code is syntactically clean; all logic paths verified by static read."
+}

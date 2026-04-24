@@ -1,0 +1,17 @@
+{
+  "task_id": "DASH_007",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "",
+  "title": "Simplify drawer — remove Markets and Signals tabs",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_DASH_007.md",
+  "review_path": "07_REVIEWS/REVIEW_DASH_007.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- Drawer shows exactly 4 tabs: Trade Log, Shadow, Candidates, Manual\n- No Markets or Signals tab visible\n- Trade Log, Shadow, Candidates, Manual tabs all render their content correctly\n- No JS errors in browser console from missing markets/signals render targets"
+}

@@ -1,0 +1,22 @@
+{
+  "task_id": "MLB_NEAR_RESOLUTION_SANITY_AUDIT_001",
+  "type": "read-only audit",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-11",
+  "subsystem": "mlb_model near-resolution sanity / market awareness",
+  "title": "Explain why near-dead or near-resolved MLB markets could still receive actionable confidence",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\logs\\shadow_recommendations.jsonl",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_MLB_NEAR_RESOLUTION_SANITY_AUDIT_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_MLB_NEAR_RESOLUTION_SANITY_AUDIT_001.json",
+  "review_path": "07_REVIEWS/REVIEW_MLB_NEAR_RESOLUTION_SANITY_AUDIT_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- Root-cause classification with evidence\n- Concrete failure-case explanation\n- No files modified"
+}

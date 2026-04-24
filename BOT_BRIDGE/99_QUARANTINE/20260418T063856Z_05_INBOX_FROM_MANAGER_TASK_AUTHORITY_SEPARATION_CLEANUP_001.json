@@ -1,0 +1,21 @@
+{
+  "task_id": "AUTHORITY_SEPARATION_CLEANUP_001",
+  "type": "unspecified",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "authority-model",
+  "title": "Remove local MLB origination code from sports_bot_v2 and decouple execution gating from mlb_model",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\signal_base.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\core\\execution_guard.py"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_AUTHORITY_SEPARATION_CLEANUP_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_AUTHORITY_SEPARATION_CLEANUP_001.json",
+  "review_path": "07_REVIEWS/REVIEW_AUTHORITY_SEPARATION_CLEANUP_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- bot_core.py no longer contains ALLOW_LOCAL_MLB_ORIGINATION or local signal generation for MLB\n- bot_core.py bridge path (560-637) compiles and is logically unchanged\n- signal_base.py MLB decision engine removed or MLB branch isolated\n- recommendation_api.py no longer imports or calls execution_guard functions\n- recommendation_api.py no longer contains ROLLBACK_DISABLE\n- execution_guard.py deleted or emptied with no remaining importers\n- No other allowed file has unresolved references to removed symbols\n- Result written to 06_OUTBOX_FROM_WORKER as RESULT_AUTHORITY_SEPARATION_CLEANUP_001.json"
+}

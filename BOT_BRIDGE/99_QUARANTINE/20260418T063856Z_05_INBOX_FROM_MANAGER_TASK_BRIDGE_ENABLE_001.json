@@ -1,0 +1,17 @@
+{
+  "task_id": "BRIDGE_ENABLE_001",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "",
+  "title": "Re-enable model bridge kill switch",
+  "allowed_files": [
+    "core/model_bridge.py"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_BRIDGE_ENABLE_001.md",
+  "review_path": "07_REVIEWS/REVIEW_BRIDGE_ENABLE_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- Line 11 reads: ENABLE_MODEL_BRIDGE = True\n- No other lines changed\n- Verification command prints True"
+}

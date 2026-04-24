@@ -1,0 +1,48 @@
+{
+  "task_id": "PAPER_SLIPPAGE_MODEL_001",
+  "title": "Add realistic walk-the-book + slippage buffer to paper execution",
+  "priority": "HIGH",
+  "type": "code-writing task",
+  "track": "Track C — execution realism (P1)",
+  "issued": "2026-04-18",
+  "subsystem": "sports_bot_v2 paper execution",
+  "status": "QUEUED",
+  "assigned_role": "SONNET_WORKER",
+  "depends_on": null,
+  "objective": "Make paper fills reflect what real-money orders would actually pay: volume-weighted walk-the-book + conservative slippage buffer, toggleable via config.",
+  "paper_only_note": "Paper-only.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\orderbook.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\types.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "forbidden_actions": [
+    "Change entry/exit decision logic",
+    "Change bankroll or sizing",
+    "Add real-money execution code",
+    "Modify attribution schema",
+    "Modify orderbook data model beyond fill-output additions"
+  ],
+  "required_work": [
+    "1. Implement volume-weighted walk-the-book fill given orderbook snapshot + side + size.",
+    "2. Add configurable slippage buffer (paper_slippage_enabled, paper_slippage_cents).",
+    "3. Return a fill record including filled_size, wbap, fill_px_with_slippage, partial flag.",
+    "4. Emit per-fill log line.",
+    "5. Provide example fills for small / medium / large sizes from a real ob_snapshot."
+  ],
+  "acceptance_criteria": [
+    "Walk-the-book correctly computes VWAP from orderbook depth",
+    "Partial fill behavior works when size exceeds available depth",
+    "Slippage is applied and configurable; toggleable to disabled returns VWAP unchanged",
+    "Fill record populates actual_fill_px field used by attribution wiring",
+    "No existing decision logic changed"
+  ],
+  "verification": [
+    "Load an ob_snapshots sample and demonstrate 3 fills of varying size",
+    "Toggle paper_slippage_enabled false and confirm slippage path is bypassed",
+    "Show per-fill log line format",
+    "Confirm attribution record actual_fill_px reflects the new price"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_PAPER_SLIPPAGE_MODEL_001.json"
+}

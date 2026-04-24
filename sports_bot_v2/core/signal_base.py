@@ -37,14 +37,18 @@ LIVE_WARMUP_SECONDS = int(os.getenv("LIVE_WARMUP_SECONDS", "90"))
 # Track when each market first went live (for warmup window)
 _MARKET_FIRST_LIVE: dict[str, float] = {}
 
-# All statuses considered "live" across all sports
+# Generic statuses considered "live" (sport-agnostic)
 LIVE_STATUSES = {
     # NCAAB
     "FIRST_HALF", "HALFTIME", "SECOND_HALF", "OVERTIME",
-    # MLB
-    "EARLY_INNINGS", "MID_GAME", "LATE_GAME", "EXTRAS",
     # Generic
     "LIVE",
+}
+
+# MLB-specific statuses — isolated for authority separation
+# (sports_bot_v2 should not originate MLB logic locally)
+_MLB_LIVE_STATUSES = {
+    "EARLY_INNINGS", "MID_GAME", "LATE_GAME", "EXTRAS",
 }
 
 

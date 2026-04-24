@@ -1,0 +1,16 @@
+{
+  "task_id": "REGISTRY_PREGAME_WINDOW_001",
+  "type": "bug + observability",
+  "priority": "LOW",
+  "status": "ACTIVE",
+  "issued": "2026-04-18",
+  "subsystem": "mlb_model integration discovery loop",
+  "title": "Classify future-dated events as FUTURE_SCHEDULED (or expand registry window); eliminate no_registry_match log noise",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_REGISTRY_PREGAME_WINDOW_001.md",
+  "assigned_role": "HAIKU_WORKER",
+  "acceptance": "- Future-day events no longer log no_registry_match with full registry dump\n- Summary log line reflects new classification count\n- No change in matching for same-day events\n- Rationale for (a) vs (b) documented\n- No files outside allowed_files modified"
+}

@@ -25,6 +25,8 @@ MAX_POSITION_SIZE_USD = float(os.getenv("MAX_POSITION_SIZE_USD", "50"))
 RISK_PCT_PER_TRADE = float(os.getenv("RISK_PCT_PER_TRADE", "0.03"))
 MIN_POSITION_USD = float(os.getenv("MIN_POSITION_USD", "10.0"))
 _PAPER_STARTING_BANKROLL = float(os.getenv("STARTING_BANKROLL", "500"))
+PAPER_SLIPPAGE_ENABLED = os.getenv("PAPER_SLIPPAGE_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
+PAPER_SLIPPAGE_CENTS = float(os.getenv("PAPER_SLIPPAGE_CENTS", "2.0"))
 
 
 def _confidence_size(base_usd: float, confidence: float, drawdown_mult: float = 1.0) -> float:
@@ -40,25 +42,153 @@ def _confidence_size(base_usd: float, confidence: float, drawdown_mult: float = 
         mult = CONF_SIZE_MID_MULT
 
     sized = base_usd * mult * drawdown_mult
-    return max(0.0, min(sized, MAX_POSITION_SIZE_USD))
+    return max(MIN_POSITION_USD, min(sized, MAX_POSITION_SIZE_USD))
 
 
-def _fill_price_entry(side: str, ob: OBSnapshot) -> float:
-    if side == "BUY_YES":
-        base = ob.ask_yes or 0.5
+def _walk_the_book(side: str, quantity_usd: float, ask_levels: list[dict]) -> tuple[float, float, bool]:
+    """
+    Walk the book to compute VWAP for a buy order consuming ask levels.
+
+    Returns: (vwap_price, filled_usd, partial_fill)
+    vwap_price = total_usd_spent / total_shares_acquired
+    """
+    if not ask_levels or quantity_usd <= 0:
+        return 0.5, 0.0, True
+
+    filled_usd = 0.0
+    total_shares = 0.0
+
+    for level in ask_levels:
+        if filled_usd >= quantity_usd:
+            break
+        try:
+            price = float(level.get("price", 0))
+            size = float(level.get("size", 0))
+            if price <= 0 or size <= 0:
+                continue
+
+            remaining_usd = quantity_usd - filled_usd
+            level_usd = price * size
+
+            if level_usd <= remaining_usd:
+                filled_usd += level_usd
+                total_shares += size
+            else:
+                shares_to_fill = remaining_usd / price
+                filled_usd += remaining_usd
+                total_shares += shares_to_fill
+                break
+        except (ValueError, TypeError, KeyError):
+            continue
+
+    partial = filled_usd < quantity_usd
+    vwap = filled_usd / total_shares if total_shares > 0 else 0.5
+
+    return vwap, filled_usd, partial
+
+
+def _get_fill_price_with_slippage(vwap: float, is_entry: bool) -> float:
+    """Apply slippage buffer on top of VWAP."""
+    if not PAPER_SLIPPAGE_ENABLED:
+        return vwap
+
+    slippage_dollars = PAPER_SLIPPAGE_CENTS / 100.0
+    if is_entry:
+        return vwap + slippage_dollars
     else:
-        base = ob.ask_no or 0.5
-    fill = base * (1.0 + PAPER_SLIPPAGE_PCT)
-    return min(0.99, max(0.01, fill))
+        return vwap - slippage_dollars
 
 
-def _fill_price_exit(side: str, ob: OBSnapshot) -> float:
+def _fill_price_entry(side: str, ob: OBSnapshot, size_usd: float = 1.0) -> dict:
+    """
+    Compute entry fill price using walk-the-book + slippage.
+
+    `size_usd` is the intended order size in USD — walking the book for the
+    actual size is critical for thin Polymarket binary books where top-of-book
+    depth may be <$10 before the price gaps up.
+
+    Returns: {"fill_px": float, "vwap": float, "partial": bool, "actual_fill_px": float}
+    """
+    if not PAPER_SLIPPAGE_ENABLED:
+        if side == "BUY_YES":
+            base = ob.ask_yes or 0.5
+        else:
+            base = ob.ask_no or 0.5
+        return {
+            "fill_px": min(0.99, max(0.01, base)),
+            "vwap": min(0.99, max(0.01, base)),
+            "partial": False,
+            "actual_fill_px": min(0.99, max(0.01, base)),
+        }
+
     if side == "BUY_YES":
-        base = ob.bid_yes or 0.5
+        ask_levels = ob.ask_levels_yes
+        fallback_px = ob.ask_yes or 0.5
     else:
-        base = ob.bid_no or 0.5
-    fill = base * (1.0 - PAPER_SLIPPAGE_PCT)
-    return max(0.01, min(0.99, fill))
+        ask_levels = ob.ask_levels_no
+        fallback_px = ob.ask_no or 0.5
+
+    if ask_levels:
+        vwap, _, partial = _walk_the_book(side, max(0.01, size_usd), ask_levels)
+        if vwap <= 0:
+            vwap = fallback_px
+    else:
+        vwap = fallback_px
+        partial = False
+
+    fill_px = _get_fill_price_with_slippage(vwap, is_entry=True)
+    fill_px = min(0.99, max(0.01, fill_px))
+
+    return {
+        "fill_px": fill_px,
+        "vwap": vwap,
+        "partial": partial,
+        "actual_fill_px": fill_px,
+    }
+
+
+def _fill_price_exit(side: str, ob: OBSnapshot) -> dict:
+    """
+    Compute exit fill price using walk-the-book + slippage.
+
+    Returns: {"fill_px": float, "vwap": float, "partial": bool, "actual_fill_px": float}
+    """
+    if not PAPER_SLIPPAGE_ENABLED:
+        if side == "BUY_YES":
+            base = ob.bid_yes or 0.5
+        else:
+            base = ob.bid_no or 0.5
+        return {
+            "fill_px": max(0.01, min(0.99, base)),
+            "vwap": max(0.01, min(0.99, base)),
+            "partial": False,
+            "actual_fill_px": max(0.01, min(0.99, base)),
+        }
+
+    if side == "BUY_YES":
+        bid_levels = ob.bid_levels_yes
+        fallback_px = ob.bid_yes or 0.5
+    else:
+        bid_levels = ob.bid_levels_no
+        fallback_px = ob.bid_no or 0.5
+
+    if bid_levels:
+        vwap, _, partial = _walk_the_book(side, 1.0, bid_levels)
+        if vwap <= 0:
+            vwap = fallback_px
+    else:
+        vwap = fallback_px
+        partial = False
+
+    fill_px = _get_fill_price_with_slippage(vwap, is_entry=False)
+    fill_px = max(0.01, min(0.99, fill_px))
+
+    return {
+        "fill_px": fill_px,
+        "vwap": vwap,
+        "partial": partial,
+        "actual_fill_px": fill_px,
+    }
 
 
 def _held_bid(side: str, ob: OBSnapshot) -> float | None:
@@ -73,13 +203,14 @@ def open_position(
     source: str = "bot",
     drawdown_mult: float = 1.0,
 ) -> Trade:
-    fill_px = _fill_price_entry(signal.side, ob)
     recommended_size_usd = signal.components.get("recommended_size_dollars")
     if recommended_size_usd is not None:
         try:
-            size_usd = max(0.0, min(float(recommended_size_usd), MAX_POSITION_SIZE_USD))
+            size_usd = max(MIN_POSITION_USD, min(float(recommended_size_usd), MAX_POSITION_SIZE_USD))
         except Exception:
+            logger.warning("SIZING recommended_override parse failed, falling back")
             size_usd = _confidence_size(PAPER_POSITION_SIZE_USD, signal.confidence, drawdown_mult)
+        logger.info("SIZING recommended_override=%.2f size_usd=%.2f", float(recommended_size_usd) if recommended_size_usd else 0.0, size_usd)
     else:
         try:
             from core.db import total_realized_pnl as _total_pnl
@@ -94,6 +225,13 @@ def open_position(
             "SIZING bankroll=%.2f base=%.2f size_usd=%.2f",
             _current_bankroll, _bankroll_base, size_usd,
         )
+
+    fill_result = _fill_price_entry(signal.side, ob, size_usd=size_usd)
+    fill_px = fill_result["fill_px"]
+    actual_fill_px = fill_result["actual_fill_px"]
+    vwap = fill_result["vwap"]
+    partial = fill_result["partial"]
+
     qty = size_usd / fill_px if fill_px > 0 else 0.0
     fees_usd = qty * fill_px * PAPER_FEE_PCT
 
@@ -131,6 +269,7 @@ def open_position(
         mode=mode,
         status="open",
         source=source,
+        actual_fill_px=round(actual_fill_px, 6),
     )
 
     risk_packet = get_risk_packet(trade, ob=ob, market=market)
@@ -143,6 +282,12 @@ def open_position(
         f"risk={risk_packet} freshness={freshness} reasons={reasons}"
     )
 
+    slippage_bps = round((fill_px - vwap) * 10000) if vwap > 0 else 0
+    logger.info(
+        "FILL entry | %s | size_usd=%.2f | qty=%.6f | vwap=%.6f | fill_px=%.6f | slippage_bps=%d | partial=%s",
+        signal.side, size_usd, qty, vwap, fill_px, slippage_bps, partial
+    )
+
     return trade
 
 
@@ -151,7 +296,11 @@ def close_position(
     ob: OBSnapshot,
     reason: str,
 ) -> dict:
-    held_exit_px = _fill_price_exit(trade.side, ob)
+    fill_result = _fill_price_exit(trade.side, ob)
+    held_exit_px = fill_result["fill_px"]
+    vwap = fill_result["vwap"]
+    partial = fill_result["partial"]
+
     entry_px = trade.entry_px or 0.0
     qty = trade.qty or 0.0
 
@@ -160,6 +309,12 @@ def close_position(
     exit_fees = qty * held_exit_px * PAPER_FEE_PCT
     entry_fees = trade.fees_usd or 0.0
     net_pnl = gross_pnl - entry_fees - exit_fees
+
+    slippage_bps = round((vwap - held_exit_px) * 10000) if vwap > 0 else 0
+    logger.info(
+        "FILL exit | %s | qty=%.6f | vwap=%.6f | exit_px=%.6f | slippage_bps=%d | partial=%s",
+        trade.side, qty, vwap, held_exit_px, slippage_bps, partial
+    )
 
     return {
         "exit_px": round(held_exit_px, 6),
@@ -176,6 +331,10 @@ def mark_to_market_value(trade: Trade, ob: OBSnapshot) -> float:
     current_held_price = _held_bid(trade.side, ob)
     if current_held_price is None:
         return 0.0
-    held_exit_sim = current_held_price * (1.0 - PAPER_SLIPPAGE_PCT)
+    if not PAPER_SLIPPAGE_ENABLED:
+        held_exit_sim = current_held_price
+    else:
+        slippage_dollars = PAPER_SLIPPAGE_CENTS / 100.0
+        held_exit_sim = current_held_price - slippage_dollars
     held_exit_sim = max(0.01, min(0.99, held_exit_sim))
     return (held_exit_sim - trade.entry_px) * trade.qty

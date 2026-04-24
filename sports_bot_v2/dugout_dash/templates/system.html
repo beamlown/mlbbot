@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}SYSTEM · Dugout Dash{% endblock %}
+{% block content %}
+<section class="pane">
+
+  <div class="panel" style="margin-bottom:16px;">
+    <h3>── HEARTBEAT ──</h3>
+    <div class="pos-row"><span class="k">STATE</span><span class="v">
+      {% if STALE %}<span class="pnl-down">⚠ STALE</span>
+      {% elif STATE.exists %}<span class="pnl-up">● ALIVE</span>
+      {% else %}<span class="pnl-down">? NO STATE</span>{% endif %}
+    </span></div>
+    {% if STATE.mtime %}
+    <div class="pos-row"><span class="k">LAST TICK</span><span class="v">{{ (STATE.mtime * 1000)|int }}</span></div>
+    {% endif %}
+    {% if STATE.data and STATE.data.bot_paused %}
+    <div class="pos-row"><span class="k">MODE</span><span class="v pnl-down">PAUSED</span></div>
+    {% endif %}
+  </div>
+
+  <div class="panel" style="margin-bottom:16px;">
+    <h3>── TODAY ──</h3>
+    <div class="pos-row"><span class="k">P&amp;L</span>
+      <span class="v {% if (TODAY.pnl or 0) >= 0 %}pnl-up{% else %}pnl-down{% endif %}">
+        {% if (TODAY.pnl or 0) >= 0 %}+${{ '%.2f'|format(TODAY.pnl or 0) }}{% else %}-${{ '%.2f'|format(-(TODAY.pnl or 0)) }}{% endif %}
+      </span></div>
+    <div class="pos-row"><span class="k">TRADES</span><span class="v">{{ TODAY.trades or 0 }}</span></div>
+    <div class="pos-row"><span class="k">WIN RATE</span><span class="v">{% if TODAY.win_rate_pct is not none %}{{ '%.1f'|format(TODAY.win_rate_pct) }}%{% else %}—{% endif %}</span></div>
+  </div>
+
+  <div class="panel" style="margin-bottom:16px;">
+    <h3>── STREAMS ──</h3>
+    <div class="pos-row"><span class="k">SSE CLIENTS</span><span class="v">{{ SSE_CLIENT_COUNT }}</span></div>
+  </div>
+
+  <div class="panel" style="margin-bottom:16px;">
+    <h3>── GUARD GATES (9) ──</h3>
+    <div class="gates" id="guard-gates">
+      {% for i in range(9) %}<span class="gate" data-gate-idx="{{ i }}" title="gate {{ i }} — awaiting data"></span>{% endfor %}
+    </div>
+    <div style="font-family: var(--font-pixel-text); font-size: 16px; color: var(--chalk-dim); margin-top: 8px;">
+      Lights up on incoming <code>guard_state</code> SSE events.
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>── CONTROLS ──</h3>
+    <div style="display:flex; gap:12px; flex-wrap:wrap;">
+      <button class="tazz-watch-btn" onclick="ctl('pause')">⏸ PAUSE BOT</button>
+      <button class="tazz-watch-btn" onclick="ctl('resume')">▶ RESUME BOT</button>
+      <button class="tazz-watch-btn" style="border-color: var(--foul-red);" onclick="ctl('flat_all')">🚨 FLAT ALL</button>
+    </div>
+  </div>
+
+</section>
+{% block scripts %}
+<script>
+async function ctl(action) {
+  if (action === 'flat_all' && !confirm('FLAT ALL — close every open position. Confirm?')) return;
+  const r = await fetch('/api/control/' + action, { method: 'POST' });
+  const j = await r.json();
+  if (j.ok) setTimeout(() => location.reload(), 400);
+  else alert('Control failed: ' + (j.error || r.status));
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (typeof EventSource === 'undefined') return;
+  const es = new EventSource('/api/events');
+  es.addEventListener('guard_state', (e) => {
+    try {
+      const p = JSON.parse(e.data);
+      const gates = p.gates || [];
+      document.querySelectorAll('#guard-gates .gate').forEach((el, i) => {
+        el.classList.remove('on', 'off');
+        if (gates[i] === true) el.classList.add('on');
+        else if (gates[i] === false) el.classList.add('off');
+      });
+    } catch (err) {}
+  });
+});
+</script>
+{% endblock %}
+{% endblock %}

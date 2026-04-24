@@ -1,0 +1,17 @@
+{
+  "task_id": "REALTIME_MARKET_STREAM_STAGE1_001",
+  "status": "ok",
+  "summary": "All acceptance criteria verified as met. market_stream.py, state_hub.py, dashboard_server.py, and dashboard.html are fully implemented and verified end-to-end by VERIFY_REALTIME_MARKET_STREAM_STAGE1_FINAL (APPROVED). Live Polymarket WebSocket marks flow through state_hub to SSE /api/stream/state. Each position in the payload carries best_bid, best_ask, spread, source_ts, mark_source=polymarket_stream, unrealized_pnl_usd, live_equity_usd. Stale/fresh state is explicit. REST fallback remains intact and rollback path is available.",
+  "acceptance_check": {
+    "stream_backed_price_for_open_positions": true,
+    "sse_payload_reflects_stream_marks": true,
+    "live_equity_unrealized_from_stream": true,
+    "stale_fresh_state_explicit": true,
+    "fallback_polling_intact": true,
+    "rollout_reversible": true
+  },
+  "verification_ref": "RESULT_VERIFY_REALTIME_MARKET_STREAM_STAGE1_FINAL.json",
+  "review_ref": "REVIEW_VERIFY_REALTIME_MARKET_STREAM_STAGE1_FINAL.md",
+  "closed_by": "SONNET_MANAGER",
+  "closed_at": "2026-04-17"
+}

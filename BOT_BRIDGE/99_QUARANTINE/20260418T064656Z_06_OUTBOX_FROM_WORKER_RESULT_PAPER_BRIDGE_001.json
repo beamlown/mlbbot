@@ -1,0 +1,10 @@
+{
+  "status": "blocked",
+  "summary": "Cannot proceed: HANDOFF_PAPER_BRIDGE_001.md is missing from inbox",
+  "files_changed": [],
+  "notes": "The handoff file at BOT_BRIDGE/05_INBOX_FROM_MANAGER/HANDOFF_PAPER_BRIDGE_001.md does not exist. Acceptance criteria are present in the task envelope but the actual HANDOFF document (with detailed requirements, acceptance tests, and scope) is required to proceed.",
+  "next_steps": [
+    "Manager must write HANDOFF_PAPER_BRIDGE_001.md to the inbox",
+    "HANDOFF should include: detailed requirements, specific test cases, edge cases to handle, and any additional context beyond the acceptance criteria envelope"
+  ]
+}

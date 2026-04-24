@@ -1,0 +1,15 @@
+{
+  "task_id": "DASH_004",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "",
+  "title": "Merge HUD + header into single command bar, add bridge badge",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_DASH_004.md",
+  "acceptance": "- Single sticky bar at top — no separate HUD strip and header row\n- Bridge badge shows BRIDGE ON (green) when bridge_enabled=true\n- Mode badge shows correct color for conservative/neutral/aggressive\n- Bot status dot still animates when live\n- All info from old HUD (positions count, live PnL) visible in new bar\n- Hamburger menu button still opens the drawer"
+}

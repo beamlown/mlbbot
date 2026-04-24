@@ -1,0 +1,15 @@
+{
+  "task_id": "DASH_012",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "",
+  "title": "Fix game status chip — LIVE shown for unstarted games",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_DASH_012.md",
+  "acceptance": "- A scheduled/pre-game position card shows 'SCHEDULED' status — NOT 'LIVE' or 'i1'\n- No green live-dot on cards for scheduled/pre-game games\n- No inning number shown for scheduled/pre-game games\n- A genuinely live in-game position card shows 'iN · LIVE' with green dot (N = actual inning)\n- A resolved/closed position (if any remain visible) shows 'FINAL'\n- No JS console errors"
+}

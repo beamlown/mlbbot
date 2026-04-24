@@ -1,0 +1,17 @@
+{
+  "task_id": "DASH_009",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "",
+  "title": "Fix resolved paper trade cards — PnL, Current price, team name",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_DASH_009.md",
+  "review_path": "07_REVIEWS/REVIEW_DASH_009.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- Resolved paper trade cards show a dollar amount for PnL (e.g. '+$53.00') not '—'\n- Resolved paper trade cards show a price in the Current stat box (e.g. '100.0¢' for a resolved YES, or the exit_px in cents) not '—'\n- Resolved paper trade cards show team names like 'SEA @ LAA' not 'mlb-se'\n- Open paper trades (if any) still work correctly — no regression\n- Shadow-only position cards still work correctly — no regression\n- No changes to any server-side files"
+}

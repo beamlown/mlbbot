@@ -1,0 +1,18 @@
+{
+  "task_id": "BANKROLL_SESSION_RULES_001",
+  "type": "implementation",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "accounting / bankroll",
+  "title": "BANKROLL_SESSION_RULES_001",
+  "allowed_files": [
+    "dashboard_server.py",
+    "core/paper_exec.py"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_BANKROLL_SESSION_RULES_001.md",
+  "review_path": "07_REVIEWS/REVIEW_BANKROLL_SESSION_RULES_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- All 5 accounting invariants above are confirmed or fixed\n- BANKROLL_ACCOUNTING_SPEC_001.md is written and complete\n- available_cash formula matches canonical definition\n- live_equity uses held-side bid price only\n- No fake session resets that corrupt lifetime history\n- python -m py_compile dashboard_server.py passes\n- python -m py_compile core/paper_exec.py passes\n- Only files in allowed_files were changed"
+}

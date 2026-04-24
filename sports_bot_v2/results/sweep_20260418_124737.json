@@ -1,0 +1,264 @@
+{
+  "task_id": "REPLAY_SWEEP_CLI_001",
+  "timestamp": "20260418_124737",
+  "n_configs": 12,
+  "n_trades_evaluated": 278,
+  "elapsed_seconds": 0.06266570091247559,
+  "configs": [
+    {
+      "config": "gate_sweep_0.55_0.5",
+      "overrides": {
+        "MIN_ENTRY_CONFIDENCE": 0.55,
+        "MIN_CONFIDENCE": 0.5
+      },
+      "total_evaluated": 278,
+      "winners_blocked": 55,
+      "losers_blocked": 131,
+      "winners_passed": 16,
+      "losers_passed": 70,
+      "blocked_pnl_saved_usd": 1928.51,
+      "blocked_pnl_lost_usd": 2664.24,
+      "estimated_pnl_delta_usd": -735.72,
+      "sl_clusters_avoided": 11,
+      "block_reasons": {
+        "confidence_too_low": 167,
+        "entry_price_too_low": 19,
+        "extreme_sanity_floor": 2,
+        "extreme_sanity_ceiling": 1
+      }
+    },
+    {
+      "config": "gate_sweep_0.58_0.53",
+      "overrides": {
+        "MIN_ENTRY_CONFIDENCE": 0.58,
+        "MIN_CONFIDENCE": 0.53
+      },
+      "total_evaluated": 278,
+      "winners_blocked": 56,
+      "losers_blocked": 134,
+      "winners_passed": 15,
+      "losers_passed": 67,
+      "blocked_pnl_saved_usd": 1976.27,
+      "blocked_pnl_lost_usd": 2709.25,
+      "estimated_pnl_delta_usd": -732.98,
+      "sl_clusters_avoided": 11,
+      "block_reasons": {
+        "confidence_too_low": 176,
+        "entry_price_too_low": 16,
+        "extreme_sanity_ceiling": 1
+      }
+    },
+    {
+      "config": "gate_sweep_0.58_0.55",
+      "overrides": {
+        "MIN_ENTRY_CONFIDENCE": 0.58,
+        "MIN_CONFIDENCE": 0.55
+      },
+      "total_evaluated": 278,
+      "winners_blocked": 56,
+      "losers_blocked": 134,
+      "winners_passed": 15,
+      "losers_passed": 67,
+      "blocked_pnl_saved_usd": 1976.27,
+      "blocked_pnl_lost_usd": 2709.25,
+      "estimated_pnl_delta_usd": -732.98,
+      "sl_clusters_avoided": 11,
+      "block_reasons": {
+        "confidence_too_low": 176,
+        "entry_price_too_low": 16,
+        "extreme_sanity_ceiling": 1
+      }
+    },
+    {
+      "config": "gate_sweep_0.6_0.5",
+      "overrides": {
+        "MIN_ENTRY_CONFIDENCE": 0.6,
+        "MIN_CONFIDENCE": 0.5
+      },
+      "total_evaluated": 278,
+      "winners_blocked": 56,
+      "losers_blocked": 139,
+      "winners_passed": 15,
+      "losers_passed": 62,
+      "blocked_pnl_saved_usd": 2053.77,
+      "blocked_pnl_lost_usd": 2709.25,
+      "estimated_pnl_delta_usd": -655.48,
+      "sl_clusters_avoided": 13,
+      "block_reasons": {
+        "confidence_too_low": 181,
+        "entry_price_too_low": 16,
+        "extreme_sanity_ceiling": 1
+      }
+    },
+    {
+      "config": "gate_sweep_0.6_0.53",
+      "overrides": {
+        "MIN_ENTRY_CONFIDENCE": 0.6,
+        "MIN_CONFIDENCE": 0.53
+      },
+      "total_evaluated": 278,
+      "winners_blocked": 56,
+      "losers_blocked": 139,
+      "winners_passed": 15,
+      "losers_passed": 62,
+      "blocked_pnl_saved_usd": 2053.77,
+      "blocked_pnl_lost_usd": 2709.25,
+      "estimated_pnl_delta_usd": -655.48,
+      "sl_clusters_avoided": 13,
+      "block_reasons": {
+        "confidence_too_low": 181,
+        "entry_price_too_low": 16,
+        "extreme_sanity_ceiling": 1
+      }
+    },
+    {
+      "config": "gate_sweep_0.6_0.55",
+      "overrides": {
+        "MIN_ENTRY_CONFIDENCE": 0.6,
+        "MIN_CONFIDENCE": 0.55
+      },
+      "total_evaluated": 278,
+      "winners_blocked": 56,
+      "losers_blocked": 139,
+      "winners_passed": 15,
+      "losers_passed": 62,
+      "blocked_pnl_saved_usd": 2053.77,
+      "blocked_pnl_lost_usd": 2709.25,
+      "estimated_pnl_delta_usd": -655.48,
+      "sl_clusters_avoided": 13,
+      "block_reasons": {
+        "confidence_too_low": 181,
+        "entry_price_too_low": 16,
+        "extreme_sanity_ceiling": 1
+      }
+    },
+    {
+      "config": "gate_sweep_0.62_0.5",
+      "overrides": {
+        "MIN_ENTRY_CONFIDENCE": 0.62,
+        "MIN_CONFIDENCE": 0.5
+      },
+      "total_evaluated": 278,
+      "winners_blocked": 57,
+      "losers_blocked": 141,
+      "winners_passed": 14,
+      "losers_passed": 60,
+      "blocked_pnl_saved_usd": 2100.73,
+      "blocked_pnl_lost_usd": 2728.88,
+      "estimated_pnl_delta_usd": -628.14,
+      "sl_clusters_avoided": 13,
+      "block_reasons": {
+        "confidence_too_low": 184,
+        "entry_price_too_low": 16,
+        "extreme_sanity_ceiling": 1
+      }
+    },
+    {
+      "config": "gate_sweep_0.62_0.53",
+      "overrides": {
+        "MIN_ENTRY_CONFIDENCE": 0.62,
+        "MIN_CONFIDENCE": 0.53
+      },
+      "total_evaluated": 278,
+      "winners_blocked": 57,
+      "losers_blocked": 141,
+      "winners_passed": 14,
+      "losers_passed": 60,
+      "blocked_pnl_saved_usd": 2100.73,
+      "blocked_pnl_lost_usd": 2728.88,
+      "estimated_pnl_delta_usd": -628.14,
+      "sl_clusters_avoided": 13,
+      "block_reasons": {
+        "confidence_too_low": 184,
+        "entry_price_too_low": 16,
+        "extreme_sanity_ceiling": 1
+      }
+    },
+    {
+      "config": "gate_sweep_0.62_0.55",
+      "overrides": {
+        "MIN_ENTRY_CONFIDENCE": 0.62,
+        "MIN_CONFIDENCE": 0.55
+      },
+      "total_evaluated": 278,
+      "winners_blocked": 57,
+      "losers_blocked": 141,
+      "winners_passed": 14,
+      "losers_passed": 60,
+      "blocked_pnl_saved_usd": 2100.73,
+      "blocked_pnl_lost_usd": 2728.88,
+      "estimated_pnl_delta_usd": -628.14,
+      "sl_clusters_avoided": 13,
+      "block_reasons": {
+        "confidence_too_low": 184,
+        "entry_price_too_low": 16,
+        "extreme_sanity_ceiling": 1
+      }
+    },
+    {
+      "config": "gate_sweep_0.58_0.5",
+      "overrides": {
+        "MIN_ENTRY_CONFIDENCE": 0.58,
+        "MIN_CONFIDENCE": 0.5
+      },
+      "total_evaluated": 278,
+      "winners_blocked": 56,
+      "losers_blocked": 134,
+      "winners_passed": 15,
+      "losers_passed": 67,
+      "blocked_pnl_saved_usd": 1976.27,
+      "blocked_pnl_lost_usd": 2709.25,
+      "estimated_pnl_delta_usd": -732.98,
+      "sl_clusters_avoided": 11,
+      "block_reasons": {
+        "confidence_too_low": 176,
+        "entry_price_too_low": 16,
+        "extreme_sanity_ceiling": 1
+      }
+    },
+    {
+      "config": "gate_sweep_0.55_0.53",
+      "overrides": {
+        "MIN_ENTRY_CONFIDENCE": 0.55,
+        "MIN_CONFIDENCE": 0.53
+      },
+      "total_evaluated": 278,
+      "winners_blocked": 55,
+      "losers_blocked": 131,
+      "winners_passed": 16,
+      "losers_passed": 70,
+      "blocked_pnl_saved_usd": 1928.51,
+      "blocked_pnl_lost_usd": 2664.24,
+      "estimated_pnl_delta_usd": -735.72,
+      "sl_clusters_avoided": 11,
+      "block_reasons": {
+        "confidence_too_low": 167,
+        "entry_price_too_low": 19,
+        "extreme_sanity_floor": 2,
+        "extreme_sanity_ceiling": 1
+      }
+    },
+    {
+      "config": "gate_sweep_0.55_0.55",
+      "overrides": {
+        "MIN_ENTRY_CONFIDENCE": 0.55,
+        "MIN_CONFIDENCE": 0.55
+      },
+      "total_evaluated": 278,
+      "winners_blocked": 55,
+      "losers_blocked": 131,
+      "winners_passed": 16,
+      "losers_passed": 70,
+      "blocked_pnl_saved_usd": 1928.51,
+      "blocked_pnl_lost_usd": 2664.24,
+      "estimated_pnl_delta_usd": -735.72,
+      "sl_clusters_avoided": 11,
+      "block_reasons": {
+        "confidence_too_low": 167,
+        "entry_price_too_low": 19,
+        "extreme_sanity_floor": 2,
+        "extreme_sanity_ceiling": 1
+      }
+    }
+  ]
+}

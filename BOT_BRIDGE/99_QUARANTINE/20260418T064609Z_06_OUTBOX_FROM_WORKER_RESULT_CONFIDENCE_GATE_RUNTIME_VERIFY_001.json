@@ -1,0 +1,86 @@
+{
+  "status": "ok",
+  "summary": "MIN_ENTRY_CONFIDENCE=0.60/0.65 gate exists in code and is enforced at runtime, BUT was NOT enforced at time of trades 223-224. Root cause: code/config version mismatch between deployments on 2026-04-10.",
+  "files_changed": [],
+  "notes": {
+    "read_only_confirmed": true,
+    "no_db_writes": true,
+    "no_restarts_triggered": true
+  },
+  "verification_details": {
+    "check_entry_gates_usage": {
+      "verdict": "YES",
+      "evidence": "bot_core.py:632 calls check_entry_gates() for model_bridge entries. If gate fails, logs 'BRIDGE GATE REJECT [check_entry_gates]' and blocks entry."
+    },
+    "min_entry_confidence_loaded": {
+      "verdict": "YES - 0.65 in live .env",
+      "evidence": "core/risk.py:41 loads from env with default 0.60. .env:47 overrides to 0.65. Current deployed config: MIN_ENTRY_CONFIDENCE=0.65"
+    },
+    "trades_223_224_before_after": {
+      "trade_223_mlb_ari_phi_20260410": {
+        "id": 223,
+        "confidence": 0.3353,
+        "opened_at": "2026-04-10T22:44:07.039312+00:00",
+        "status": "BEFORE 18:29:31 restart — NO check_entry_gates rejection logged, trade OPENED successfully",
+        "after_restart_verdict": "WOULD BE REJECTED: logs at 18:33:15 show 'confidence_too_low:0.36:0.600'"
+      },
+      "trade_224_mlb_laa_cin_20260410": {
+        "id": 224,
+        "confidence": 0.3996,
+        "opened_at": "2026-04-10T22:47:37.738110+00:00",
+        "status": "BEFORE 18:29:31 restart — NO check_entry_gates rejection logged, trade OPENED successfully",
+        "after_restart_verdict": "WOULD BE REJECTED: logs at 18:33:15 show 'confidence_too_low:0.3382:0.600'"
+      },
+      "summary": "Both trades violated 0.60/0.65 floor but were allowed to open. Same markets rejected with gate message 1+ hour later."
+    },
+    "gate_enforcement_timeline": {
+      "17:28:59_restart": {
+        "event": "Bot restarted",
+        "diagnostic": "min_conf=0.25 (this is model_bridge gate, not entry gate)",
+        "check_entry_gates": "Unclear if gate was active/loaded"
+      },
+      "17:44:07": {
+        "event": "Trade 223 opened with confidence=0.3353",
+        "logs": "BRIDGE GATE PASS (from model_bridge), then BRIDGE OPEN trade=223. NO 'BRIDGE GATE REJECT [check_entry_gates]' message.",
+        "gate_verdict": "NOT ENFORCED"
+      },
+      "17:47:37": {
+        "event": "Trade 224 opened with confidence=0.3996",
+        "logs": "BRIDGE GATE PASS (from model_bridge), then BRIDGE OPEN trade=224. NO 'BRIDGE GATE REJECT [check_entry_gates]' message.",
+        "gate_verdict": "NOT ENFORCED"
+      },
+      "18:29:31_restart": {
+        "event": "Bot restarted again",
+        "diagnostic": "min_conf=0.25 (same as before)",
+        "change": "check_entry_gates enforcement appears to have been enabled or fixed"
+      },
+      "18:33:15": {
+        "event": "Same market slugs (ari-phi, laa-cin) receive new intents from model_bridge",
+        "logs": "BRIDGE GATE PASS with new confidence values, then IMMEDIATELY BRIDGE GATE REJECT [check_entry_gates] with 'confidence_too_low:X:0.600'",
+        "gate_verdict": "NOW ENFORCED with 0.60 threshold"
+      }
+    },
+    "root_cause_analysis": {
+      "hypothesis": "Code/config version mismatch. The deployment running from 17:28:59 did not have check_entry_gates MIN_ENTRY_CONFIDENCE validation, OR it was disabled.",
+      "evidence": [
+        "check_entry_gates() exists in current code and includes MIN_ENTRY_CONFIDENCE check at lines 165-168",
+        "However, trades 223-224 opening without rejection indicates this check was not active before 18:29:31",
+        "After 18:29:31 restart, identical market slugs with similar confidence values ARE rejected with the gate message",
+        "No code deployment logs found, but timing strongly suggests 17:28-18:29 window saw config or code change"
+      ],
+      "security_gap_identified": "model_bridge has MIN_CONFIDENCE=0.25 hardcoded. If check_entry_gates is not called or not loaded, trades can slip through with 0.25 < confidence < 0.60 range."
+    }
+  },
+  "explicit_yes_no_answers": {
+    "do_bridge_entries_use_check_entry_gates": "YES",
+    "is_0_60_floor_loaded_in_live_env_code": "YES (0.65 in .env, default 0.60 in code)",
+    "is_real_bug": "YES — the gate exists and works, but was NOT enforced at the time of trades 223-224. This is a runtime enforcement failure due to version mismatch or conditional disablement."
+  },
+  "next_steps": [
+    "Verify what code was actually running at 17:28:59 vs 18:29:31 on 2026-04-10. Check deployment logs, git tags, or runtime config snapshots.",
+    "Confirm whether check_entry_gates MIN_ENTRY_CONFIDENCE logic was recently added or modified (commit dates, PR history).",
+    "Establish deployment versioning/git tag enforcement so all runtime instances have matching code/config.",
+    "Add startup diagnostic logging for MIN_ENTRY_CONFIDENCE and check_entry_gates presence/status to catch future version mismatches.",
+    "Review if hardcoded model_bridge MIN_CONFIDENCE=0.25 should be harmonized with MIN_ENTRY_CONFIDENCE or if dual-gate is intentional."
+  ]
+}

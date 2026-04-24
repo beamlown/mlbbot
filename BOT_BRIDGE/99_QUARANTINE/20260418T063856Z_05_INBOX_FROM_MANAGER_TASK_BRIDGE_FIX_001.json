@@ -1,0 +1,17 @@
+{
+  "task_id": "BRIDGE_FIX_001",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "",
+  "title": "Add MAX_CONCURRENT_TRADES cap and per-open slug re-check to bridge section",
+  "allowed_files": [
+    "sports_bot_v2/bot_core.py"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_BRIDGE_FIX_001.md",
+  "review_path": "07_REVIEWS/REVIEW_BRIDGE_FIX_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- With MAX_CONCURRENT_TRADES=3 and 2 positions already open, bridge opens at most 1 position per loop\n- With MAX_CONCURRENT_TRADES=3 and 3+ positions already open, bridge logs 'BRIDGE SKIP' and opens nothing\n- If a slug appears in the DB between the outer fetch and the per-intent fetch, inner check catches it and logs 'BRIDGE RACE SKIP'\n- Existing native signal loop (check_entry_gates) is unchanged\n- No other files modified"
+}

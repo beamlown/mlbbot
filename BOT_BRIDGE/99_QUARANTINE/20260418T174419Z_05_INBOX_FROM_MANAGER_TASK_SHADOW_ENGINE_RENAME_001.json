@@ -1,0 +1,22 @@
+{
+  "task_id": "SHADOW_ENGINE_RENAME_001",
+  "type": "refactor / rename",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-18",
+  "subsystem": "sports_bot_v2 launcher + dashboard",
+  "title": "Rename shadow_engine → mlb_recommendation_api across launcher, logs, dashboard",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_v2.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\restart_bot.bat",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\run_control_plane.bat"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_SHADOW_ENGINE_RENAME_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_SHADOW_ENGINE_RENAME_001.json",
+  "assigned_role": "HAIKU_WORKER",
+  "acceptance": "- Launcher starts the process under the new name\n- New writes appear in logs/mlb_recommendation_api.log\n- Dashboard shows the new name with explanatory tooltip\n- BOT_BRIDGE directory has zero modifications\n- No functional behavior change — process starts and logs same content"
+}

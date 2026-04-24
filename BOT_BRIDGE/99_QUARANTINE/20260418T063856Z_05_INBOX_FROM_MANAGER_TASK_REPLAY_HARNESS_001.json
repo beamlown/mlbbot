@@ -1,0 +1,25 @@
+{
+  "task_id": "REPLAY_HARNESS_001",
+  "type": "tooling / analysis task",
+  "priority": "LOW",
+  "status": "DONE",
+  "issued": "2026-04-11",
+  "subsystem": "analysis tooling / replay / counterfactual evaluation",
+  "title": "Build a replay and counterfactual harness for evaluating proposed guardrails before live trust",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\tools\\replay_harness.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "Any mlb_model file",
+    "Any file not listed above"
+  ],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_REPLAY_HARNESS_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_REPLAY_HARNESS_001.json",
+  "review_path": "07_REVIEWS/REVIEW_REPLAY_HARNESS_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- Harness can evaluate at least one alternative guardrail configuration on historical data\n- Output reports losers blocked, winners blocked, estimated pnl delta, and repeat-loss-cluster effect\n- No live bot behavior changed by this task\n- python -m py_compile tools\\replay_harness.py passes\n- python -m py_compile core/risk.py passes if modified"
+}

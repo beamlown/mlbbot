@@ -1,0 +1,516 @@
+{% extends "base.html" %}
+{% block title %}{{ task.task_id }} · {{ task.title }}{% endblock %}
+{% block content %}
+
+<a class="back" href="{{ url_for('tasks.board') }}">← Board</a>
+
+<section class="hero-mound state--{{ task.workflow_state }}">
+  <div class="hero-mound-bg" aria-hidden="true"></div>
+  <div class="hero-mound-content">
+    <span class="tid hero-tid" id="f-title-view">{{ task.task_id }}</span>
+    <h1 class="hero-title">{{ task.title }}</h1>
+    <div class="hero-count" title="balls = rework attempts - 1; strikes = reviews requested">
+      <span class="count-balls">B {{ (task.attempt_num or 1) - 1 }}</span>
+      <span class="count-strikes">S {{ reviews|length }}</span>
+    </div>
+    <span class="hero-state">{{ LANE_DISPLAY[task.workflow_state] if task.workflow_state in LANE_DISPLAY else task.workflow_state }}</span>
+  </div>
+  <div class="task-head-right" style="position:relative;z-index:1;padding-top:8px">
+    <span class="chip chip-wf-{{ task.workflow_state|lower }}" id="workflow-chip">{{ task.workflow_state }}</span>
+    <span class="chip chip-{{ (task.status or 'PENDING')|lower }}" id="status-chip">{{ task.status }}</span>
+    <span class="chip priority-{{ (task.priority or 'MEDIUM')|lower }}" id="priority-chip">{{ task.priority }}</span>
+    {% if task.subsystem %}<span class="chip" id="subsystem-chip">{{ task.subsystem }}</span>{% endif %}
+    {% if task.assigned_role %}<span class="chip role" id="role-chip">{{ task.assigned_role }}</span>{% endif %}
+    {% if task.conflict %}<span class="chip chip-conflict" title="External edit detected on TASK file">!conflict</span>{% endif %}
+  </div>
+</section>
+
+{% if task.block_reason or task.blocked_on %}
+<section class="rain-banner" role="status" aria-live="polite">
+  <span class="rain-banner-label">⛈ RAIN DELAY</span>
+  <span class="rain-banner-detail">
+    {{ task.block_reason or ('parked behind ' ~ task.blocked_on) }}
+    {% if task.blocked_on %}
+      · blocker: <a href="{{ url_for('tasks.task_detail', task_id=task.blocked_on) }}"><code>{{ task.blocked_on }}</code></a>
+    {% endif %}
+    {% if task.blocked_at %}· since {{ task.blocked_at }}{% endif %}
+    · launches refuse unless you unpark or pass force=true
+  </span>
+  <div class="block-actions">
+    <button class="btn btn-xs" onclick="unparkTask('{{ task.task_id }}')">Unpark</button>
+  </div>
+</section>
+{% endif %}
+
+<section class="bullpen-strip" aria-label="Launch agent">
+  <span class="palette-label">Launch on this task</span>
+  {% for a in agents %}
+    <button class="bullpen-button agent-launch {% if not a.eligible %}agent-ineligible{% endif %}"
+            style="--accent: {{ a.color or '#8892a6' }}"
+            data-profile-id="{{ a.profile_id }}"
+            data-eligible="{{ '1' if a.eligible else '0' }}"
+            title="Role: {{ a.role }}&#10;Adapter: {{ a.adapter }}&#10;Model: {{ a.model }}&#10;Eligible: {{ a.allowed_states|join(', ') }}">
+      <span class="agent-top">
+        <span class="agent-icon">{{ a.icon or '●' }}</span>
+        <span class="agent-name">{{ a.display }}</span>
+        {% if a.eligible %}<span class="pill-go">GO</span>{% endif %}
+      </span>
+      {% if a.tagline %}<span class="agent-tagline">{{ a.tagline }}</span>{% endif %}
+    </button>
+  {% endfor %}
+  <label class="adapter-switch">
+    adapter
+    <select id="launch-adapter">
+      <option value="">(profile default)</option>
+      <option value="claude_cli">claude_cli</option>
+      <option value="echo">echo (test)</option>
+    </select>
+  </label>
+</section>
+
+<div class="controls-bar arcade-bar">
+  <div class="ctrl-group">
+    <label>Status</label>
+    <select id="ctl-status">
+      {% for s in VALID_STATUSES %}
+        <option value="{{ s }}" {% if task.status == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-xs btn-pixel-arcade" onclick="transitionTask()">Apply</button>
+  </div>
+  <div class="ctrl-group">
+    <label>Assign</label>
+    <select id="ctl-role">
+      <option value="">— unassigned —</option>
+      {% for key, info in ROLE_INFO.items() %}
+        <option value="{{ key }}" {% if task.assigned_role == key %}selected{% endif %}>{{ info.display }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-xs btn-pixel-arcade" onclick="assignTask()">Save</button>
+  </div>
+  <div class="ctrl-group">
+    <button class="btn btn-xs btn-pixel-arcade" onclick="exportTask(false)">Export</button>
+    <button class="btn btn-xs btn-pixel-arcade" onclick="checkConflict()">Check conflict</button>
+    <button class="btn btn-xs btn-pixel-arcade btn-danger" onclick="exportTask(true)">Force export</button>
+  </div>
+  <div class="ctrl-group">
+    <button class="btn btn-xs btn-pixel-arcade" onclick="toggleEdit()">Edit fields</button>
+  </div>
+  <div class="ctrl-group">
+    <button class="btn btn-xs btn-pixel-arcade" onclick="togglePark()">Park…</button>
+    <button class="btn btn-xs btn-pixel-arcade btn-danger" onclick="deleteTask('{{ task.task_id }}', {onDelete: () => location.href='/' })">Delete task</button>
+  </div>
+</div>
+
+<section class="rain-request-panel" id="park-form" style="display:none">
+  <strong class="rain-banner-label">RAIN DELAY REQUEST</strong>
+  <label for="park-blocked-on" class="muted">blocked on</label>
+  <input type="text" id="park-blocked-on" placeholder="TASK_XYZ (optional)">
+  <label for="park-reason" class="muted">reason</label>
+  <input type="text" id="park-reason" placeholder="why is this stuck?">
+  <button class="btn btn-xs btn-accent" onclick="submitPark('{{ task.task_id }}')">Park</button>
+  <button class="btn btn-xs btn-ghost" onclick="togglePark()">Cancel</button>
+</section>
+
+<section id="live-run" {% if not request.args.get('watch') %}hidden{% endif %}>
+  <div class="broadcast-booth">
+    <span class="on-air-dot">● ON AIR</span>
+    <header class="live-head">
+      <span class="chip" id="live-status">—</span>
+      <code id="live-run-id">{{ request.args.get('watch') or '' }}</code>
+      <span id="live-meta" class="muted"></span>
+      <span class="live-spacer"></span>
+      <button class="btn btn-xs btn-danger" id="live-cancel-btn" onclick="cancelRun()">Cancel</button>
+      <button class="btn btn-xs btn-ghost" onclick="closeLive()">Close</button>
+    </header>
+    <pre id="live-log" class="log-pane" aria-live="polite"></pre>
+  </div>
+</section>
+
+{% if result_card %}
+<div class="play-by-play" aria-label="Latest worker result">
+  {% if result_card.status_kind == 'ok' %}
+    <span class="verdict-badge verdict-safe">✓ SAFE — {{ result_card.status }}</span>
+  {% elif result_card.status_kind == 'fail' %}
+    <span class="verdict-badge verdict-out">✗ OUT — {{ result_card.status }}</span>
+  {% else %}
+    <span class="verdict-badge verdict-review">◉ REVIEW — {{ result_card.status }}</span>
+  {% endif %}
+  <div class="result-head">
+    {% if result_card.summary %}<span class="result-summary">{{ result_card.summary }}</span>{% endif %}
+  </div>
+  <div class="result-meta">
+    {% if result_card.role %}<code>{{ result_card.role }}</code>{% endif %}
+    {% if result_card.run_id %}· run <code>{{ result_card.run_id }}</code>{% endif %}
+    {% if result_card.captured_at %}· {{ result_card.captured_at }}{% endif %}
+    {% if result_card.files_changed %}
+      · {{ result_card.files_changed|length }} file{{ '' if result_card.files_changed|length == 1 else 's' }} changed
+    {% endif %}
+    · <a href="{{ url_for('artifacts.artifact_detail', artifact_id=result_card.artifact_id) }}">open full result</a>
+  </div>
+</div>
+{% endif %}
+
+<section class="two-col">
+
+  <div class="col-main">
+    <div id="edit-form" class="edit-form hidden">
+      <h3>Edit task</h3>
+      <label>Title<input type="text" id="f-title" value="{{ task.title|e }}"></label>
+      <div class="inline-fields">
+        <label>Priority
+          <select id="f-priority">
+            {% for p in ['CRITICAL','HIGH','MEDIUM','LOW'] %}
+              <option value="{{ p }}" {% if task.priority == p %}selected{% endif %}>{{ p }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Subsystem<input type="text" id="f-subsystem" value="{{ task.subsystem or '' }}"></label>
+        <label>Type<input type="text" id="f-type" value="{{ task.type or '' }}"></label>
+      </div>
+      <label>Allowed files (one per line)<textarea id="f-allowed" rows="4">{{ task.allowed_files|join('\n') }}</textarea></label>
+      <label>Forbidden files (one per line)<textarea id="f-forbidden" rows="2">{{ task.forbidden_files|join('\n') }}</textarea></label>
+      <label>Acceptance<textarea id="f-acceptance" rows="4">{{ task.acceptance or '' }}</textarea></label>
+      <label>Evidence<textarea id="f-evidence" rows="3">{{ task.evidence or '' }}</textarea></label>
+      <label>Notes<textarea id="f-notes" rows="3">{{ task.notes or '' }}</textarea></label>
+      <div class="row-actions">
+        <button class="btn btn-accent" onclick="saveEdit()">Save changes</button>
+        <button class="btn btn-ghost" onclick="toggleEdit()">Cancel</button>
+      </div>
+    </div>
+
+    {% if latest_report %}
+      <h3>
+        Latest report
+        <span class="chip chip-rel-{{ latest_report.kind|lower }}">{{ latest_report.kind }}</span>
+        <a class="muted" style="font-size:.7rem;margin-left:.4rem" href="{{ url_for('artifacts.artifact_detail', artifact_id=latest_report.artifact_id) }}">
+          open artifact →
+        </a>
+      </h3>
+      <pre class="markdown">{{ latest_report.content }}</pre>
+
+      <details style="margin-top:.5rem">
+        <summary class="muted" style="cursor:pointer;font-size:.85rem">
+          Original HANDOFF {% if brief_content %}(collapsed){% else %}(none){% endif %}
+        </summary>
+        {% if brief_content %}
+          <pre class="markdown" style="margin-top:.4rem">{{ brief_content }}</pre>
+        {% else %}
+          <div class="empty">No HANDOFF_{{ task.task_id }}.md found.</div>
+        {% endif %}
+      </details>
+    {% else %}
+      <h3>Brief</h3>
+      {% if brief_content %}
+        <pre class="markdown">{{ brief_content }}</pre>
+      {% else %}
+        <div class="empty">No HANDOFF_{{ task.task_id }}.md found.</div>
+      {% endif %}
+    {% endif %}
+
+    {% if task.acceptance %}
+      <h3>Acceptance</h3>
+      <pre class="markdown">{{ task.acceptance }}</pre>
+    {% endif %}
+
+    {% if task.evidence %}
+      <h3>Evidence</h3>
+      <pre class="markdown">{{ task.evidence }}</pre>
+    {% endif %}
+
+    {% if task.notes %}
+      <h3>Notes</h3>
+      <pre class="markdown">{{ task.notes }}</pre>
+    {% endif %}
+  </div>
+
+  <aside class="col-side">
+    <h3 class="sidebar-scoreboard-h">RESTART SCOPE</h3>
+    <div class="restart-scope-panel">
+      <select id="restart-scope-select" onchange="updateRestartScope('{{ task.task_id }}', this.value)">
+        {% set cur = task.restart_scope or 'both' %}
+        <option value="none"          {% if cur == 'none' %}selected{% endif %}>none — hot, already live on approval</option>
+        <option value="control_plane" {% if cur == 'control_plane' %}selected{% endif %}>control_plane — relaunch CP after ship</option>
+        <option value="bot"           {% if cur == 'bot' %}selected{% endif %}>bot — relaunch bot after ship</option>
+        <option value="both"          {% if cur == 'both' %}selected{% endif %}>both — relaunch CP + bot after ship</option>
+      </select>
+      <p class="restart-scope-hint">
+        {% if cur == 'none' %}
+          Hot change — goes straight to <strong>In The Books</strong> when approved. No restart needed.
+        {% elif cur == 'control_plane' %}
+          After ship, kill and relaunch the CP Flask process to activate.
+        {% elif cur == 'bot' %}
+          After ship, restart the betting bot to activate.
+        {% else %}
+          After ship, restart both the CP and the bot.
+        {% endif %}
+      </p>
+    </div>
+
+    <h3 class="sidebar-scoreboard-h">PLAYBOOK — eligible paths</h3>
+    <ul class="file-list">
+      {% for f in task.allowed_files %}
+        <li><code>{{ f }}</code></li>
+      {% else %}
+        <li class="empty">none specified</li>
+      {% endfor %}
+    </ul>
+
+    {% if task.forbidden_files %}
+      <h3 class="sidebar-scoreboard-h">PLAYBOOK — foul territory</h3>
+      <ul class="file-list forbidden">
+        {% for f in task.forbidden_files %}<li><code>{{ f }}</code></li>{% endfor %}
+      </ul>
+    {% endif %}
+
+    <h3 class="sidebar-scoreboard-h">TAPE ROOM</h3>
+    {% if links %}
+      <ul class="artifact-list">
+        {% for l in links %}
+          <li>
+            <span class="chip rel-{{ l.relation }}">{{ l.relation }}</span>
+            <a href="{{ url_for('artifacts.artifact_detail', artifact_id=l.artifact_id) }}">
+              {{ l.title or l.path.split('/')[-1] }}
+            </a>
+            <div class="artifact-meta">
+              <code class="kind">{{ l.kind }}</code>
+              <span class="path">{{ l.path }}</span>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">no linked artifacts</div>
+    {% endif %}
+
+    <h3 class="sidebar-scoreboard-h">INNINGS LOG</h3>
+    {% if runs %}
+      <ul class="run-list">
+        {% for r in runs %}
+          <li>
+            <span class="chip status-{{ r.status|lower }}">{{ r.status }}</span>
+            <span class="run-role">{{ r.role }}</span>
+            <code class="run-id">{{ r.run_id }}</code>
+            <div class="run-summary">{{ r.result_summary or '' }}</div>
+            <div class="run-meta"><span class="run-ts">{{ r.created_at }}</span>
+              {% if r.exit_code is not none %}<span>exit={{ r.exit_code }}</span>{% endif %}
+              <a class="btn btn-xs btn-ghost" href="?watch={{ r.run_id }}">watch</a>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">no runs yet — drag an agent onto this task</div>
+    {% endif %}
+
+    <h3 class="sidebar-scoreboard-h">UMPIRE RULINGS</h3>
+    {% if reviews %}
+      <ul class="review-list">
+        {% for rv in reviews %}
+          <li>
+            <span class="chip decision-{{ rv.decision|lower }}">{{ rv.decision }}</span>
+            <span>{{ rv.reviewer }}</span>
+            <div>{{ rv.summary or '' }}</div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">no reviews yet</div>
+    {% endif %}
+  </aside>
+
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TID = {{ task.task_id|tojson }};
+let currentRunId = {{ request.args.get('watch')|tojson if request.args.get('watch') else 'null' }};
+let currentES = null;
+
+function toggleEdit() {
+  document.getElementById('edit-form').classList.toggle('hidden');
+}
+
+async function transitionTask() {
+  const status = document.getElementById('ctl-status').value;
+  const res = await postJSON(`/api/tasks/${TID}/transition`, {status});
+  if (res.ok && res.json.ok) {
+    toast(`${TID}: ${res.json.from} → ${res.json.to}`);
+    setTimeout(() => location.reload(), 300);
+  } else {
+    toast('Transition failed: ' + (res.json.error || res.status), false);
+  }
+}
+
+async function assignTask() {
+  const role = document.getElementById('ctl-role').value;
+  const res = await postJSON(`/api/tasks/${TID}/assign`, {assigned_role: role});
+  if (res.ok && res.json.ok) {
+    toast(`${TID} assigned: ${role || '(none)'}`);
+    setTimeout(() => location.reload(), 300);
+  } else {
+    toast('Assign failed: ' + (res.json.error || res.status), false);
+  }
+}
+
+async function exportTask(force) {
+  const res = await postJSON(`/api/tasks/${TID}/export`, {force: !!force});
+  const ex = (res.json && res.json.export) || {};
+  if (ex.ok) toast(`Exported → ${ex.path}`);
+  else if (ex.error === 'conflict')
+    toast(`Conflict — Force to overwrite (${(ex.disk_sha256||'').slice(0,8)} vs ${(ex.db_hash||'').slice(0,8)})`, false);
+  else toast('Export failed: ' + (ex.error || res.status), false);
+}
+
+async function checkConflict() {
+  const r = await fetch(`/api/tasks/${TID}/conflict`);
+  const j = await r.json();
+  toast(j.conflict ? `CONFLICT (${j.reason})` : `Clean`, !j.conflict);
+}
+
+async function saveEdit() {
+  const payload = {
+    title: document.getElementById('f-title').value,
+    priority: document.getElementById('f-priority').value,
+    subsystem: document.getElementById('f-subsystem').value,
+    type: document.getElementById('f-type').value,
+    allowed_files: document.getElementById('f-allowed').value,
+    forbidden_files: document.getElementById('f-forbidden').value,
+    acceptance: document.getElementById('f-acceptance').value,
+    evidence: document.getElementById('f-evidence').value,
+    notes: document.getElementById('f-notes').value,
+  };
+  const res = await patchJSON(`/api/tasks/${TID}`, payload);
+  if (res.ok && res.json.ok) { toast('Saved'); setTimeout(() => location.reload(), 300); }
+  else toast('Save failed: ' + (res.json.error || res.status), false);
+}
+
+// ---------- Restart scope ----------
+async function updateRestartScope(taskId, scope) {
+  const res = await patchJSON(`/api/tasks/${taskId}`, {restart_scope: scope});
+  if (res.ok && res.json.ok) {
+    toast(`restart scope → ${scope}`);
+    setTimeout(() => location.reload(), 400);
+  } else {
+    toast('Failed: ' + (res.json.error || res.status), false);
+  }
+}
+
+// ---------- Agent launch ----------
+document.querySelectorAll('.agent-launch').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const profile = btn.dataset.profileId;
+    const eligible = btn.dataset.eligible === '1';
+    const label = btn.querySelector('.agent-name').textContent.trim();
+    if (!eligible && !confirm(`${label} is not eligible for this task state. Force-launch?`)) return;
+    const payload = {profile_id: profile};
+    if (!eligible) payload.force = true;
+    const adapter = document.getElementById('launch-adapter').value;
+    if (adapter) payload.adapter = adapter;
+    toast(`launching ${label}…`);
+    const res = await postJSON(`/api/tasks/${TID}/launch`, payload);
+    if (res.ok && res.json.ok) {
+      const rid = res.json.run.run_id;
+      toast(`run ${rid} started`);
+      openLive(rid);
+    } else {
+      const j = res.json || {};
+      toast(`launch failed: ${j.error || res.status}${j.detail ? ' — ' + j.detail : ''}`, false);
+    }
+  });
+});
+
+function openLive(runId) {
+  currentRunId = runId;
+  const sec = document.getElementById('live-run');
+  const pane = document.getElementById('live-log');
+  const ridEl = document.getElementById('live-run-id');
+  const statusEl = document.getElementById('live-status');
+  const metaEl = document.getElementById('live-meta');
+  sec.hidden = false;
+  pane.textContent = '';
+  ridEl.textContent = runId;
+  statusEl.textContent = 'connecting…';
+  statusEl.className = 'chip';
+  metaEl.textContent = '';
+  if (currentES) try { currentES.close(); } catch (_) {}
+  const es = new EventSource(`/api/runs/${runId}/stream`);
+  currentES = es;
+
+  es.addEventListener('status', (e) => {
+    try {
+      const d = JSON.parse(e.data);
+      statusEl.textContent = d.status || '—';
+      statusEl.className = 'chip status-' + (d.status || 'unknown').toLowerCase();
+      const bits = [];
+      if (d.role) bits.push('role=' + d.role);
+      if (d.adapter) bits.push('adapter=' + d.adapter);
+      if (d.pid) bits.push('pid=' + d.pid);
+      if (d.exit_code !== null && d.exit_code !== undefined) bits.push('exit=' + d.exit_code);
+      metaEl.textContent = bits.join(' · ');
+    } catch (_) {}
+  });
+  es.addEventListener('log', (e) => {
+    try {
+      const d = JSON.parse(e.data);
+      const prefix = d.stream === 'stderr' ? '! ' : d.stream === 'meta' ? '· ' : '  ';
+      pane.textContent += prefix + d.line + '\n';
+      pane.scrollTop = pane.scrollHeight;
+    } catch (_) {}
+  });
+  es.addEventListener('end', () => {
+    es.close();
+    currentES = null;
+    const u = new URL(location.href);
+    if (u.searchParams.has('watch')) {
+      u.searchParams.delete('watch');
+      history.replaceState({}, '', u.toString());
+    }
+    const cancelBtn = document.getElementById('live-cancel-btn');
+    if (cancelBtn) cancelBtn.hidden = true;
+    if (statusEl && !statusEl.textContent.match(/succeeded|failed|cancel/i)) {
+      statusEl.textContent = 'finished';
+    }
+    toast('run finished');
+  });
+  es.onerror = () => {
+    statusEl.textContent = 'stream error';
+    statusEl.className = 'chip chip-blocked';
+  };
+}
+
+function closeLive() {
+  if (currentES) { try { currentES.close(); } catch (_) {} currentES = null; }
+  document.getElementById('live-run').hidden = true;
+  currentRunId = null;
+  const u = new URL(location.href);
+  u.searchParams.delete('watch');
+  history.replaceState({}, '', u);
+}
+
+async function cancelRun() {
+  if (!currentRunId) return;
+  const res = await postJSON(`/api/runs/${currentRunId}/cancel`, {});
+  toast(res.json && res.json.ok ? `cancel signal sent` : `cancel failed`, !!(res.json && res.json.ok));
+}
+
+if (currentRunId) openLive(currentRunId);
+
+function togglePark() {
+  const f = document.getElementById('park-form');
+  if (!f) return;
+  f.style.display = (f.style.display === 'none' || !f.style.display) ? 'flex' : 'none';
+}
+function submitPark(taskId) {
+  const blocked_on = (document.getElementById('park-blocked-on').value || '').trim();
+  const reason     = (document.getElementById('park-reason').value || '').trim();
+  if (!blocked_on && !reason) {
+    toast('give a blocker task or a reason', false);
+    return;
+  }
+  parkTask(taskId, {blocked_on, reason});
+}
+</script>
+{% endblock %}

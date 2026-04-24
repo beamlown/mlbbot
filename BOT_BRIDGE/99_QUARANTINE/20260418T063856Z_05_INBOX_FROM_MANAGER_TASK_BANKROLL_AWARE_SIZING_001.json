@@ -1,0 +1,19 @@
+{
+  "task_id": "BANKROLL_AWARE_SIZING_001",
+  "type": "unspecified",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "position-sizing",
+  "title": "Bankroll-aware position sizing — lower max to $50, replace fixed base with bankroll percentage",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_BANKROLL_AWARE_SIZING_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_BANKROLL_AWARE_SIZING_001.json",
+  "review_path": "07_REVIEWS/REVIEW_BANKROLL_AWARE_SIZING_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- MAX_POSITION_SIZE_USD in .env is 50\n- RISK_PCT_PER_TRADE and MIN_POSITION_USD are present in .env\n- paper_exec.py reads current bankroll from STARTING_BANKROLL + total_realized_pnl()\n- sizing formula uses bankroll_base = max(MIN_POSITION_USD, bankroll * RISK_PCT_PER_TRADE)\n- confidence tier multiplier still applied to bankroll_base\n- result clamped to [MIN_POSITION_USD, MAX_POSITION_SIZE_USD=50]\n- recommended_size_dollars override path still respected and capped at 50\n- DB read failure falls back to PAPER_POSITION_SIZE_USD with WARNING log\n- INFO log line emitted on each sizing computation\n- python -m py_compile passes on paper_exec.py\n- No other files modified"
+}

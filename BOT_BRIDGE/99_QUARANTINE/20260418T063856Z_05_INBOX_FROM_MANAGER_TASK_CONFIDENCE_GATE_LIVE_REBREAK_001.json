@@ -1,0 +1,23 @@
+{
+  "task_id": "CONFIDENCE_GATE_LIVE_REBREAK_001",
+  "type": "read-only runtime audit",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-10",
+  "subsystem": "risk / entry-gating / live runtime",
+  "title": "Re-verify live confidence gate after restart and identify current bypass path",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260410.log",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db (SELECT only)"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_CONFIDENCE_GATE_LIVE_REBREAK_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_CONFIDENCE_GATE_LIVE_REBREAK_001.json",
+  "review_path": "07_REVIEWS/REVIEW_CONFIDENCE_GATE_LIVE_REBREAK_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- read_only_confirmed: true\n- Restart timing established\n- Explicit before/after-restart verdict for trades 241/243/244\n- Explicit YES/NO on current gate rejection evidence\n- Explicit root cause conclusion for the current live rebreak"
+}

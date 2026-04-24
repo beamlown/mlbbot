@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Artifacts{% endblock %}
+{% block content %}
+
+<section class="tape-room">
+  <header class="tape-room-header">
+    <h2>TAPE ROOM — every pitch on record</h2>
+    <form method="get" class="filter-row dot-matrix-form">
+      <input type="search" name="q" value="{{ q }}" placeholder="Search path / title / task_id…">
+      <select name="kind">
+        {% for k in kind_options %}
+          <option value="{{ k }}" {% if kind == k %}selected{% endif %}>{{ k }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn" type="submit">Apply</button>
+    </form>
+  </header>
+
+  <table class="table">
+    <thead>
+      <tr><th>kind</th><th>title</th><th>task</th><th>path</th><th>mtime</th><th>size</th></tr>
+    </thead>
+    <tbody>
+      {% for a in artifacts %}
+        <tr class="tape-row">
+          <td>
+            <span class="film-canister kind-{{ a.kind|lower }}">
+              <img class="sprite-pixel" src="{{ url_for('static', filename='sprites/ball.svg') }}" width="12" height="12" alt="">
+              {{ a.kind }}
+            </span>
+          </td>
+          <td>
+            <a href="{{ url_for('artifacts.artifact_detail', artifact_id=a.artifact_id) }}">
+              {{ a.title or a.path.split('/')[-1] }}
+            </a>
+            {% if a.summary %}<div class="muted">{{ a.summary|truncate(200) }}</div>{% endif %}
+          </td>
+          <td>
+            {% if a.task_ref %}
+              <a href="{{ url_for('tasks.task_detail', task_id=a.task_ref) }}"><code>{{ a.task_ref }}</code></a>
+            {% endif %}
+          </td>
+          <td class="path">{{ a.path }}</td>
+          <td class="muted">{{ a.mtime }}</td>
+          <td class="muted">{{ a.size_bytes }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="empty">no artifacts</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}

@@ -1,0 +1,45 @@
+{
+  "task_id": "BASEBALL_POSITION_SEMANTICS_INCIDENT_001",
+  "status": "ok",
+  "summary": "Verified baseball position semantics fix applied and operational",
+  "verification_results": {
+    "code_fix_verified": true,
+    "affected_trades_verified": true,
+    "all_checks_passed": true
+  },
+  "files_reviewed": [
+    "C:\Users\johnny\Desktop\sports_bot_v2\dashboard_server.py"
+  ],
+  "database_queries": [
+    "C:\Users\johnny\Desktop\sports_bot_v2\trades_sports.db"
+  ],
+  "verification_details": {
+    "dashboard_server_fix": {
+      "file": "C:\Users\johnny\Desktop\sports_bot_v2\dashboard_server.py",
+      "function": "_stream_positions_mark",
+      "lines": "482-483",
+      "normalized_formulas": [
+        "live_equity_usd = round(qty * current_price, 4)",
+        "unrealized_pnl_usd = round((current_price - entry_px) * qty, 4)"
+      ],
+      "status": "VERIFIED - No side branching, uniform formula applied"
+    },
+    "affected_trades": [
+      {
+        "id": 160,
+        "market_slug": "mlb-mil-bos-2026-04-08",
+        "side": "BUY_YES",
+        "status": "EXISTS"
+      },
+      {
+        "id": 166,
+        "market_slug": "mlb-sea-tex-2026-04-08",
+        "side": "BUY_NO",
+        "status": "EXISTS"
+      }
+    ]
+  },
+  "notes": "This was a verification task. The reported bug fix in dashboard_server.py _stream_positions_mark() has been confirmed deployed. Both affected trades exist in the database with correct attributes. The normalized formula ensures BUY_YES and BUY_NO positions use consistent equity/unrealized math, resolving the reported semantic inconsistency.",
+  "files_changed": [],
+  "code_modifications_required": false
+}

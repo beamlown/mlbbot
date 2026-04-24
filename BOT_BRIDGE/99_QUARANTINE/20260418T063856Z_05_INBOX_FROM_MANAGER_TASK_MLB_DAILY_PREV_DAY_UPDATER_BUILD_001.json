@@ -1,0 +1,21 @@
+{
+  "task_id": "MLB_DAILY_PREV_DAY_UPDATER_BUILD_001",
+  "type": "code-writing task",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-12",
+  "subsystem": "mlb_model daily stats ingestion",
+  "title": "Build a daily previous-day MLB completed-game ingestion path into the canonical store",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\scripts\\**",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\data\\**",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_STATS_FOUNDATION_SPEC_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_CURRENT_SEASON_BACKFILL_BUILD_001.json"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_MLB_DAILY_PREV_DAY_UPDATER_BUILD_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_MLB_DAILY_PREV_DAY_UPDATER_BUILD_001.json",
+  "review_path": "07_REVIEWS/REVIEW_MLB_DAILY_PREV_DAY_UPDATER_BUILD_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- Previous-day completed MLB stats can be appended safely\n- Appender is idempotent\n- Output matches approved storage/schema target\n- No unrelated files modified"
+}

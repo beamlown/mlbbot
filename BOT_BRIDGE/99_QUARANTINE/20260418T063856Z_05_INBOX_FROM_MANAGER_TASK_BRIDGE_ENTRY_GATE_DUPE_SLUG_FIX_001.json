@@ -1,0 +1,23 @@
+{
+  "task_id": "BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001",
+  "type": "surgical code fix",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-10",
+  "subsystem": "bridge entry gating / duplicate intent handling",
+  "title": "Prevent duplicate/repeated slug intents from bypassing gate protections in the same bridge loop",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
+    "Any file not listed above"
+  ],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001.md",
+  "review_path": "07_REVIEWS/REVIEW_BRIDGE_ENTRY_GATE_DUPE_SLUG_FIX_001.md",
+  "assigned_role": "SONNET_WORKER",
+  "acceptance": "- Repeated intents for the same slug cannot bypass gate protections in the same bridge loop\n- A slug rejected once in an iteration cannot still open later in that same iteration\n- Distinct valid slugs still proceed normally\n- No files outside allowed scope are modified unless explicitly documented under conditional scope\n- python -m py_compile bot_core.py passes\n- If model_bridge.py is modified, python -m py_compile core/model_bridge.py passes"
+}

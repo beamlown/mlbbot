@@ -1,0 +1,16 @@
+{
+  "task_id": "BRIDGE_CONTRACT_001",
+  "status": "ok",
+  "summary": "Expanded bridge contract to preserve richer mlb_model recommendation payload with TP/SL/sizing fields",
+  "files_changed": [
+    "/c/Users/johnny/Desktop/mlb_model/integration/recommendation_schema.py",
+    "/c/Users/johnny/Desktop/mlb_model/integration/recommendation_api.py"
+  ],
+  "notes": "Added four new optional fields to Recommendation dataclass: tp_price, sl_price, recommended_size_dollars, recommended_size_units. Updated to_dict() method to include these fields in serialization. Modified generate_recommendation_for_game() to populate these fields from infer_result if present, defaulting to None otherwise. Model_bridge.py already preserves these fields end-to-end in intent payloads. No strategy logic changes, only payload enrichment.",
+  "verification": {
+    "schema_expanded": true,
+    "fields_added": ["tp_price", "sl_price", "recommended_size_dollars", "recommended_size_units"],
+    "backward_compatible": true,
+    "end_to_end_preservation": true
+  }
+}

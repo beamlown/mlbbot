@@ -1,0 +1,8 @@
+{
+  "status": "fail",
+  "summary": "(no RESULT_JSON emitted and no RESULT file written)",
+  "task_id": "LAUNCH_FIX_001",
+  "role": "HAIKU_WORKER",
+  "run_id": "RUN_D9417396E219",
+  "captured_at": "2026-04-17T19:15:44Z"
+}

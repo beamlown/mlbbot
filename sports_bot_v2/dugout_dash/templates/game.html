@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}GAME · Dugout Dash{% endblock %}
+{% block content %}
+<div class="dash-shell">
+
+  <aside class="field-rail">
+    <div class="rail-title">── FIELD ──</div>
+    {% if GAMES %}
+      {% for g in GAMES %}{% include "partials/game_tile.html" %}{% endfor %}
+    {% else %}
+      <div class="rail-title" style="color: var(--chalk-dim);">no games today</div>
+    {% endif %}
+  </aside>
+
+  <section class="pane">
+    {% if SELECTED_GAME %}
+      {% set g = SELECTED_GAME %}
+      <div style="display:flex; align-items:baseline; gap:16px; border-bottom: 2px dashed var(--scoreboard-amber); padding-bottom:8px; margin-bottom:14px;">
+        <div style="font-family: var(--font-pixel); font-size: 22px;">{{ g.away }} {{ g.away_score }} — {{ g.home }} {{ g.home_score }}</div>
+        <div style="font-family: var(--font-pixel-text); font-size: 20px; color: var(--scoreboard-amber);">
+          {% if g.status == 'STATUS_FINAL' %}FINAL
+          {% elif g.inning > 0 %}{{ 'TOP' if g.inning_half == 'top' else 'BOT' }} {{ g.inning }}{% if g.outs is not none %} · {{ g.outs }} OUT{% endif %}
+          {% else %}{{ g.status_display }}{% endif %}
+        </div>
+      </div>
+
+      <div class="main-grid">
+        <div class="tazz-panel">
+          {% if TAZZ_URL and not TAZZ_FORCE_LINK %}
+            <iframe id="tazz-iframe" src="{{ TAZZ_URL }}" allow="autoplay; fullscreen"></iframe>
+          {% endif %}
+          <div class="tazz-fallback" id="tazz-fallback" {% if TAZZ_URL and not TAZZ_FORCE_LINK %}style="display:none;"{% endif %}>
+            {% if TAZZ_URL %}
+              <a class="tazz-watch-btn" href="{{ TAZZ_URL }}" target="_blank" rel="noopener">▶ WATCH ON TAZZ</a>
+              <div class="tazz-sub">iframe blocked · opens in a new tab</div>
+            {% else %}
+              <div class="tazz-sub">no tazz URL (need team abbreviations)</div>
+            {% endif %}
+          </div>
+        </div>
+
+        {% include "partials/pos_card.html" %}
+      </div>
+
+      {% if ORDERBOOK %}
+      <div class="panel" style="margin-top:16px;">
+        <h3>── ORDERBOOK (HELD SIDE) ──</h3>
+        <table>
+          <thead><tr><th>BEST BID</th><th>BEST ASK</th><th>MARK</th><th>SPREAD</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>{% if ORDERBOOK.best_bid is not none %}{{ '%.4f'|format(ORDERBOOK.best_bid) }}{% else %}—{% endif %}</td>
+              <td>{% if ORDERBOOK.best_ask is not none %}{{ '%.4f'|format(ORDERBOOK.best_ask) }}{% else %}—{% endif %}</td>
+              <td class="mark-cell">{% if ORDERBOOK.mark is not none %}{{ '%.4f'|format(ORDERBOOK.mark) }}{% else %}—{% endif %}</td>
+              <td>{% if ORDERBOOK.spread is not none %}{{ '%.4f'|format(ORDERBOOK.spread) }}{% else %}—{% endif %}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      <div class="panel" style="margin-top:16px;">
+        <h3>── TRADE HISTORY (THIS GAME) ──</h3>
+        {% if TRADE_HISTORY %}
+        <table>
+          <thead><tr><th>CLOSED</th><th>SIDE</th><th>ENTRY</th><th>EXIT</th><th>NET</th><th>REASON</th></tr></thead>
+          <tbody>
+            {% for t in TRADE_HISTORY %}
+            <tr>
+              <td>{{ (t.ts_close or '')[-8:] }}</td>
+              <td>{{ t.side }}</td>
+              <td>{{ '%.4f'|format(t.entry_px or 0) }}</td>
+              <td>{{ '%.4f'|format(t.exit_px or 0) }}</td>
+              <td class="{% if (t.pnl_usd or 0) >= 0 %}pnl-up{% else %}pnl-down{% endif %}">
+                {% if (t.pnl_usd or 0) >= 0 %}+${{ '%.2f'|format(t.pnl_usd or 0) }}{% else %}-${{ '%.2f'|format(-(t.pnl_usd or 0)) }}{% endif %}
+              </td>
+              <td>{{ t.reason_close or '' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p style="font-family: var(--font-pixel-text); font-size: 20px; color: var(--chalk-dim);">No closed trades on this game in the last 24 h.</p>
+        {% endif %}
+      </div>
+
+    {% else %}
+      <p style="font-family: var(--font-pixel-text); font-size: 22px; color: var(--chalk-dim);">No games live right now. Check back closer to first pitch.</p>
+    {% endif %}
+  </section>
+</div>
+
+{% block scripts %}
+<script>
+(function () {
+  const ifr = document.getElementById('tazz-iframe');
+  const fb = document.getElementById('tazz-fallback');
+  if (!ifr || !fb) return;
+  let loaded = false;
+  ifr.addEventListener('load', () => { loaded = true; });
+  setTimeout(() => {
+    if (!loaded) { ifr.style.display = 'none'; fb.style.display = 'block'; }
+  }, 3000);
+})();
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,17 @@
+{
+  "task_id": "DASH_008",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "",
+  "title": "Remove hardcoded TP/SL JS constants from dashboard.html",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_DASH_008.md",
+  "review_path": "07_REVIEWS/REVIEW_DASH_008.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- Neither TP_PRICE nor SL_PCT appear anywhere in dashboard.html after the change\n- Dashboard server starts without errors\n- No other lines changed"
+}

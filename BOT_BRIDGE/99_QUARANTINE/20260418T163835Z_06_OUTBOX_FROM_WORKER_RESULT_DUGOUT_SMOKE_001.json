@@ -1,0 +1,20 @@
+{
+  "task_id": "DUGOUT_SMOKE_001",
+  "status": "ok",
+  "summary": "System page (Clubhouse) smoke test PASS — all 5 turnstiles green, bat rack healthy, dugout phone showing live launcher PID.",
+  "checks": {
+    "turnstile_legacy_cutoff": "ok — legacy BOT_BRIDGE clean since 2026-04-18T00:00:00+00:00",
+    "turnstile_orphan_sources": "ok — no orphan source trees running a live bot",
+    "turnstile_bridge_structure": "ok — canonical BRIDGE_ROOT has all 10 required subfolders",
+    "turnstile_single_bridge": "ok — BRIDGE_ROOT C:\\Users\\johnny\\Desktop\\mlbbot\\BOT_BRIDGE is canonical",
+    "turnstile_role_configs": "ok — role configs clean of legacy path references",
+    "bat_rack_claude_bin": "ok — resolved C:\\Users\\johnny\\AppData\\Roaming\\npm\\claude.CMD, version 2.1.114 (Claude Code), source=path",
+    "dugout_phone_launcher_pid": "ok — PID 18680 live",
+    "state_json_drawer": "ok — section present, loads from bot_source_root"
+  },
+  "server": "http://127.0.0.1:8787",
+  "page": "/system",
+  "guardrails_api": "/api/system/guardrails — all ok:true",
+  "phase5_placeholders": "Bot on/off toggle and config_hash tail are Phase 5 stubs (expected — not a failure)",
+  "verdict": "PASS"
+}

@@ -1,0 +1,21 @@
+{
+  "task_id": "CONFIDENCE_GATE_LIVE_REBREAK_TRACE_002",
+  "type": "expanded-scope read-only runtime trace",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-10",
+  "subsystem": "risk / entry-gating / bridge open flow",
+  "title": "Trace exact live open path for current confidence-gate rebreak",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260410.log",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db (SELECT only)"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_CONFIDENCE_GATE_LIVE_REBREAK_TRACE_002.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- read_only_confirmed: true\n- Exact open path identified or narrowed to one concrete path\n- Trades 241/243/244 traced against surrounding logs/DB/code evidence\n- Explicit answer on whether another open_position path exists\n- Explicit recommendation for the next fix target file/function"
+}

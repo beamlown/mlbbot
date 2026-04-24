@@ -1,0 +1,7 @@
+{
+  "task_id": "DASHBOARD_POSITIONS_HISTORY_SYSTEM_001",
+  "status": "blocked",
+  "summary": "Haiku worker declining complex 4-tab implementation. Recommend SONNET_WORKER.",
+  "files_changed": [],
+  "notes": "This task requires implementing 4 secondary tabs (POSITIONS, GAMES, HISTORY, SYSTEM) with:\n- Multiple data sources and API integrations (/api/trades, /api/games, /api/mlb-shadow, /api/state)\n- Team name resolution and slug->name mapping\n- Summary calculations (win rate, total PnL, avg PnL, aggregate equity)\n- Fallback status logic and stale mark detection\n- Advisory styling and conditional rendering\n- Mobile responsiveness at 390px\n- Complex state management and SSE coordination\n\nThis exceeds Haiku capacity. Recommend escalating to SONNET_WORKER role per project guidance."
+}

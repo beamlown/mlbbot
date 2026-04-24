@@ -1,0 +1,17 @@
+{
+  "task_id": "DASH_011",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "",
+  "title": "Remove resolved paper trades from Positions panel",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_DASH_011.md",
+  "review_path": "07_REVIEWS/REVIEW_DASH_011.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- Positions panel shows 0 cards when there are no open trades and no shadow-only recs\n- Resolved/closed paper trade cards do NOT appear in the Positions panel\n- Open paper trade cards still render correctly\n- Shadow-only advisory cards still render correctly\n- Badge count still shows enriched.length + shadowOnly.length (unchanged from DASH_010)\n- Trade Log drawer still shows all trades including closed ones (not affected — separate code path)"
+}

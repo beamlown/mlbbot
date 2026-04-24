@@ -1,0 +1,163 @@
+{
+  "task_id": "DB_TRUTH_SINGLE_SOURCE_001",
+  "status": "ok",
+  "summary": "Audited 15 API endpoints in dashboard_server.py. All endpoints now read from trades_sports.db for trade history. Fixed 2 violations (V4 signals endpoint, undefined function bug). Operational state endpoints (ESPN games, market stream) documented as exceptions.",
+  "endpoints_audited": 15,
+  "violations_found": [
+    {
+      "endpoint": "/api/signals",
+      "class": "V4",
+      "was": "Silently read state.open_positions (undefined field) → returns empty signals without DB query",
+      "now": "Reads open trades from trades_sports.db via _fetch_trades(), filters status='open'",
+      "fix_location": "dashboard_server.py:888-904"
+    },
+    {
+      "endpoint": "_refresh_game_state_hub()",
+      "class": "BUG",
+      "was": "Called undefined _read_games() function (line 374)",
+      "now": "Reads games from _espn_scoreboard in-memory cache with proper locking",
+      "fix_location": "dashboard_server.py:372-393"
+    }
+  ],
+  "clean_endpoints": [
+    "/api/state",
+    "/api/trades",
+    "/api/markets",
+    "/api/candidates",
+    "/api/mlb-shadow",
+    "/api/attribution/summary",
+    "/api/attribution/edge_scatter",
+    "/api/bankroll",
+    "/api/manual-trade",
+    "/api/debug/market-stream"
+  ],
+  "documented_exceptions": [
+    {
+      "endpoint": "/api/games",
+      "source": "_espn_scoreboard (in-memory cache from ESPN API)",
+      "why": "Operational live game state (current scores, inning, outs, etc.), not historical trade data. ESPN API is the authoritative source for live game state; storing stale copies in DB would be incorrect."
+    },
+    {
+      "endpoint": "/api/stream/state",
+      "source": "GLOBAL_MARKET_STREAM + GLOBAL_STATE_HUB (in-memory live marks)",
+      "why": "Real-time market stream state (current prices, spreads, game state) from live Polymarket websocket and ESPN polling. These are ephemeral operational signals, not historical records. DB contains resolved trades only."
+    }
+  ],
+  "paper_trades_db_still_read": false,
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py"
+  ],
+  "inventory_by_endpoint": [
+    {
+      "endpoint": "/",
+      "handler": "do_GET:1061",
+      "data_source": "dashboard.html (static file)",
+      "violation": null,
+      "reads_paper_trades_db": false
+    },
+    {
+      "endpoint": "/dashboard_v2.html, /v2, /dashboard-v2",
+      "handler": "do_GET:1063",
+      "data_source": "dashboard_v2.html (static file)",
+      "violation": null,
+      "reads_paper_trades_db": false
+    },
+    {
+      "endpoint": "/api/state",
+      "handler": "do_GET:1065-1066",
+      "data_source": "SELECT from trades_sports.db (trades table); reads runtime/state.json for operational state",
+      "violation": null,
+      "reads_paper_trades_db": false
+    },
+    {
+      "endpoint": "/api/trades",
+      "handler": "do_GET:1067-1072",
+      "data_source": "SELECT from trades_sports.db (trades + manual_trades tables)",
+      "violation": null,
+      "reads_paper_trades_db": false
+    },
+    {
+      "endpoint": "/api/games",
+      "handler": "do_GET:1073-1075",
+      "data_source": "In-memory _espn_scoreboard cache (updated by background ESPN refresh thread)",
+      "violation": "EXCEPTION: Operational live game state",
+      "reads_paper_trades_db": false
+    },
+    {
+      "endpoint": "/api/markets",
+      "handler": "do_GET:1076-1077",
+      "data_source": "runtime/last_discovery.json (market discovery cache)",
+      "violation": null,
+      "reads_paper_trades_db": false
+    },
+    {
+      "endpoint": "/api/signals",
+      "handler": "do_GET:1078-1079",
+      "data_source": "SELECT from trades_sports.db (open trades) via _fetch_trades()",
+      "violation": "FIXED: Was silently returning empty signals due to undefined state.open_positions field",
+      "reads_paper_trades_db": false
+    },
+    {
+      "endpoint": "/api/candidates",
+      "handler": "do_GET:1080-1088",
+      "data_source": "logs/audit_candidates_{SPORT}.jsonl (model candidate log)",
+      "violation": null,
+      "reads_paper_trades_db": false
+    },
+    {
+      "endpoint": "/api/mlb-shadow",
+      "handler": "do_GET:1089-1094",
+      "data_source": "mlb_model shadow recommendations log (JSONL, read-only)",
+      "violation": null,
+      "reads_paper_trades_db": false
+    },
+    {
+      "endpoint": "/api/attribution/summary",
+      "handler": "do_GET:1095-1100",
+      "data_source": "SELECT from trades_sports.db (entry_model_prob, model_side_was_right, pnl_usd, trade_class columns)",
+      "violation": null,
+      "reads_paper_trades_db": false
+    },
+    {
+      "endpoint": "/api/attribution/edge_scatter",
+      "handler": "do_GET:1101-1106",
+      "data_source": "SELECT from trades_sports.db (expected_edge_pct, pnl_usd, trade_class columns)",
+      "violation": null,
+      "reads_paper_trades_db": false
+    },
+    {
+      "endpoint": "/api/bankroll",
+      "handler": "do_GET:1107-1120",
+      "data_source": "SELECT from trades_sports.db (historical PnL query) via _daily_pnl_history() + lifetime query",
+      "violation": null,
+      "reads_paper_trades_db": false
+    },
+    {
+      "endpoint": "/api/debug/market-stream",
+      "handler": "do_GET:1121-1122",
+      "data_source": "GLOBAL_MARKET_STREAM.debug_status() (in-memory debug state)",
+      "violation": "EXCEPTION: Operational debug state, not trade history",
+      "reads_paper_trades_db": false
+    },
+    {
+      "endpoint": "/api/stream/state",
+      "handler": "do_GET:1123-1137",
+      "data_source": "SELECT from trades_sports.db (open trades) + GLOBAL_STATE_HUB (in-memory marks/game state)",
+      "violation": "EXCEPTION: Real-time market stream state for live positions",
+      "reads_paper_trades_db": false
+    },
+    {
+      "endpoint": "/api/manual-trade",
+      "handler": "do_POST:1142-1163",
+      "data_source": "INSERT INTO trades_sports.db (manual_trades table)",
+      "violation": null,
+      "reads_paper_trades_db": false
+    }
+  ],
+  "notes": "No references to paper_trades.db found in dashboard_server.py, dashboard.html, or dashboard_v2.html. All historical trade data is read from trades_sports.db. Operational state (live games, market marks, debug state) is correctly sourced from operational systems (ESPN API, Polymarket stream) and documented as exceptions. The bot_core.py file (outside allowed_files) contains paper_trades.db references but those are not called by dashboard endpoints.",
+  "next_steps": [
+    "Verify that bot_core.py is not being called by dashboard endpoints (audit confirms it is not)",
+    "Monitor _stream_positions_mark() to ensure live equity calculations remain accurate",
+    "Consider adding telemetry to track dashboard data freshness relative to DB state"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "task_id": "MLB_PITCHER_BULLPEN_HYDRATION_BUILD_001",
+  "type": "api-probe",
+  "priority": "HIGH",
+  "status": "ACTIVE",
+  "issued": "2026-04-12",
+  "subsystem": "mlb_model pitcher/bullpen hydration completion",
+  "title": "Populate pitcher_game_logs and bullpen_context in the canonical 2026 MLB foundation",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\scripts\\**",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\data\\foundation\\mlb_statsapi\\season=2026\\**",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\MLB_STATS_FOUNDATION_SPEC_001.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_CURRENT_SEASON_BACKFILL_BUILD_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_BACKFILL_HYDRATION_GAP_FIX_001.json"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_MLB_PITCHER_BULLPEN_HYDRATION_BUILD_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_MLB_PITCHER_BULLPEN_HYDRATION_BUILD_001.json",
+  "review_path": "07_REVIEWS/REVIEW_MLB_PITCHER_BULLPEN_HYDRATION_BUILD_001.md",
+  "assigned_role": "OPUS_AUDITOR",
+  "acceptance": "- API probe only: use requests to call MLB Stats API schedule+boxscore for 1 game_pk\n- probe_result in result JSON contains at least 1 pitcher entry extracted from boxscore response\n- game_pk used is documented in result JSON\n- NO data files written (no parquet, no CSV, no script files created)\n- NO imports beyond requests and standard library\n- If SIGKILL occurs again: note it in result and stop — do not retry"
+}

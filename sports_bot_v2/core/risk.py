@@ -40,6 +40,9 @@ MAX_ENTRY_PRICE = float(os.getenv("MAX_ENTRY_PRICE", "0.99"))
 MIN_ENTRY_PRICE = float(os.getenv("MIN_ENTRY_PRICE", "0.15"))
 MIN_ENTRY_CONFIDENCE = float(os.getenv("MIN_ENTRY_CONFIDENCE", "0.60"))
 MAX_TOTAL_COMMITTED_USD = float(os.getenv("MAX_TOTAL_COMMITTED_USD", "150"))
+EXTREME_SANITY_FLOOR = float(os.getenv("EXTREME_SANITY_FLOOR", "0.05"))
+EXTREME_SANITY_CEILING = float(os.getenv("EXTREME_SANITY_CEILING", "0.95"))
+GAP_STOP_GRACE_SECONDS = int(os.getenv("GAP_STOP_GRACE_SECONDS", "45"))
 
 _sl_cluster: list[float] = []
 _sl_cooldown_until_loop: int = 0
@@ -182,8 +185,19 @@ def check_entry_gates(
         if market.market_type == "moneyline" and not ENABLE_MONEYLINES:
             return False, ["moneylines_disabled"]
 
-    if ob.spread_yes is not None and ob.spread_yes > eff_max_spread:
-        return False, [f"spread_too_wide:{ob.spread_yes:.4f}>{eff_max_spread:.4f}"]
+    # A2 — extreme price sanity gate (irrational near-zero / near-one entries)
+    ask_side = ob.ask_yes if sig.side == "BUY_YES" else ob.ask_no
+    if ask_side is not None:
+        if ask_side < EXTREME_SANITY_FLOOR:
+            return False, [f"extreme_sanity_floor:{ask_side:.4f}<{EXTREME_SANITY_FLOOR:.4f}"]
+        if ask_side > EXTREME_SANITY_CEILING:
+            return False, [f"extreme_sanity_ceiling:{ask_side:.4f}>{EXTREME_SANITY_CEILING:.4f}"]
+
+    _side_spread = ob.spread_yes if sig.side == "BUY_YES" else ob.spread_no
+    if _side_spread is None:
+        _side_spread = ob.spread_yes
+    if _side_spread is not None and _side_spread > eff_max_spread:
+        return False, [f"spread_too_wide:{_side_spread:.4f}>{eff_max_spread:.4f}"]
 
     if sig.side == "BUY_YES" and ob.ask_yes is not None and ob.ask_yes >= MAX_ENTRY_PRICE:
         return False, [f"entry_price_too_high:{ob.ask_yes:.4f}>={MAX_ENTRY_PRICE:.4f}"]
@@ -270,8 +284,22 @@ def check_exit(
     tp_price = get_tp_price(trade)
     sl_price = get_sl_price(trade)
 
+    # Grace period: right after a fill on a thin book, the bid snaps back below
+    # our walked-up entry_px, making held_unrealized_pct look like a large gap
+    # down when it's just the bid-ask spread we paid. Skip gap_stop during the
+    # settlement window; if the market truly gapped, regular stop_loss will
+    # catch it shortly after.
+    _entered_recently = False
+    if GAP_STOP_GRACE_SECONDS > 0:
+        try:
+            _ts_open_dt = parse_utc_dt(trade.ts_open) if trade.ts_open else None
+            if _ts_open_dt is not None:
+                _hold_sec = (datetime.now(timezone.utc) - _ts_open_dt).total_seconds()
+                _entered_recently = _hold_sec < GAP_STOP_GRACE_SECONDS
+        except Exception:
+            _entered_recently = False
     gap_threshold = AUTO_STOP_LOSS_PCT * 2.0
-    if held_unrealized_pct < -gap_threshold:
+    if held_unrealized_pct < -gap_threshold and not _entered_recently:
         _trade_peak_pct.pop(trade.id, None)
         return True, "gap_stop"
 

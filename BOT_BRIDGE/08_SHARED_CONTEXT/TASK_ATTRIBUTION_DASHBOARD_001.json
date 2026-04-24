@@ -1,0 +1,50 @@
+{
+  "task_id": "ATTRIBUTION_DASHBOARD_001",
+  "title": "Add Attribution section to dashboard: calibration curve, edge scatter, hit-rate table, trade-class breakdown",
+  "priority": "HIGH",
+  "type": "code-writing task",
+  "track": "Track A — attribution spine (P0)",
+  "issued": "2026-04-18",
+  "subsystem": "sports_bot_v2 dashboard",
+  "status": "QUEUED",
+  "assigned_role": "SONNET_WORKER",
+  "depends_on": "TRADE_ATTRIBUTION_WIRING_001",
+  "objective": "Surface attribution data on the dashboard so the operator can answer calibration and edge-attribution questions in ≤ 10 seconds. All data must come from trades_sports.db only.",
+  "paper_only_note": "Paper-only. Read-only against DB.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_v2.html"
+  ],
+  "forbidden_actions": [
+    "Modify DB schema",
+    "Modify attribution wiring",
+    "Touch any existing dashboard panel",
+    "Change unrelated API endpoints",
+    "Introduce new JS libraries",
+    "Modify bot_core, paper_exec, risk, or model code",
+    "Touch real-money paths"
+  ],
+  "required_work": [
+    "1. Add GET /api/attribution/summary endpoint (calibration, trade_classes, brier, log_loss).",
+    "2. Add GET /api/attribution/edge_scatter endpoint.",
+    "3. Add Attribution section to the authoritative dashboard HTML with 4 panels.",
+    "4. All reads sourced from trades_sports.db only — no in-memory fallback.",
+    "5. Panels include n, since-cutoff, low-sample visual cue."
+  ],
+  "acceptance_criteria": [
+    "Two new /api/attribution/* endpoints exist and return the documented JSON shape",
+    "Four new panels render in the authoritative dashboard file",
+    "Every panel reads from trades_sports.db only (grep proof in result)",
+    "Low-sample (n<20) buckets render muted with tooltip",
+    "No existing panel is altered",
+    "No files outside allowed_files modified"
+  ],
+  "verification": [
+    "curl GET both endpoints, paste example JSON in result",
+    "Open dashboard, screenshot or describe each panel rendered",
+    "Show SELECT statements used and confirm source is trades_sports.db",
+    "Confirm at least one panel shows a low-sample muted bucket OR confirm data has enough volume everywhere"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_ATTRIBUTION_DASHBOARD_001.json"
+}

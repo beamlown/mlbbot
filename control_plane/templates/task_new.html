@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}New Task · Control Plane{% endblock %}
+{% block content %}
+
+<a class="back" href="{{ url_for('tasks.board') }}">← Board</a>
+
+<section class="composer">
+  <div class="composer-form">
+    <fieldset class="composer-panel">
+      <legend>SCORECARD</legend>
+      <label>task_id <input id="f-task_id" placeholder="E.G. DASHBOARD_FEATURE_001" required autofocus oninput="updatePreview()"></label>
+      <label>title <input id="f-title" placeholder="One-line summary" required oninput="updatePreview()"></label>
+      <label>priority
+        <select id="f-priority" onchange="updatePreview()">
+          {% for p in VALID_PRIORITIES %}
+            <option value="{{ p }}" {% if p == 'MEDIUM' %}selected{% endif %}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>subsystem <input id="f-subsystem" placeholder="e.g. dashboard, parser, runner" oninput="updatePreview()"></label>
+      <label>type <input id="f-type" value="manual"></label>
+      <label title="Which process needs to restart before this change is live?">
+        restart scope
+        <select id="f-restart-scope" onchange="updatePreview()">
+          <option value="">(auto from subsystem)</option>
+          <option value="none">none — hot, already live on approval</option>
+          <option value="control_plane">control_plane — relaunch CP after ship</option>
+          <option value="bot">bot — relaunch betting bot after ship</option>
+          <option value="both">both — relaunch CP + bot after ship</option>
+        </select>
+      </label>
+    </fieldset>
+
+    <fieldset class="composer-panel">
+      <legend>COACHING</legend>
+      <label>status
+        <select id="f-status">
+          {% for s in VALID_STATUSES %}
+            <option value="{{ s }}" {% if s == 'QUEUED' %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <div class="composer-roleline">assigned_role
+        <div class="composer-roles">
+          {% for p in ROSTER %}
+            <button type="button" class="mini-card"
+                    data-role="{{ p.role }}"
+                    style="--accent: {{ p.color or '#8892a6' }}"
+                    onclick="pickRole(this)">
+              <span class="mini-jersey">#{{ p.jersey_number or '?' }}</span>
+              <span class="mini-name">{{ p.display }}</span>
+            </button>
+          {% endfor %}
+        </div>
+        <input type="hidden" id="f-role">
+      </div>
+    </fieldset>
+
+    <fieldset class="composer-panel">
+      <legend>PLAYBOOK</legend>
+      <label>allowed_files (one per line)
+        <textarea id="f-allowed" rows="4" placeholder="path/to/file.py"></textarea>
+      </label>
+      <label>forbidden_files (one per line)
+        <textarea id="f-forbidden" rows="3"></textarea>
+      </label>
+    </fieldset>
+
+    <fieldset class="composer-panel">
+      <legend>GAME PLAN</legend>
+      <label>acceptance <textarea id="f-acceptance" rows="4" placeholder="Conditions for DONE…"></textarea></label>
+      <label>notes <textarea id="f-notes" rows="4"></textarea></label>
+    </fieldset>
+
+    <div class="composer-actions">
+      <a href="{{ url_for('tasks.board') }}" class="btn-pixel-sm">⟵ BACK TO DUGOUT</a>
+      <button type="button" class="cta-step-up cta-play-ball" onclick="createTask()">⚾ PLAY BALL — Create Task</button>
+    </div>
+  </div>
+
+  <aside class="composer-preview" aria-label="Live preview">
+    <h3>LIVE PREVIEW</h3>
+    <div id="preview-host" class="task-card-trading state--READY_FOR_WORKER">
+      <header class="card-head-pixel">
+        <span class="tid" id="prv-tid">TASK_ID</span>
+        <span class="card-head-title" id="prv-title">Untitled</span>
+      </header>
+      <div class="card-meta-pixel">
+        <span class="chip-pixel-led chip-pri chip-pri--medium" id="prv-pri">● MEDIUM</span>
+        <span class="chip-pixel-led" id="prv-sub" style="display:none"></span>
+      </div>
+    </div>
+  </aside>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updatePreview() {
+  document.getElementById('prv-tid').textContent =
+    document.getElementById('f-task_id').value || 'TASK_ID';
+  document.getElementById('prv-title').textContent =
+    document.getElementById('f-title').value || 'Untitled';
+  const pri = document.getElementById('f-priority').value;
+  const prvPri = document.getElementById('prv-pri');
+  prvPri.textContent = '● ' + pri;
+  prvPri.className = 'chip-pixel-led chip-pri chip-pri--' + pri.toLowerCase();
+  const sub = document.getElementById('f-subsystem').value;
+  const prvSub = document.getElementById('prv-sub');
+  prvSub.textContent = sub;
+  prvSub.style.display = sub ? '' : 'none';
+}
+function pickRole(btn) {
+  document.querySelectorAll('.mini-card').forEach(b => b.classList.remove('mini-card--selected'));
+  btn.classList.add('mini-card--selected');
+  document.getElementById('f-role').value = btn.dataset.role;
+}
+async function createTask() {
+  const payload = {
+    task_id:       document.getElementById('f-task_id').value.trim(),
+    title:         document.getElementById('f-title').value.trim(),
+    priority:      document.getElementById('f-priority').value,
+    status:        document.getElementById('f-status').value,
+    subsystem:     document.getElementById('f-subsystem').value,
+    type:          document.getElementById('f-type').value,
+    assigned_role: document.getElementById('f-role').value,
+    allowed_files: document.getElementById('f-allowed').value,
+    forbidden_files: document.getElementById('f-forbidden').value,
+    acceptance:    document.getElementById('f-acceptance').value,
+    notes:         document.getElementById('f-notes').value,
+    restart_scope: document.getElementById('f-restart-scope').value,
+  };
+  if (!payload.task_id) { toast('task_id required', false); return; }
+  if (!payload.title)   { toast('title required', false); return; }
+
+  const res = await postJSON('/api/tasks', payload);
+  if (res.ok && res.json.ok) {
+    toast(`Created ${res.json.task_id}`);
+    setTimeout(() => { location.href = `/tasks/${res.json.task_id}`; }, 400);
+  } else {
+    toast('Create failed: ' + (res.json.error || res.status) + (res.json.hint ? ' — ' + res.json.hint : ''), false);
+  }
+}
+</script>
+{% endblock %}

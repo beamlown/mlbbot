@@ -1,0 +1,20 @@
+{
+  "task_id": "REALTIME_MARKET_STREAM_STAGE1_001",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "realtime_market_stream",
+  "title": "Implement first true Polymarket market-stream-backed pricing path for tracked open positions",
+  "allowed_files": [
+    "core/market_stream.py",
+    "core/state_hub.py",
+    "dashboard_server.py",
+    "dashboard.html"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_REALTIME_MARKET_STREAM_STAGE1_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_REALTIME_MARKET_STREAM_STAGE1_001.json",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- live held-side current price backed by true Polymarket stream data for tracked open positions\n- SSE payload reflects stream-backed marks\n- live equity/unrealized derive from stream-backed price\n- stale/fresh state is explicit\n- fallback polling remains intact\n- rollout is reversible"
+}

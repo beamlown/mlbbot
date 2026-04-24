@@ -1,0 +1,15 @@
+{
+  "task_id": "DASH_002",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "",
+  "title": "Compact position cards — remove visual bloat",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_DASH_002.md",
+  "acceptance": "- No sparkline SVG rendered in any position card\n- No probability track bar rendered in any position card\n- No reasons tags row rendered in any position card\n- PnL appears exactly once per card (in pos-badge-col)\n- pos-stats shows exactly 3 boxes: Entry, Current, Confidence\n- Cards are visually much shorter — roughly half the previous height\n- No unrelated JS or CSS changed"
+}

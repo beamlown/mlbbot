@@ -1,0 +1,15 @@
+{
+  "task_id": "DASH_015",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "dashboard_html",
+  "title": "Position card: WIN/LOSE direction, TP/SL/Size boxes, command bar win rate",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_DASH_015.md",
+  "acceptance": "- Position card action pill shows 'WIN' for BUY_YES trades and 'LOSE' for BUY_NO trades\n- Position cards show 6 stat boxes: Entry, Current, Confidence (row 1), TP, SL, Size (row 2)\n- TP and SL values are displayed as decimal prices (e.g. 0.76, 0.33)\n- Size shows dollar amount (e.g. $50.00) computed from qty * entry_px\n- Command bar shows W%: XX% (or W%: — if no data)\n- Win rate in command bar updates when /api/state returns r25.win_rate\n- No JS console errors\n- No other files modified"
+}

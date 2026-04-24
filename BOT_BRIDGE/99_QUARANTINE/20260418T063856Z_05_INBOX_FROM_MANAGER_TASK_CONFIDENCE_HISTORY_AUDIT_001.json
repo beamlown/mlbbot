@@ -1,0 +1,23 @@
+{
+  "task_id": "CONFIDENCE_HISTORY_AUDIT_001",
+  "type": "read-only — no code edits, no runtime edits, no .env changes, no DB writes, no process restarts",
+  "priority": "HIGH",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "read-only audit",
+  "title": "Historical confidence audit — recent recommendations/trades vs new 0.60 hard floor",
+  "allowed_files": [
+    "Any local log files containing recent recommendation outputs with confidence values",
+    "Any local log files containing bridge/open-trade entries with confidence values",
+    "trades_sports.db — SELECT only, no writes — only if confidence is actually stored in the DB schema",
+    "runtime/state artifacts (e.g. state.json or equivalent) if confidence is preserved there",
+    "mlb_model recommendation logs or output files if they exist and contain confidence",
+    "sports_bot_v2 logs if they contain confidence-bearing recommendation or trade records",
+    "Code files — read-only — only the smallest set needed to locate where confidence is emitted or persisted (e.g. the log/emit call site, the DB column name). Do not read full files unless the confidence field cannot be found without it."
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_CONFIDENCE_HISTORY_AUDIT_001.md",
+  "review_path": "07_REVIEWS/REVIEW_CONFIDENCE_HISTORY_AUDIT_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- read-only confirmed — no files modified, no DB writes\n- exact sample window stated (timestamps)\n- numerical distribution produced across all 6 bins\n- explicit PASS count and FAIL count against 0.60 stated\n- trade-specific list provided (at least 10 rows if available)\n- conclusion states whether 0.60 is realistic and offers alternative if not\n- result written to: C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_CONFIDENCE_HISTORY_AUDIT_001.json"
+}

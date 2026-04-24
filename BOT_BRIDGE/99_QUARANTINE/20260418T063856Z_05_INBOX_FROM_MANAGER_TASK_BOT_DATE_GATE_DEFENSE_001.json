@@ -1,0 +1,17 @@
+{
+  "task_id": "BOT_DATE_GATE_DEFENSE_001",
+  "type": "implementation",
+  "priority": "HIGH",
+  "status": "QUEUED",
+  "issued": "2026-04-17",
+  "subsystem": "bot_core",
+  "title": "BOT_DATE_GATE_DEFENSE_001",
+  "allowed_files": [
+    "bot_core.py"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_BOT_DATE_GATE_DEFENSE_001.md",
+  "review_path": "07_REVIEWS/REVIEW_BOT_DATE_GATE_DEFENSE_001.md",
+  "assigned_role": "SONNET_WORKER",
+  "acceptance": "- slug_date_gate fires on BRIDGE GATE REJECT [slug_date_gate] log line\n- Gate skips silently for slugs with no parseable date\n- python -m py_compile bot_core.py passes\n- Only bot_core.py was modified\n- No gate added to check_entry_gates()"
+}

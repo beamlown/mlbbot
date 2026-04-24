@@ -1,0 +1,17 @@
+{
+  "task_id": "LAUNCH_FIX_001",
+  "type": "unspecified",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-17",
+  "subsystem": "",
+  "title": "Add PID guard to launch_all.py to prevent duplicate launcher instances",
+  "allowed_files": [
+    "sports_bot_v2/launch_all.py"
+  ],
+  "forbidden_files": [],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_LAUNCH_FIX_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_LAUNCH_FIX_001.json",
+  "assigned_role": "HAIKU_WORKER",
+  "acceptance": "- Running launch_all.py once: starts normally, writes runtime/launcher.pid\n- Running launch_all.py a second time while first is alive: prints error and exits immediately without spawning any children\n- After the first launcher is stopped (Ctrl+C), runtime/launcher.pid is deleted\n- If runtime/launcher.pid exists with a dead PID (e.g. system restart), launcher starts normally\n- No other behavior changes — watchdog, child processes, log files unchanged"
+}

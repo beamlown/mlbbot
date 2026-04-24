@@ -1,0 +1,26 @@
+{
+  "task_id": "MARKET_PRICE_SANITY_GATE_001",
+  "type": "surgical risk containment fix",
+  "priority": "MEDIUM",
+  "status": "DONE",
+  "issued": "2026-04-11",
+  "subsystem": "entry gates / price sanity / risk containment",
+  "title": "Add a hard sanity gate for obviously irrational near-zero and near-one entries",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py",
+    "Any mlb_model file",
+    "Any file not listed above"
+  ],
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_MARKET_PRICE_SANITY_GATE_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_MARKET_PRICE_SANITY_GATE_001.json",
+  "review_path": "07_REVIEWS/REVIEW_MARKET_PRICE_SANITY_GATE_001.md",
+  "assigned_role": "SONNET_MANAGER",
+  "acceptance": "- Extreme irrational entry regions are blocked by a dedicated gate\n- Gate is distinct from broader near-resolution audit logic\n- Rejections are logged clearly\n- No files outside allowed scope modified\n- python -m py_compile core/risk.py passes\n- python -m py_compile bot_core.py passes if modified"
+}

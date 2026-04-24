@@ -1,0 +1,48 @@
+{
+  "task_id": "REPLAY_HARNESS_BUILD_001",
+  "title": "Build replay harness: replay captured inputs under alternate configs; emit counterfactual trade set + attribution summary",
+  "priority": "MEDIUM",
+  "type": "code-writing task",
+  "track": "Track D — replay harness (P2)",
+  "issued": "2026-04-18",
+  "subsystem": "sports_bot_v2 replay subsystem",
+  "status": "QUEUED",
+  "assigned_role": "SONNET_WORKER",
+  "depends_on": "REPLAY_INPUT_CAPTURE_001",
+  "objective": "Produce a faithful offline replay harness that re-runs captured decision loops under an alternate config and emits counterfactual trades with full attribution.",
+  "paper_only_note": "Offline replay only. No live code modified.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\tools\\replay.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\replay_harness.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\attribution.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\replay_capture.py"
+  ],
+  "forbidden_actions": [
+    "Build the sweep CLI (that is REPLAY_SWEEP_CLI_001)",
+    "Change the model",
+    "Change attribution schema",
+    "Modify bot_core live paths",
+    "Touch BOT_BRIDGE contents",
+    "Touch real-money paths"
+  ],
+  "required_work": [
+    "1. Check for prior HANDOFF_REPLAY_HARNESS_001 work and reuse if present.",
+    "2. Define ReplayConfig, ReplayResult, ReplayedTrade dataclasses mirroring attribution schema.",
+    "3. Implement harness: per-capture replay, config-driven trade/skip, walk-the-book fill, TP/SL/resolution exit simulation across subsequent captures.",
+    "4. Aggregate trade set into summary (hit rate, Brier, log-loss, edge realization, pnl by trade_class).",
+    "5. Include fidelity-check mode: replay one past day with its live config and report PnL divergence vs real trades."
+  ],
+  "acceptance_criteria": [
+    "Harness runs on a date range and returns a ReplayResult",
+    "Fidelity check shows < 5% PnL divergence from real trades on a historical config",
+    "All trade_class enum values representable in replay output",
+    "Zero changes to live code paths",
+    "No files outside allowed_files modified"
+  ],
+  "verification": [
+    "Run replay against a recent date with live config; paste summary output",
+    "Paste fidelity check numbers",
+    "Describe how TP/SL exits are simulated from subsequent captures"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_REPLAY_HARNESS_BUILD_001.json"
+}
