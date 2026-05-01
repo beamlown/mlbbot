@@ -1,0 +1,89 @@
+{
+  "task_id": "DASHBOARD_REDESIGN_VERIFY_001",
+  "decision": "PASS",
+  "commit": "a19f421 (Phase 4 final state)",
+  "dashboard_server_modified": false,
+  "production_code_changes": false,
+
+  "truth_model_checks": {
+    "buy_yes_pricing": {
+      "result": "PASS",
+      "method": "code inspection",
+      "evidence": "_tracked_open_assets() sets asset_id = yes_token_id for BUY_YES. Market stream tracks YES token. state_hub stores YES token bid as current_price. SSE positions_mark exposes current_price. Frontend uses trade.current_price directly — no bid_yes branching.",
+      "observed": "const currentHeldPrice = r.current_price (line 904)"
+    },
+    "buy_no_pricing": {
+      "result": "PASS",
+      "method": "code inspection",
+      "evidence": "_tracked_open_assets() sets asset_id = no_token_id for BUY_NO. Market stream tracks NO token. state_hub stores NO token bid as current_price. Frontend is blind to side — uses current_price from SSE directly.",
+      "grep_bid_yes_in_dashboard_html": false,
+      "grep_bid_no_in_dashboard_html": false,
+      "sea_tex_incident_recurrence": "CANNOT RECUR — frontend has no bid_yes/bid_no branching"
+    },
+    "unrealized_pnl_sign": {
+      "result": "PASS",
+      "method": "code inspection",
+      "evidence": "_stream_positions_mark: unrealized_pnl_usd = round((current_price - entry_px) * qty, 4). For BUY_NO, current_price = NO token bid. When NO bid > entry_no → profit positive. When NO bid < entry_no → profit negative. Sign is correct for both sides.",
+      "frontend_formula": "const unrealizedPct = ((currentHeldPrice - r.entry_px) / r.entry_px) * 100 — derived from SSE current_price only"
+    },
+    "close_price_truth": {
+      "result": "PASS",
+      "method": "code inspection",
+      "evidence": "paper_exec.py close_position() uses _fill_price_exit(trade.side, ob) for held side exit. BUY_NO closes at NO token bid (slippage-adjusted). exit_px stored in DB reflects NO-side price. BOS/MIL incident root cause addressed at execution layer by EXECUTION_HELD_SIDE_SEMANTICS_001.",
+      "bos_mil_incident_recurrence": "CANNOT RECUR at display layer — exit_px from DB is authoritative"
+    },
+    "no_shadow_in_live": {
+      "result": "PASS",
+      "method": "code inspection + Python HTML parse",
+      "evidence": "Python re.search for #tab-live section: shadow/advisory present = False. Live tab length = 2970 chars. Shadow feed (#shadow-feed) is in .drawer with display:none, not in any tab panel.",
+      "advisory_in_games_tab": "PRESENT — class='monitor-trade-box advisory', label='Shadow Advisory — Not Executed'"
+    },
+    "stale_stream_detection": {
+      "result": "PASS",
+      "method": "code inspection",
+      "evidence": "SSE positions_mark provides current_price_stale boolean. buildUnifiedPositionCards renders staleBadge = current_price_stale ? '<span class=status-badge pending>STALE</span>' : ''. updateLivePositionCardInPlace hides/shows badge via style.display on SSE ticks."
+    },
+    "backed_team_display": {
+      "result": "PASS",
+      "method": "code inspection",
+      "evidence": "buildUnifiedPositionCards: headlineText = r.backed_team ? `${r.backed_team} backed` : 'Backed side'. inferTeamsFromTrade derives backed_team from slug parsing + side. No raw slug on card face.",
+      "raw_slug_on_card": false
+    }
+  },
+
+  "usability_checks": {
+    "default_tab": {
+      "result": "PASS",
+      "evidence": "HTML: <section id=tab-live class=shell-panel active>. Tab button has class=tab-btn active."
+    },
+    "mobile_layout": {
+      "result": "DEFERRED",
+      "reason": "Cannot verify without browser. CSS responsive rules present (480px, 800px breakpoints). Deferred to live session."
+    },
+    "trade_log_not_in_live": {
+      "result": "PASS",
+      "evidence": "#trades-list is in .drawer with display:none. HISTORY tab has #history-list with renderHistoryTab. LIVE tab DOM contains no trade-card elements."
+    },
+    "account_strip_always_visible": {
+      "result": "PASS",
+      "evidence": ".cmdbar is outside .shell-main and .shell-body. It persists across all tab switches. Contains bankroll, open count, committed, win rate."
+    },
+    "js_errors": {
+      "result": "DEFERRED",
+      "reason": "Cannot verify without running browser. No console.log statements present (grep confirmed). No obvious JS errors in code logic. Deferred to live session."
+    }
+  },
+
+  "incidents_re_verified": {
+    "sea_tex": "BUY_NO position current_price sourced from NO token bid via state_hub → SSE → current_price field. Frontend uses current_price directly with no side branching. bid_yes absent from dashboard.html. CANNOT RECUR.",
+    "bos_mil": "BUY_NO close exit_px recorded as NO token bid price via paper_exec._fill_price_exit(side, ob). Display reads from DB. CANNOT RECUR at display layer."
+  },
+
+  "outstanding_issues": [
+    "Mobile layout not verified — requires browser at 390px",
+    "JS errors not verified — requires live browser session",
+    "Stale badge behavior not live-tested — logic confirmed by code but not triggered in browser"
+  ],
+
+  "recommendation": "PROCEED to DASHBOARD_REDESIGN_AUDIT_001. All verifiable truth model checks PASS. Outstanding items are runtime verification only and do not indicate code defects."
+}

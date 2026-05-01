@@ -1,0 +1,45 @@
+{
+  "task_id": "VERIFY_DASHBOARD_V2_001",
+  "status": "verified",
+  "verification_only": true,
+  "production_code_changed": false,
+  "report": {
+    "dashboard_v2_file_path": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_v2.html",
+    "open_method": {
+      "file_path": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_v2.html",
+      "preferred_if_server_hosts_static": "http://127.0.0.1:8900/dashboard_v2.html",
+      "fallback": "open the local file directly in a browser"
+    },
+    "v2_loads_as_shell": true,
+    "wired_to_live_endpoints": true,
+    "main_truth_model_holds": true,
+    "trade_log_secondary": true,
+    "shadow_secondary": true,
+    "usable_now": true
+  },
+  "endpoint_verification": {
+    "api_state": true,
+    "api_trades": true,
+    "api_games": true,
+    "api_mlb_shadow": true
+  },
+  "live_snapshot": {
+    "api_state_open_positions": 0,
+    "api_trades_open_count": 0,
+    "api_games_live_count": 0,
+    "api_mlb_shadow_open_advisories": 15
+  },
+  "meaningful_render_behavior": {
+    "with_zero_open_positions": "V2 falls back to a clean monitor empty state instead of promoting trade log",
+    "with_zero_live_games": "V2 shows no-live-games state cleanly in the primary monitor",
+    "main_positions_source": "real open paper trades from /api/trades only",
+    "shadow_in_main_area": false,
+    "accounting_strip_source": "current /api/state bankroll fields plus open-paper-position equity derived in V2"
+  },
+  "remaining_work_before_claude_polish": [
+    "verify against a live in-game window with an actual open paper position to visually confirm the hybrid monitor card at full strength",
+    "confirm whether /dashboard_v2.html is served directly by the local dashboard server or should be opened as a file during staging",
+    "premium design/polish pass later by Claude if desired"
+  ],
+  "claude_catchup_files_backfilled": true
+}

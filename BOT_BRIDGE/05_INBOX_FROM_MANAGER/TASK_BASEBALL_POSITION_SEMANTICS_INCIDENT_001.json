@@ -1,0 +1,10 @@
+{
+  "task": "BASEBALL_POSITION_SEMANTICS_INCIDENT_001",
+  "scope": "Narrow baseball position semantics truth bug and minimum safe correction",
+  "runtime_target": "http://localhost:8900",
+  "affected_examples": [
+    {"id": 160, "market_slug": "mlb-mil-bos-2026-04-08", "side": "BUY_YES"},
+    {"id": 166, "market_slug": "mlb-sea-tex-2026-04-08", "side": "BUY_NO"}
+  ],
+  "fix_target": "Normalize dashboard/SSE open-position equity and unrealized math to one held-contract formula: live_equity = current_price * qty, unrealized = live_equity - committed"
+}

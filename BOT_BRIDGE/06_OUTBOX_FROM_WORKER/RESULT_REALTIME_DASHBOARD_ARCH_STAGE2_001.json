@@ -1,0 +1,58 @@
+{
+  "task_id": "REALTIME_DASHBOARD_ARCH_STAGE2_001",
+  "status": "done",
+  "final_outcome": "minimal_sse_slice_added",
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "exact_files_changed": {
+    "dashboard_server.py": [
+      "added _stream_positions_mark() canonical slice for open-position held-side price/equity/PnL marks",
+      "added SSE route GET /api/stream/state",
+      "stream emits positions_mark events every 2s for a short-lived connection window"
+    ],
+    "dashboard.html": [
+      "added EventSource client hookup via ensureStateStream()",
+      "added applyStreamPositionsMark(payload) to patch latestOpenPaperPositions and live-equity display",
+      "stream updates bot-status-text with stream live / stream stale freshness text",
+      "kept initial polling and interval polling intact"
+    ]
+  },
+  "sse_route": "/api/stream/state",
+  "payload_example": {
+    "type": "positions_mark",
+    "ts": "2026-04-07T22:00:00+00:00",
+    "source": "dashboard_server",
+    "stale": false,
+    "open_count": 3,
+    "live_equity_total": 148.22,
+    "positions": [
+      {
+        "market_slug": "mlb-example",
+        "current_price": 0.61,
+        "current_price_stale": false,
+        "unrealized_pnl_usd": 4.08,
+        "live_equity_usd": 54.92
+      }
+    ]
+  },
+  "push_driven_elements": [
+    "held-side current price on live position cards",
+    "per-position unrealized PnL derived from pushed current price",
+    "aggregate live equity display",
+    "stream freshness/staleness text"
+  ],
+  "still_on_polling_fallback": [
+    "/api/state",
+    "/api/trades",
+    "/api/mlb-shadow",
+    "/api/bankroll",
+    "/api/games"
+  ],
+  "notes": [
+    "No credentials or order auth were exposed client-side.",
+    "This stage is additive and reversible.",
+    "Polling fallback was intentionally left intact."
+  ]
+}

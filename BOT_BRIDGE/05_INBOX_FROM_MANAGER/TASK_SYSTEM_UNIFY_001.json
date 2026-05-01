@@ -1,0 +1,60 @@
+{
+  "task_id": "SYSTEM_UNIFY_001",
+  "title": "Unify dashboard truth — execution positions only, shadow demoted to diagnostics",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "dashboard_html",
+  "allowed_files": ["dashboard.html"],
+  "do_not_touch": ["dashboard_server.py", "launch_all.py", "bot_core.py", "core/", "mlb_model/", ".env"],
+
+  "objective": "The dashboard currently shows two competing position universes simultaneously: (1) real paper trades from the DB, and (2) shadow/advisory recommendations from the model log that were never executed. Both appear as cards in the primary Positions panel. This makes the dashboard factually incorrect — it shows positions that don't exist, miscounts open exposure, and creates a broken assembly-line mental model. Fix: the Positions panel must show ONLY executed paper trades (DB status='open'). Shadow data may still enrich those real positions (live game context, fair_win_prob) and still appears in the Shadow drawer tab. It must not generate standalone position cards.",
+
+  "root_cause": {
+    "function": "renderUnifiedPositions() in dashboard.html",
+    "lines": "784-816",
+    "problem": "shadowOnly block (lines 804-807) appends shadow recs that have NO matching paper trade as position cards. These are advisory model recommendations — never executed — but they appear as OPEN positions with WIN/LOSE pills, PnL figures, and TP/SL boxes. pos-count badge includes them. The user sees 4 'open positions' when only 1 real paper trade exists.",
+    "secondary": "For enriched positions, unrealized_pnl_dollars is taken from shadow's pre-computed value (uses fixed $50 estimate), not recalculated using actual paper qty from DB. Post-RISK_001, actual trade sizes vary ($50/$62.50/$75), so shadow PnL is wrong."
+  },
+
+  "deliverables": [
+    {
+      "label": "Remove shadowOnly from Positions panel — paper trades only",
+      "file": "dashboard.html",
+      "where": "renderUnifiedPositions() — lines ~804-816",
+      "change": "Delete the shadowOnly block entirely. unified becomes just enriched.\n\nRemove:\n  const shadowOnly = shadowRecs\n    .filter(r => r.action !== 'NO_TRADE' && !r.resolved)\n    .filter(r => !openTrades.some(t => t.market_slug === r.market_slug))\n    .map(r => ({ ...r, _type: 'shadow', _source: 'shadow' }));\n\n  const unified = [...enriched, ...shadowOnly];\n  $('pos-count').textContent = enriched.length + shadowOnly.length;\n\nReplace with:\n  const unified = enriched;\n  $('pos-count').textContent = enriched.length;\n\nDo NOT remove fetchShadow(), renderShadow(), renderShadowFeed(), or the Shadow tab. Shadow data is still fetched, still used for enrichment, and still rendered in the Shadow drawer tab. Only the shadowOnly card injection into the Positions panel is removed."
+    },
+    {
+      "label": "Fix live PnL for enriched positions — use actual paper qty, not shadow estimate",
+      "file": "dashboard.html",
+      "where": "buildUnifiedPositionCards() — the unrlzdUsd line (~line 719)",
+      "change": "The current line:\n  const unrlzdUsd = r.unrealized_pnl_dollars ?? r.pnl_usd ?? null;\n\nFor paper positions (_type='paper'), r.unrealized_pnl_dollars comes from shadow's fixed-size estimate ($50). But the real paper trade has r.qty (actual contracts) and r.entry_px and r.current_price. Recompute for paper positions:\n\n  let unrlzdUsd;\n  if (r._type === 'paper' && r.qty != null && r.entry_px != null && r.current_price != null) {\n    const isBuyYes = (r.side || r.action) === 'BUY_YES';\n    unrlzdUsd = isBuyYes\n      ? (r.current_price - r.entry_px) * r.qty\n      : (r.entry_px - r.current_price) * r.qty;\n    unrlzdUsd = Math.round(unrlzdUsd * 100) / 100;\n  } else {\n    unrlzdUsd = r.unrealized_pnl_dollars ?? r.pnl_usd ?? null;\n  }\n\nNote: r.current_price on an enriched paper position comes from the shadow rec merge (it is ask_yes or ask_no from the shadow log). If no shadow rec matched, current_price will be null and unrlzdUsd will fall through to pnl_usd (which is null for open trades — shows '—'). This is correct behavior."
+    },
+    {
+      "label": "Unify cmd-open and kpi-open with actual DB open trade count",
+      "file": "dashboard.html",
+      "where": "renderUnifiedPositions() — after computing enriched",
+      "change": "After the enriched block is computed, bind the open count from enriched.length (real paper positions) rather than letting renderState() set kpi-open from state.open_positions (which can lag behind DB by one state.json write cycle).\n\nAdd at the end of renderUnifiedPositions(), before or after the innerHTML assignment:\n  $('kpi-open').textContent = enriched.length;\n  $('cmd-open').textContent = enriched.length;\n\nThis makes pos-count, kpi-open, and cmd-open all show the same number: the count of real open paper trades. renderState() still sets kpi-open from state initially, but renderUnifiedPositions() (called after every fetchShadow and fetchTrades) will keep it anchored to the DB truth."
+    }
+  ],
+
+  "acceptance_criteria": [
+    "Positions panel shows ONLY paper trades with status='open' in DB — no shadow-only cards",
+    "pos-count badge = kpi-open KPI = cmd-open command bar stat — all three match",
+    "If zero paper trades open: panel shows 'No open positions', all counts show 0",
+    "Shadow drawer tab still works — renderShadowFeed() still renders the ticker rows there",
+    "Shadow enrichment still works — paper position cards still show game context, fair_win_prob, edge where shadow rec matches",
+    "Live PnL on enriched positions uses actual qty*price_delta, not shadow $50 estimate",
+    "No JS console errors",
+    "No other files modified"
+  ],
+
+  "verification": [
+    "Open dashboard. If no paper trades are open: Positions panel shows 'No open positions', pos-count=0, kpi-open=0, cmd-open=0.",
+    "If paper trades exist: exactly that many cards appear — no extra SHADOW-badged cards in the Positions panel.",
+    "Open Shadow drawer tab: shadow ticker rows still appear there normally.",
+    "Check browser console: no errors.",
+    "If shadow log has 5 recs but only 1 paper trade open: Positions shows 1 card (not 5)."
+  ],
+
+  "rollback": "Revert dashboard.html only. Shadow-only cards reappear in Positions panel (pre-existing behavior)."
+}

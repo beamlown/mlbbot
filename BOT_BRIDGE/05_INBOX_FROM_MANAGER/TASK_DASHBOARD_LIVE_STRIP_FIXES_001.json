@@ -1,0 +1,92 @@
+{
+  "task_id": "DASHBOARD_LIVE_STRIP_FIXES_001",
+  "priority": "HIGH",
+  "type": "implementation",
+  "subsystem": "dashboard",
+  "allowed_files": ["dashboard.html"],
+  "note": "dashboard.html only. No changes to dashboard_server.py or any other file.",
+
+  "context": {
+    "bugs": [
+      "Bankroll KPI shows cost-basis (start + realized PnL), not mark-to-market (available_cash + live_equity_total)",
+      "Capital Committed tile in LIVE cash strip always shows $— because the div has no id",
+      "Feed status shows 'Market feed stale · 0s ago' which is contradictory — stream is live (0s ago) but marks are old"
+    ]
+  },
+
+  "implementation": {
+    "file": "sports_bot_v2/dashboard.html",
+
+    "fix1_committed_tile_missing_id": {
+      "where": "Line 425 — the Capital Committed cash-box in the LIVE tab cash-strip",
+      "current": "<div class=\"cash-box\"><div class=\"cash-label\">Capital Committed (entry cost)</div><div class=\"cash-val gold\">$—</div></div>",
+      "change_to": "<div class=\"cash-box\"><div class=\"cash-label\">Capital Committed (entry cost)</div><div class=\"cash-val gold\" id=\"live-committed\">$—</div></div>",
+      "note": "The command bar already has id='cash-committed' bound correctly. Use a different id ('live-committed') for the LIVE tab tile to avoid collision."
+    },
+
+    "fix2_bind_live_committed_in_updateState": {
+      "where": "In updateState(s) function, near line 668 where cash-committed is already bound",
+      "current": "  $('cash-committed').textContent = '$' + fmt2(br.capital_committed ?? 0);",
+      "change_to": "  $('cash-committed').textContent = '$' + fmt2(br.capital_committed ?? 0);\n  if ($('live-committed')) $('live-committed').textContent = '$' + fmt2(br.capital_committed ?? 0);",
+      "note": "live-committed and cash-committed get the same value. live-committed is the LIVE tab tile; cash-committed is the command bar."
+    },
+
+    "fix3_module_level_available_cash_variable": {
+      "where": "Near the top of the <script> block where other module-level state variables are declared (look for 'let stateStream', 'let latestStreamTs', etc.)",
+      "add": "let _availableCash = 0;",
+      "note": "Bridge between updateState() and applyStreamPositionsMark(). Needed for MTM bankroll calculation."
+    },
+
+    "fix4_store_available_cash_in_updateState": {
+      "where": "In updateState(s), immediately after the bankroll block (near line 667)",
+      "add": "  _availableCash = br.available_cash ?? 0;",
+      "note": "Stores available_cash so the SSE handler can compute MTM without re-fetching state."
+    },
+
+    "fix5_bankroll_mtm_in_sse_handler": {
+      "where": "In applyStreamPositionsMark(), inside the 'if (payload?.live_equity_total != null)' block (lines 1039-1042)",
+      "current": "  if (payload?.live_equity_total != null) {\n    $('live-equity').textContent = fmtUsd(payload.live_equity_total);\n    $('live-equity').className = 'cash-val ' + clr(payload.live_equity_total);\n  }",
+      "change_to": "  if (payload?.live_equity_total != null) {\n    $('live-equity').textContent = fmtUsd(payload.live_equity_total);\n    $('live-equity').className = 'cash-val ' + clr(payload.live_equity_total);\n    const _mtm = _availableCash + payload.live_equity_total;\n    $('kpi-bankroll').textContent = '$' + fmt2(_mtm);\n  }",
+      "note": "MTM bankroll = available_cash (from last state poll) + live_equity_total (from SSE). This replaces the cost-basis value set by updateState(). When SSE is not yet connected, kpi-bankroll still shows br.current as a fallback from updateState()."
+    },
+
+    "fix6_feed_status_wording": {
+      "where": "In applyStreamPositionsMark(), lines 1045-1051 — the bot-status-text update block",
+      "current": "    if (!latestStreamTs) {\n      txt.textContent = 'Market feed reconnecting';\n    } else if (payload?.stale) {\n      txt.textContent = `Market feed stale · ${humanAge(latestStreamTs)}`;\n    } else {\n      txt.textContent = 'Market feed live';\n    }",
+      "change_to": "    if (!latestStreamTs) {\n      txt.textContent = 'Market feed reconnecting';\n    } else if (payload?.stale) {\n      txt.textContent = 'Market feed live · prices stale';\n    } else {\n      txt.textContent = 'Market feed live';\n    }",
+      "note": "'prices stale' means mark data is old (>15s). Dropping '· Xs ago' because latestStreamTs measures SSE message recency (always ~0s when connected), not price age — the two clocks created a contradiction. 'Market feed live' confirms the stream is connected; 'prices stale' flags the data quality separately."
+    }
+  },
+
+  "verification": {
+    "steps": [
+      "Confirm only dashboard.html changed (git diff --name-only)",
+      "Open dashboard in browser, check LIVE tab cash strip — Committed tile shows $150.00 (not $—)",
+      "Command bar Committed also shows $150.00 — unchanged, still works",
+      "Command bar Bankroll shows available_cash + live_equity (e.g. ~$734 not ~$839)",
+      "When SSE stale=true: banner shows 'Market feed live · prices stale' (not 'stale · 0s ago')",
+      "When SSE stale=false: banner shows 'Market feed live'",
+      "Bankroll updates when position marks change (SSE drives it, not just state poll)"
+    ]
+  },
+
+  "do_not": [
+    "Edit dashboard_server.py",
+    "Edit any file other than dashboard.html",
+    "Change the server-side bankroll computation",
+    "Restart the process (process restart is not required for dashboard.html changes — browser hard-refresh is sufficient)"
+  ],
+
+  "result_format": {
+    "file": "06_OUTBOX_FROM_WORKER/RESULT_DASHBOARD_LIVE_STRIP_FIXES_001.json",
+    "required_fields": [
+      "decision",
+      "files_changed",
+      "commit",
+      "fix1_committed_tile",
+      "fix2_bankroll_mtm",
+      "fix3_feed_status",
+      "rollback"
+    ]
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "task_id": "BRIDGE_ENABLE_001",
+  "title": "Re-enable model bridge kill switch",
+  "objective": "Set ENABLE_MODEL_BRIDGE = True in core/model_bridge.py now that BRIDGE_FIX_001 and LAUNCH_FIX_001B are both APPROVED.",
+  "allowed_files": [
+    "core/model_bridge.py"
+  ],
+  "do_not_touch": [
+    "bot_core.py",
+    "launch_all.py",
+    "dashboard.html",
+    "dashboard_server.py"
+  ],
+  "inputs": [
+    "core/model_bridge.py line 11: ENABLE_MODEL_BRIDGE = False  # INCIDENT KILL SWITCH — set True only after dedup fix"
+  ],
+  "deliverables": [
+    "Single-line patch: ENABLE_MODEL_BRIDGE = True (remove incident comment)",
+    "Verification output confirming True"
+  ],
+  "acceptance_criteria": [
+    "Line 11 reads: ENABLE_MODEL_BRIDGE = True",
+    "No other lines changed",
+    "Verification command prints True"
+  ],
+  "verification": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2 && python -c \"from core.model_bridge import ENABLE_MODEL_BRIDGE; print(ENABLE_MODEL_BRIDGE)\""
+  ],
+  "rollback": "Revert core/model_bridge.py only. Set back to False."
+}

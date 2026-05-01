@@ -1,0 +1,53 @@
+{
+  "task_id": "DASHBOARD_LIVE_SEMANTICS_001",
+  "status": "done",
+  "final_outcome": "frontend_semantics_fixed",
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "before_semantics": {
+    "held_side_label": "Ambiguous WIN / LOSE wording",
+    "lifecycle_status": "Separate status badge existed, but held-side wording could be confused with lifecycle/result",
+    "price_label": "Current / Current (stale)",
+    "cash_strip": [
+      "Available Cash",
+      "Capital in Trades",
+      "Live Position Equity"
+    ]
+  },
+  "after_semantics": {
+    "held_side_label": "Explicit TEAM TO WIN / TEAM TO LOSE text",
+    "contract_badge": "YES CONTRACT / NO CONTRACT",
+    "lifecycle_status": "Still separate via status badge",
+    "price_label": "Held price now / Held price (stale) / Held price unavailable",
+    "stale_unavailable_note": "Explicit note that live P&L and live equity may lag or be incomplete when market price is stale/unavailable",
+    "cash_strip": [
+      "Available Cash (not in positions)",
+      "Capital Committed (entry cost)",
+      "Live Equity (positions now)"
+    ]
+  },
+  "formulas_changed": false,
+  "formula_truth": {
+    "current_price": "unchanged: r.current_price ?? (r.resolved ? r.exit_px : null)",
+    "unrealized_pnl": "unchanged: YES => (current_price - entry_px) * qty ; NO => (entry_px - current_price) * qty",
+    "live_equity": "unchanged: qty * currentPx",
+    "available_cash": "unchanged backend accounting"
+  },
+  "exact_labels_changed": [
+    "WIN -> YES (contract badge now YES CONTRACT)",
+    "LOSE -> NO (contract badge now NO CONTRACT)",
+    "pos-team now reads explicit side text: TEAM TO WIN / TEAM TO LOSE",
+    "Current -> Held price now",
+    "Current (stale) -> Held price (stale)",
+    "Held price unavailable added",
+    "Available Cash -> Available Cash (not in positions)",
+    "Capital in Trades -> Capital Committed (entry cost)",
+    "Live Position Equity -> Live Equity (positions now)"
+  ],
+  "backend_change_needed": false,
+  "notes": [
+    "This was a frontend-only semantics fix.",
+    "No model logic, strategy logic, or backend pricing/accounting math was changed."
+  ]
+}

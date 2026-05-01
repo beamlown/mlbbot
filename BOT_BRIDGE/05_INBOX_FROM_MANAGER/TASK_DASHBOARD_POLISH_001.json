@@ -1,0 +1,12 @@
+{
+  "task_id": "DASHBOARD_POLISH_001",
+  "title": "Tighten main dashboard execution view and unify open-count ownership",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "dashboard_polish",
+  "allowed_files": [
+    "dashboard.html",
+    "dashboard_server.py"
+  ],
+  "objective": "Narrow polish/tightening task only. Unify main open-position count ownership around one canonical source, improve active position card scanability, keep shadow secondary, and make the zero-open state clean without changing model or execution logic."
+}

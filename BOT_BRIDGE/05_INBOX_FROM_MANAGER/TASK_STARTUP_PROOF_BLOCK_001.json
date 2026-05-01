@@ -1,0 +1,92 @@
+{
+  "task_id": "STARTUP_PROOF_BLOCK_001",
+  "title": "Emit one startup proof block proving runtime identity, loaded gates, and corrected config hash",
+  "priority": "HIGH",
+  "type": "surgical observability improvement",
+  "track": "Track A — plumbing / runtime truth",
+  "issued": "2026-04-11",
+  "subsystem": "startup / runtime truth / config observability",
+  "status": "QUEUED — activate when CONFIG_HASH_INPUTS_FIX_001 is APPROVED (shared file lock: bot_core.py + core/risk.py). Do not activate while LATE_INNING_BLOCK_WIRING_FIX_001 or CONFIG_HASH_INPUTS_FIX_001 is ACTIVE.",
+  "depends_on": [
+    "CONFIG_HASH_INPUTS_FIX_001 APPROVED — startup proof emits config_hash; that hash must use the corrected input set or the proof block is still misleading",
+    "LATE_INNING_BLOCK_WIRING_FIX_001 APPROVED — ensures LATE_INNING_BLOCK is a live gate var before the proof block logs it as loaded"
+  ],
+
+  "context": {
+    "problem": "Tonight's restarts were unverifiable. The process restarted but runtime truth stayed stale. config_hash stayed at 2f0dd9e0ef8a through multiple restarts. The operator had no single authoritative startup line to read that proved what the process had actually loaded. Board cleanliness did not imply runtime truth.",
+    "evidence": [
+      "config_hash=2f0dd9e0ef8a unchanged through all restarts — not because config was correct but because the hashed vars were not the real gate vars",
+      "Startup banner showed min_conf=0.25 (MIN_CONFIDENCE) not min_entry_conf=0.65 (MIN_ENTRY_CONFIDENCE) — operator mislead",
+      "Two processes ran simultaneously because there was no single-identity proof at startup",
+      "Restart claims were not independently verifiable from logs alone"
+    ],
+    "classification": "Track A — config activation / observability gap",
+    "why_not_strategy": "This task adds a log emission only. It does not change any gate logic, thresholds, or trade decisions."
+  },
+
+  "objective": "Emit exactly one structured startup proof block per process start that makes runtime identity, loaded gate values, and config hash independently verifiable from the log. Operators must be able to grep one line and confirm what the process loaded.",
+
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py"
+  ],
+  "read_only_context_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\utils.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\state_hub.py",
+    "Any mlb_model file",
+    "Any file not listed in allowed_files"
+  ],
+  "forbidden_actions": [
+    "DO NOT ACTIVATE while LATE_INNING_BLOCK_WIRING_FIX_001 or CONFIG_HASH_INPUTS_FIX_001 is ACTIVE",
+    "No launcher refactor",
+    "No gate logic changes",
+    "No threshold changes",
+    "No dashboard edits",
+    "No DB schema changes",
+    "No broad repo sweep",
+    "Do not fork a second config_hash computation — consume the corrected CONFIG_HASH value from bot_core.py"
+  ],
+
+  "required_work": [
+    "1. Identify the startup flow entry point in bot_core.py (the block that runs once after config is loaded, before the main loop begins).",
+    "2. Add one structured proof block at that point. It must be emitted exactly once per process start.",
+    "3. Required fields in the proof block: sys.executable (python path), os.getcwd() (working directory), .env file path loaded, process start timestamp (UTC ISO), CONFIG_HASH value (from the corrected input set), and loaded values for all gate-critical vars: MIN_ENTRY_CONFIDENCE, MIN_ENTRY_PRICE, MIN_CONFIDENCE, MAX_CONCURRENT_TRADES, MAX_TRADES_PER_MARKET, LATE_INNING_BLOCK, AUTO_STOP_LOSS_PCT, LOOP_SECONDS.",
+    "4. Format: one JSON log line prefixed with a grep-friendly tag, e.g. STARTUP_PROOF, or a tightly grouped multiline block. The tag must make it grep-able from the log.",
+    "5. Use the same live values the gate path uses — read from the same os.getenv() calls or module-level constants that risk.py and bot_core.py already use. Do not recompute from raw .env file.",
+    "6. Do not duplicate config_hash() logic — use the existing CONFIG_HASH constant.",
+    "7. Run python -m py_compile on every changed file."
+  ],
+
+  "acceptance_criteria": [
+    "Exactly one proof block emitted per process start",
+    "Block is grep-able from the log with a consistent tag (e.g. 'STARTUP_PROOF')",
+    "Block includes: python path, cwd, .env path, process start timestamp, CONFIG_HASH (corrected inputs), and all listed gate-critical var values",
+    "Values in proof block match what the live gate path uses — not a re-read of raw .env",
+    "CONFIG_HASH in proof block derived from the corrected input set (CONFIG_HASH_INPUTS_FIX_001 must already be applied)",
+    "No gate logic, thresholds, or trade decisions changed",
+    "No files outside allowed scope modified",
+    "python -m py_compile passes for every changed file"
+  ],
+
+  "verification_required": [
+    "Show the exact proof block format added",
+    "Show the location in bot_core.py startup flow where it fires (line numbers)",
+    "Confirm CONFIG_HASH used is the same constant already computed from corrected inputs — not a new parallel computation",
+    "Run py_compile on all changed files and report PASS/FAIL",
+    "State whether restart is required"
+  ],
+
+  "sequencing_note": "This task must follow CONFIG_HASH_INPUTS_FIX_001. If run first, the emitted config_hash would still reflect the incomplete input set, defeating the purpose. The proof block is only trustworthy when it emits a hash derived from the real gate-critical vars.",
+
+  "rollback": "Revert only bot_core.py (and core/risk.py if modified) if this task needs to be reverted.",
+  "restart_required": true,
+  "restart_note": "Restart required to observe the startup proof block in live logs. On next restart, grep 'STARTUP_PROOF' in the bot log to verify.",
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_STARTUP_PROOF_BLOCK_001.json"
+}

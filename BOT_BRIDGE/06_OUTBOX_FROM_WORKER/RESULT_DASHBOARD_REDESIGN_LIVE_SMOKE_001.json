@@ -1,0 +1,46 @@
+{
+  "task_id": "DASHBOARD_REDESIGN_LIVE_SMOKE_001",
+  "decision": "FAIL",
+  "date": "2026-04-09",
+  "production_code_changes": false,
+
+  "server_health": { "status": "PASS", "result": "HTTP 200" },
+
+  "sign_regression_confirmed": {
+    "status": "FAIL",
+    "slug": "mlb-cin-mia-2026-04-09",
+    "side": "BUY_NO",
+    "entry_px": 0.5427,
+    "qty": 92.131933,
+    "sse_current_price": 0.53,
+    "sse_live_equity_usd": 48.8299,
+    "sse_unrealized_pnl_usd_observed": 1.1701,
+    "sse_unrealized_pnl_usd_correct": -1.1701,
+    "formula_that_produces_observed": "(entry_px - current_price) * qty = (0.5427 - 0.53) * 92.13 = +1.1701",
+    "formula_correct": "(current_price - entry_px) * qty = (0.53 - 0.5427) * 92.13 = -1.1701",
+    "ari_nym_operator_report": "entry=0.613 current=0.40 displayed=+$17.38 correct=-$17.38 — same sign bug"
+  },
+
+  "root_cause": {
+    "on_disk_code": "CORRECT — dashboard_server.py line 420: unrealized_pnl_usd = round((current_price - entry_px) * qty, 4). No side branching.",
+    "running_process": "STALE — process was started before BASEBALL_POSITION_SEMANTICS_INCIDENT_001 fix was committed. Still running old sign-branched formula: BUY_NO uses (entry_px - current_price) * qty.",
+    "fix_required": "Process restart only. No code changes needed."
+  },
+
+  "frontend_code": {
+    "status": "CORRECT",
+    "note": "buildUnifiedPositionCards and _applyMarkToCard use r.unrealized_pnl_usd from SSE without sign modification. Frontend faithfully renders server value. Sign bug is server-side only."
+  },
+
+  "other_checks": {
+    "api_state": "PASS",
+    "api_trades_tp_sl": "PASS",
+    "shadow_absent_live_tab": "PASS",
+    "advisory_label_games_tab": "PASS",
+    "flicker_eliminated": "PASS",
+    "no_console_log": "PASS"
+  },
+
+  "blocking_issue": "LIVE_CARD_PNL_SIGN_REGRESSION_001 — BUY_NO unrealized P&L shows wrong sign in live dashboard",
+  "overall_verdict": "FAIL — redesign is NOT fully complete until process restart confirms sign is correct"
+}

@@ -1,0 +1,45 @@
+{
+  "task_id": "VERIFY_EXECUTION_CONTRACT_BIND_001",
+  "status": "done",
+  "final_result": "PARTIAL",
+  "verified_fields": {
+    "recommended_size_dollars": {
+      "code_path": true,
+      "runtime_live_observation": "not directly observed on a post-change opened trade in current DB/log window",
+      "details": "core/paper_exec.py now reads signal.components['recommended_size_dollars'], uses it when present, and clamps it to MAX_POSITION_SIZE_USD; otherwise it falls back to existing confidence-based sizing."
+    },
+    "tp_sl_fields": {
+      "code_path": true,
+      "runtime_live_observation": "not directly observed on a post-change opened trade in current DB/log window",
+      "details": "tp_price and sl_price are bound in bot_core bridge Signal.components and embedded into reason_open metadata in paper_exec.py."
+    },
+    "held_outcome_matchup_reasons_freshness": {
+      "code_path": true,
+      "runtime_live_observation": "not directly observed on a post-change opened trade in current DB/log window",
+      "details": "held outcome, matchup/team context, reasons, and freshness fields are bound into Signal.components and serialized into reason_open metadata."
+    }
+  },
+  "runtime_evidence": {
+    "caps_intact": {
+      "env": [
+        "PAPER_POSITION_SIZE_USD=50.0",
+        "MAX_POSITION_SIZE_USD=100",
+        "MAX_CONCURRENT_TRADES=3"
+      ],
+      "state": "runtime/state.json shows slots.open=3 and slots.max=3",
+      "logs": "recent bot logs show repeated 'BRIDGE SKIP - at capacity (3/3)'"
+    },
+    "accounting_sane": {
+      "state": "runtime/state.json still reports bankroll, capital committed, available cash, and open positions coherently",
+      "db": "live DB open rows remain sane with 3 open positions and no duplicate-open rows"
+    },
+    "duplicate_protection_regression": false,
+    "strategy_regression_found": false
+  },
+  "code_path_proof": {
+    "bot_core": "bridge execution Signal.components now carries recommended_size_dollars, tp_price, sl_price, held_outcome_label, matchup/team fields, reasons, freshness/game-state fields, and identity fields",
+    "paper_exec": "open_position() uses recommended_size_dollars when present and capped, otherwise falls back; embeds tp/sl/held outcome/matchup/reasons/freshness into reason_open"
+  },
+  "why_not_verified": "The live DB/log window inspected does not yet include a clearly post-change opened trade whose reason_open metadata proves the newly embedded fields end-to-end in persisted runtime artifacts. Code-path proof is strong and no regression was found, but live persisted metadata proof is incomplete.",
+  "conclusion": "No hard execution/accounting regression was found. The binding looks correct and safe in code, caps remain intact, and accounting/duplicate protection remain sane. Final result is PARTIAL because persisted post-change metadata proof was not yet observable in the current runtime window."
+}

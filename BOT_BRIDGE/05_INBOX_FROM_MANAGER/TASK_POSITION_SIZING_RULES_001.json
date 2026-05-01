@@ -1,0 +1,120 @@
+{
+  "task_id": "POSITION_SIZING_RULES_001",
+  "phase": 2,
+  "priority": "HIGH",
+  "type": "implementation",
+  "subsystem": "execution / sizing",
+  "allowed_files": [
+    "core/paper_exec.py",
+    "core/risk.py"
+  ],
+  "depends_on": "TP_SL_SCHEMA_NORMALIZATION_001 must be APPROVED",
+  "gate_status": "HOLD_PENDING_TP_SL_SCHEMA_NORMALIZATION_001",
+
+  "purpose": "Define, document, and enforce how per-trade position size is determined. Size must be bounded, explainable from first principles, and respect bankroll health, concurrency caps, liquidity constraints, and confidence tiers. If the current sizing logic already meets these requirements, this task produces documentation proving it. If gaps exist (found by phase 0 audit), this task closes them.",
+
+  "scope": {
+    "in_scope": [
+      "core/paper_exec.py — sizing logic, open_position(), how qty is determined",
+      "core/risk.py — any sizing-related gates in check_entry_gates() (min/max size constraints, depth checks)"
+    ],
+    "out_of_scope": [
+      "bot_core.py — do not touch",
+      "dashboard_server.py — do not touch",
+      ".env — do not change threshold values. Read only. Document what values are live.",
+      "mlb_model/ — do not touch. Model confidence output is an input to sizing, not redesigned here.",
+      "Do not redesign confidence scoring or model logic",
+      "Do not change TP/SL thresholds — those belong to phase 1"
+    ]
+  },
+
+  "sizing_invariants_to_enforce": {
+    "description": "The following rules must hold after this phase. If they already hold, document that they do. If they do not, fix them.",
+    "rules": [
+      {
+        "rule": "SIZE_BOUNDED_PER_TRADE",
+        "description": "No single trade may commit more than MAX_POSITION_USD. Value must come from env var or hardcoded constant, not derived dynamically in a way that can be gamed.",
+        "verify": "Show MAX_POSITION_USD (or equivalent) cap in paper_exec.py"
+      },
+      {
+        "rule": "SIZE_BOUNDED_PER_SESSION",
+        "description": "Total capital committed across all open trades must not exceed a configured cap. If this cap does not exist, add it or document the gap as a HIGH severity finding.",
+        "verify": "Show where open_count and committed_usd are checked before opening a new position"
+      },
+      {
+        "rule": "SIZE_PROPORTIONAL_TO_CONFIDENCE",
+        "description": "Higher confidence → larger size, subject to caps. The tiers or formula must be explicit and documented.",
+        "verify": "Show the confidence-to-size formula or tier table verbatim from code"
+      },
+      {
+        "rule": "SIZE_RESPECTS_LIQUIDITY",
+        "description": "Size must not exceed available depth in the orderbook. MIN_TOUCH_DEPTH_USD gate must be checked before sizing, not after.",
+        "verify": "Show where depth check gates sizing"
+      },
+      {
+        "rule": "SIZE_EXPLAINABLE",
+        "description": "Given entry confidence C, bankroll B, open positions N, and depth D — the resulting qty must be derivable by a human following a documented formula. No magic numbers.",
+        "verify": "Document the formula with variable names matching the code"
+      },
+      {
+        "rule": "QTY_CONSISTENT_WITH_COMMITTED_USD",
+        "description": "qty * entry_px must equal committed_usd within floating point tolerance. Verify this is enforced at open_position() call site.",
+        "verify": "Show the assignment and any rounding logic"
+      }
+    ]
+  },
+
+  "required_deliverables": {
+    "file": "BOT_BRIDGE/06_OUTBOX_FROM_WORKER/RESULT_POSITION_SIZING_RULES_001.json",
+    "also_write": "BOT_BRIDGE/08_SHARED_CONTEXT/SIZING_RULES_SPEC_001.md",
+    "result_must_include": [
+      "decision: APPROVED | CHANGES_REQUESTED | BLOCKED",
+      "files_changed: list",
+      "sizing_formula: verbatim from code (or newly written)",
+      "caps_enforced: list of cap rules confirmed present",
+      "gaps_closed: list of gaps from audit report that this phase fixed",
+      "gaps_remaining: list of gaps not addressed in this phase (with justification)",
+      "verification: py_compile passes for all changed files"
+    ],
+    "sizing_rules_spec_must_include": [
+      "Canonical sizing formula with variable definitions",
+      "Confidence tier table (if tiered) or formula (if continuous)",
+      "All size caps (per-trade, per-session, per-market) with env var names and current values",
+      "Liquidity gate description",
+      "Example: given confidence=0.65, bankroll=$900, 1 open position, depth=$200 — what is the resulting size?"
+    ]
+  },
+
+  "preflight_questions": [
+    "Has TP_SL_SCHEMA_NORMALIZATION_001 been approved?",
+    "What does the phase 0 audit say about current sizing logic gaps?",
+    "What is the current MAX_POSITION_USD (or equivalent) value from .env?",
+    "Is committed_usd already tracked correctly in open_position()?",
+    "Is there currently a per-session total commitment cap? (Check phase 0 audit findings.)"
+  ],
+
+  "acceptance_criteria": [
+    "All 6 sizing invariants above are either confirmed present or fixed",
+    "SIZING_RULES_SPEC_001.md is written and complete",
+    "Sizing formula is documented verbatim with variable names matching code",
+    "python -m py_compile core/paper_exec.py passes",
+    "python -m py_compile core/risk.py passes",
+    "Only files in allowed_files were changed",
+    "No threshold values were changed without explicit manager approval"
+  ],
+
+  "proof_of_work": [
+    "Show git diff for each changed file",
+    "Show the worked example from SIZING_RULES_SPEC_001.md (confidence=0.65, bankroll=$900, 1 open position, depth=$200)",
+    "For each cap rule, show the exact code line that enforces it"
+  ],
+
+  "guardrails": [
+    "Do not redesign strategy or model logic",
+    "Do not change confidence scoring",
+    "Do not reintroduce ambiguous YES/NO economics",
+    "Held-side contract truth must remain the basis for pricing and exit logic",
+    "Do not fake bankroll resets",
+    "Do not widen scope to bot_core.py or dashboard"
+  ]
+}

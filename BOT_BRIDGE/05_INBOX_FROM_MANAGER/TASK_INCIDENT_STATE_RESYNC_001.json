@@ -1,0 +1,33 @@
+{
+  "task_id": "INCIDENT_STATE_RESYNC_001",
+  "title": "Restore canonical launcher topology and resync runtime/API state to DB truth",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "incident_state_resync",
+  "allowed_files": [],
+  "objective": "Process/state stabilization only. Restore one clean canonical launcher/process topology, verify exactly one valid instance of each critical service, make runtime/API state converge to DB truth, and observe a short stability window. No production code changes unless absolutely necessary.",
+  "constraints": [
+    "no trading logic changes",
+    "no dashboard UI changes",
+    "no production code changes unless absolutely necessary",
+    "preserve logs/evidence",
+    "BOT_BRIDGE files are the only normal write target unless forced into BLOCKED"
+  ],
+  "verification_targets": [
+    "one launcher stack only",
+    "one bot_core writer only",
+    "one dashboard_server only",
+    "one resolution_watcher only",
+    "one recommendation_api only",
+    "DB open rows count matches /api/state open positions count",
+    "DB open rows count matches /api/trades open count if available",
+    "no new duplicate opens appear in short observation window",
+    "no capacity breach",
+    "no duplicate process respawn"
+  ],
+  "deliverables": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_INCIDENT_STATE_RESYNC_001.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_INCIDENT_STATE_RESYNC_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\07_REVIEWS\\PROVISIONAL_REVIEW_INCIDENT_STATE_RESYNC_001.md"
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "task_id": "BANKROLL_AWARE_SIZING_001",
+  "status": "DONE",
+  "executor": "Claude (manager acting as worker — OpenClaw unavailable)",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env"
+  ],
+  "changes": {
+    "paper_exec.py": [
+      "MAX_POSITION_SIZE_USD default changed from '100' to '50' (line 24)",
+      "Added RISK_PCT_PER_TRADE = float(os.getenv('RISK_PCT_PER_TRADE', '0.03')) (line 25)",
+      "Added MIN_POSITION_USD = float(os.getenv('MIN_POSITION_USD', '10.0')) (line 26)",
+      "Added _PAPER_STARTING_BANKROLL = float(os.getenv('STARTING_BANKROLL', '500')) (line 27)",
+      "Replaced fixed PAPER_POSITION_SIZE_USD base in open_position() with bankroll-aware formula",
+      "Added INFO log: SIZING bankroll=X base=Y size_usd=Z on each trade entry",
+      "DB read failure falls back to PAPER_POSITION_SIZE_USD with WARNING log"
+    ],
+    ".env": [
+      "MAX_POSITION_SIZE_USD=100 -> 50",
+      "Added RISK_PCT_PER_TRADE=0.03",
+      "Added MIN_POSITION_USD=10"
+    ]
+  },
+  "worked_example": {
+    "bankroll": 851.91,
+    "pct": 0.03,
+    "bankroll_base": 25.56,
+    "confidence": 0.72,
+    "tier_mult": 1.25,
+    "size_usd": 31.95,
+    "cap_applied": false
+  },
+  "verification": {
+    "py_compile": "PASS — core/paper_exec.py",
+    "recommended_size_override_preserved": true,
+    "fallback_to_fixed_base_on_db_error": true
+  },
+  "restart_required": true
+}

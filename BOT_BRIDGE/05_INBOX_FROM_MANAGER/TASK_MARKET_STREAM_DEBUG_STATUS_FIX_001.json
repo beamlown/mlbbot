@@ -1,0 +1,17 @@
+{
+  "task_id": "MARKET_STREAM_DEBUG_STATUS_FIX_001",
+  "title": "Stabilize /api/debug/market-stream for safe runtime chain diagnostics",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "market_stream_debug_status",
+  "allowed_files": ["core/market_stream.py", "dashboard_server.py"],
+  "objective": "Make /api/debug/market-stream return stable JSON so the market-stream runtime break point can be diagnosed safely.",
+  "acceptance_criteria": [
+    "/api/debug/market-stream returns 200",
+    "response is valid JSON",
+    "response contains enough safe fields to diagnose runtime chain",
+    "no strategy/execution behavior changes",
+    "final result is VERIFIED, PARTIAL, or BLOCKED"
+  ],
+  "rollback": "Revert the narrow debug_status/handler stabilization changes."
+}

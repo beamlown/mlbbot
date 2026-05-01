@@ -1,0 +1,24 @@
+{
+  "status": "ok",
+  "summary": "Successfully probed game_pk=823243 and extracted pitcher IDs",
+  "files_changed": [],
+  "probe_result": {
+    "home_pitchers": [
+      592662,
+      676130,
+      669062,
+      676254,
+      621366,
+      657424
+    ],
+    "away_pitchers": [
+      693645,
+      518585,
+      657612,
+      666808,
+      670280
+    ]
+  },
+  "api_status": "ok",
+  "game_pk": 823243
+}

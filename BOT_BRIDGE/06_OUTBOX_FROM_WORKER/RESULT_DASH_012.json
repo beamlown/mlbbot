@@ -1,0 +1,19 @@
+{
+  "task_id": "DASH_012",
+  "status": "done",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "summary": [
+    "Updated gameStatusChip() to use game_status first and distinguish FINAL, SCHEDULED, and LIVE states more accurately.",
+    "Changed the position card context pill so inning text and green live-dot render only for genuinely live games.",
+    "Scheduled/pre-game cards now render matchup plus SCHEDULED without misleading live indicators."
+  ],
+  "notes": [
+    "Scope remained limited to dashboard.html only.",
+    "No server-side files were touched."
+  ]
+}

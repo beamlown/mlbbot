@@ -1,0 +1,16 @@
+{
+  "task_id": "VERIFY_ODDS_API_BUDGET_ENFORCEMENT_001",
+  "title": "Verify Odds API daily/monthly budget enforcement with isolated proof states",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "odds_budget_verification",
+  "allowed_files": ["sports/mlb/sharp_odds.py", "runtime/odds_budget.json"],
+  "objective": "Prove daily cap, monthly soft throttle, monthly hard stop, and budget-file state behavior using safe non-production budget scenarios.",
+  "acceptance_criteria": [
+    "all three budget modes are proven",
+    "no unnecessary real API burn",
+    "dashboard remains independent of Odds API streaming",
+    "final result is VERIFIED, PARTIAL, or BLOCKED"
+  ],
+  "rollback": "Verification-only. Helper script/temp budget file can be removed if desired."
+}

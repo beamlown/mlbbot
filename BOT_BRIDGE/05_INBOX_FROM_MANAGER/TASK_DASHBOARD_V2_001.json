@@ -1,0 +1,11 @@
+{
+  "task_id": "DASHBOARD_V2_001",
+  "title": "Build dashboard_v2.html as a fresh game-first live monitor shell",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "dashboard_v2",
+  "allowed_files": [
+    "dashboard_v2.html"
+  ],
+  "objective": "Build a fresh, truth-safe, game-first, position-first, mobile-friendly Dashboard V2 shell wired to current endpoints without modifying the current production dashboard."
+}

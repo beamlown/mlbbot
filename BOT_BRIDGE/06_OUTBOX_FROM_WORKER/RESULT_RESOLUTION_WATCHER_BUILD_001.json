@@ -1,0 +1,16 @@
+{
+  "task_id": "RESOLUTION_WATCHER_BUILD_001",
+  "decision": "approved",
+  "status": "completed",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\integration\\__init__.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\integration\\resolution_watcher.py"
+  ],
+  "verification": {
+    "py_compile": "python -m py_compile integration/resolution_watcher.py (pass)",
+    "runtime_smoke": "python -m integration.resolution_watcher (ran ~12s under timeout; no crash before timeout kill)",
+    "state_file_created": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\resolved_markets.json exists with {}",
+    "package_file_exists": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\integration\\__init__.py exists",
+    "scope_check": "Only new integration package files were added in source scope"
+  }
+}

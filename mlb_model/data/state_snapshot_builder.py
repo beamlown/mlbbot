@@ -42,6 +42,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from sports.mlb.parks import lookup_park_id
+
 logger = logging.getLogger(__name__)
 
 FEATURE_DIR = Path(os.getenv("FEATURE_DIR", "data/features"))
@@ -164,8 +166,35 @@ def build_snapshots_for_season(
         home_starter_id: int | None = None
         away_starter_id: int | None = None
 
+        # Track most-recent p_throws per side (updated inside the PA loop)
+        home_pitcher_throws_running: str = "?"
+        away_pitcher_throws_running: str = "?"
+
         # Identify PAs (first pitch of each at_bat_number)
         pa_df = game_df.drop_duplicates(subset=["at_bat_number"], keep="first")
+
+        # Derive 9-batter lineups per side from the PA sequence
+        # (first 9 unique batters seen in each half-inning slot)
+        home_lineup_ids: list[int] = []
+        away_lineup_ids: list[int] = []
+        _seen_home_b: set[int] = set()
+        _seen_away_b: set[int] = set()
+        for _, _row_lu in pa_df.iterrows():
+            _bat_lu = _row_lu.get("batter")
+            if pd.isna(_bat_lu):
+                continue
+            _bat_int = int(_bat_lu)
+            _half_lu = int(_row_lu["inning_half"])
+            if _half_lu == 0 and _bat_int not in _seen_away_b:
+                # top = away batting
+                _seen_away_b.add(_bat_int)
+                if len(away_lineup_ids) < 9:
+                    away_lineup_ids.append(_bat_int)
+            elif _half_lu == 1 and _bat_int not in _seen_home_b:
+                # bot = home batting
+                _seen_home_b.add(_bat_int)
+                if len(home_lineup_ids) < 9:
+                    home_lineup_ids.append(_bat_int)
 
         for _, pitch_row in game_df.iterrows():
             pitcher_id = int(pitch_row["pitcher"]) if not pd.isna(pitch_row["pitcher"]) else -1
@@ -205,19 +234,19 @@ def build_snapshots_for_season(
             pitches_so_far = int((pitcher_game["at_bat_number"] < ab_num).sum())
 
             # Who is pitching? Top of inning = home team pitching
+            _pthrows_row = str(pa_row.get("p_throws", "?")) if not pd.isna(pa_row.get("p_throws")) else "?"
             if inning_h == 0:  # top: away bats, home pitches
                 home_pitcher_id = pitcher_id
                 home_pitch_count = pitches_so_far
-                away_pitch_count = 0  # away pitcher not on mound this PA
+                away_pitch_count = 0
                 home_is_bullpen = 0 if pitcher_id == home_starter_id else 1
                 away_is_bullpen = 0
-                # TTO: approximate times through order for current pitcher
-                # (pitcher_entry_ab gives first AB they faced)
                 entry_ab = pitcher_entry_ab.get(pitcher_id, ab_num)
                 abs_faced = ab_num - entry_ab
                 home_tto = min(3.0, abs_faced / 9.0 + 1.0)
                 away_tto = 0.0
                 away_pitcher_id = away_starter_id or -1
+                home_pitcher_throws_running = _pthrows_row
             else:  # bottom: home bats, away pitches
                 away_pitcher_id = pitcher_id
                 away_pitch_count = pitches_so_far
@@ -229,6 +258,7 @@ def build_snapshots_for_season(
                 away_tto = min(3.0, abs_faced / 9.0 + 1.0)
                 home_tto = 0.0
                 home_pitcher_id = home_starter_id or -1
+                away_pitcher_throws_running = _pthrows_row
 
             outs_el = _outs_elapsed(inning, inning_h, outs)
             total_game_outs = STANDARD_GAME_OUTS if inning <= 9 else STANDARD_GAME_OUTS + (inning - 9) * 6
@@ -261,6 +291,23 @@ def build_snapshots_for_season(
                 "pregame_win_prob": round(pregame_prob, 6),
                 "home_elo": round(home_elo, 2),
                 "away_elo": round(away_elo, 2),
+                "park_id": lookup_park_id(home_team),
+                "pregame_prior_source": 1,
+                "batter_id": int(pa_row["batter"]) if not pd.isna(pa_row.get("batter")) else -1,
+                "batter_stand": str(pa_row.get("stand", "?")) if not pd.isna(pa_row.get("stand")) else "?",
+                "home_pitcher_p_throws": home_pitcher_throws_running,
+                "away_pitcher_p_throws": away_pitcher_throws_running,
+                "home_lineup_ids": home_lineup_ids,
+                "away_lineup_ids": away_lineup_ids,
+                "current_lineup_position": (
+                    (home_lineup_ids.index(int(pa_row["batter"])) + 1)
+                    if inning_h == 1 and not pd.isna(pa_row.get("batter")) and int(pa_row["batter"]) in home_lineup_ids
+                    else (away_lineup_ids.index(int(pa_row["batter"])) + 1)
+                    if inning_h == 0 and not pd.isna(pa_row.get("batter")) and int(pa_row["batter"]) in away_lineup_ids
+                    else 0
+                ),
+                "in_extras": 1 if inning > 9 else 0,
+                "ghost_runner_on_2nd": 1 if (inning > 9 and season >= 2020 and outs == 0) else 0,
                 "home_won_final": home_won,
             })
 

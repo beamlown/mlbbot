@@ -1,0 +1,118 @@
+{
+  "task_id": "RISK_AND_TP_AUDIT_001",
+  "phase": 6,
+  "priority": "MEDIUM",
+  "type": "audit / writeup",
+  "subsystem": "risk / execution / accounting",
+  "allowed_files": [
+    "BOT_BRIDGE/08_SHARED_CONTEXT/RISK_MANAGEMENT_FINAL_AUDIT_001.md"
+  ],
+  "depends_on": "RISK_AND_TP_VERIFY_001 must be APPROVED",
+  "gate_status": "HOLD_PENDING_RISK_AND_TP_VERIFY_001",
+
+  "purpose": "Produce the final human-readable audit document for the entire risk management system. This is the reference document an operator reads to understand the full risk architecture: what exists, what was verified, what gaps remain, and what the recommended next actions are. No code changes. The output is one well-structured markdown file.",
+
+  "scope": {
+    "in_scope": [
+      "Read all prior phase outputs in BOT_BRIDGE/08_SHARED_CONTEXT/",
+      "Read RISK_PIPELINE_AUDIT_REPORT_001.md",
+      "Read SIZING_RULES_SPEC_001.md",
+      "Read BANKROLL_ACCOUNTING_SPEC_001.md",
+      "Read RISK_VERIFY_REPORT_001.md",
+      "Write BOT_BRIDGE/08_SHARED_CONTEXT/RISK_MANAGEMENT_FINAL_AUDIT_001.md"
+    ],
+    "out_of_scope": [
+      "Do not change any production file",
+      "Do not reopen gaps that were already verified and closed",
+      "Do not redesign strategy or model logic",
+      "Do not recommend changes that were explicitly ruled out by manager guardrails"
+    ]
+  },
+
+  "audit_document_structure": {
+    "sections": [
+      {
+        "section": "1. SYSTEM OVERVIEW",
+        "content": "One-paragraph description of the risk system as it exists after all phases are applied. Plain English. Operator-readable."
+      },
+      {
+        "section": "2. FILE MAP",
+        "content": "Table: file | role in risk system | phases that modified it | current state (VERIFIED/PARTIAL/UNCHANGED)"
+      },
+      {
+        "section": "3. TP/SL ARCHITECTURE",
+        "content": "Full description of take-profit and stop-loss architecture: canonical functions, threshold values, exit reason taxonomy, cooldown table. Every number sourced from phase 1 and phase 5 verification."
+      },
+      {
+        "section": "4. POSITION SIZING",
+        "content": "Canonical sizing formula with worked example. Confidence tier table or formula. All caps. Source: phase 2 SIZING_RULES_SPEC_001.md verified in phase 5."
+      },
+      {
+        "section": "5. HELD-SIDE PRICING CHAIN",
+        "content": "End-to-end trace of how current_held_price flows from Polymarket orderbook → _held_bid() → check_exit() → close_position() → DB. Confirm no raw YES/NO price leaks into this chain."
+      },
+      {
+        "section": "6. BANKROLL AND SESSION ACCOUNTING",
+        "content": "All canonical definitions with their verified computation paths. Dashboard number derivation table. Any remaining inconsistencies."
+      },
+      {
+        "section": "7. CLOSE LOGIC AND RESOLUTION",
+        "content": "Full description of how positions close: TP/SL/gap/trailing/near_resolution/time_exit/market_resolved. Include the resolution_watcher integration. Cooldown table."
+      },
+      {
+        "section": "8. VERIFICATION RESULTS",
+        "content": "Summary table from RISK_VERIFY_REPORT_001.md: check_id | PASS/PARTIAL/FAIL | evidence. Include overall verdict."
+      },
+      {
+        "section": "9. GAPS AND REMAINING RISKS",
+        "content": "Table: gap_id | description | severity (HIGH/MED/LOW) | status (OPEN/PARTIAL/CLOSED) | recommended action. Include gaps from all phases that were not fully closed."
+      },
+      {
+        "section": "10. RECOMMENDED NEXT ACTIONS",
+        "content": "Ordered list of next recommended tasks. Each item: task description, why it matters, estimated impact. Do not invent new strategy — only execution/risk/monitoring improvements."
+      }
+    ]
+  },
+
+  "required_deliverables": {
+    "file": "BOT_BRIDGE/06_OUTBOX_FROM_WORKER/RESULT_RISK_AND_TP_AUDIT_001.json",
+    "also_write": "BOT_BRIDGE/08_SHARED_CONTEXT/RISK_MANAGEMENT_FINAL_AUDIT_001.md",
+    "result_must_include": [
+      "decision: APPROVED | CHANGES_REQUESTED | BLOCKED",
+      "audit_doc_path: path to RISK_MANAGEMENT_FINAL_AUDIT_001.md",
+      "gaps_remaining_count: integer",
+      "high_severity_gaps: list or 'none'",
+      "overall_verdict: VERIFIED | PARTIAL | GAPS_REMAIN"
+    ]
+  },
+
+  "preflight_questions": [
+    "Is RISK_AND_TP_VERIFY_001 APPROVED?",
+    "Are all prior phase spec docs available in 08_SHARED_CONTEXT/?",
+    "What is the overall verdict from RISK_VERIFY_REPORT_001.md?"
+  ],
+
+  "acceptance_criteria": [
+    "RISK_MANAGEMENT_FINAL_AUDIT_001.md is written with all 10 sections",
+    "Every number in the document is sourced to a file:line or prior phase document",
+    "Gaps table clearly distinguishes OPEN vs PARTIAL vs CLOSED",
+    "Recommended next actions are specific and bounded — not vague suggestions",
+    "No production file was modified",
+    "Document is readable by a non-developer operator"
+  ],
+
+  "proof_of_work": [
+    "Confirm RISK_MANAGEMENT_FINAL_AUDIT_001.md exists",
+    "Confirm all 10 sections are present",
+    "Confirm every claim in sections 3-7 is sourced to a specific file:line or prior phase doc"
+  ],
+
+  "guardrails": [
+    "Do not change any production file",
+    "Do not redesign strategy or model logic",
+    "Do not reintroduce ambiguous YES/NO economics",
+    "Do not recommend fake bankroll resets",
+    "Preserve audit trail",
+    "Distinguish clearly: VERIFIED | PARTIAL | BLOCKED | SUPERSEDED"
+  ]
+}

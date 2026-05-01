@@ -1,0 +1,12 @@
+{
+  "task_id": "DASHBOARD_LIVE_GAME_MONITOR_001",
+  "title": "Live game-centered dashboard monitoring with clearer position/accounting truth",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "dashboard_live_monitor",
+  "allowed_files": [
+    "dashboard.html",
+    "dashboard_server.py"
+  ],
+  "objective": "Refocus the dashboard on live games + live executed positions. Make side/accounting truth understandable, center the page on hybrid live game + active position monitoring cards, demote the trade log to secondary space, and keep shadow diagnostics secondary without truth regression."
+}

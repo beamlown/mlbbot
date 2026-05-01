@@ -1,0 +1,19 @@
+{
+  "task_id": "DASH_016",
+  "status": "done",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "summary": [
+    "Trade log now shows team abbreviations from market slug parsing instead of raw truncated slugs.",
+    "Trade log now shows USD position size from qty * entry_px.",
+    "Command bar win rate binding was already present from DASH_015, so no duplicate change was made there."
+  ],
+  "notes": [
+    "Scope remained limited to dashboard.html only.",
+    "No server-side files were touched."
+  ]
+}

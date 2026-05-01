@@ -1,0 +1,5 @@
+{
+  "task_id": "LIVE_MODEL_REACTION_REVERIFY_001",
+  "mode": "verification_only",
+  "goal": "Re-verify live model reaction after cadence tightening using available live-window evidence without changing code or waiting indefinitely."
+}

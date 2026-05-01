@@ -1,0 +1,32 @@
+{
+  "task_id": "RESOLUTION_WATCHER_INTEGRATE_001",
+  "decision": "done",
+  "status": "done",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "summary": [
+    "Added a cached runtime/resolved_markets.json loader in bot_core.py using mtime checks.",
+    "Integrated a market_resolved force-close path into the exit loop before check_exit(), closing resolved positions without requiring orderbook liquidity.",
+    "Preserved existing exit behavior, cooldown handling, and check_exit() logic for non-resolved markets."
+  ],
+  "commands_run": [
+    "python -m py_compile bot_core.py",
+    "python -c \"from pathlib import Path; p=Path('bot_core.py').read_text(encoding='utf-8').splitlines(); [print(i,l) for i,l in enumerate(p,1) if '_load_resolved_markets' in l or 'resolved_markets = _load_resolved_markets()' in l or 'should_close, reason = check_exit' in l]\"",
+    "git diff --name-only",
+    "python -c \"import json, pathlib; p=pathlib.Path('runtime/resolved_markets.json'); p.parent.mkdir(exist_ok=True); p.write_text(json.dumps({'fake_market_id': {'resolved': True, 'yes_resolution_price': 1.0, 'no_resolution_price': 0.0}}), encoding='utf-8'); print('wrote', p)\"",
+    "python -c \"import bot_core; d=bot_core._load_resolved_markets(); print('loaded_keys', list(d.keys()))\"",
+    "python -c \"from pathlib import Path; p=Path('runtime/resolved_markets.json'); print('exists_before', p.exists()); p.unlink(missing_ok=True); print('exists_after', p.exists())\""
+  ],
+  "verification": [
+    "py_compile succeeded for bot_core.py.",
+    "_load_resolved_markets() is defined and referenced in the exit loop.",
+    "Resolved-market force-close block is placed before check_exit().",
+    "git diff --name-only shows only sports_bot_v2/bot_core.py changed in-code for task scope.",
+    "Manual smoke test: fake runtime/resolved_markets.json loaded successfully with no errors; test file removed after validation."
+  ],
+  "risks": [
+    "If resolved_markets.json contains malformed price fields, float conversion could raise and be handled by per-trade exit exception logging."
+  ],
+  "next_recommended_task": "Queue reviewer validation and merge approval for RESOLUTION_WATCHER_INTEGRATE_001."
+}

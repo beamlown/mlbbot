@@ -170,12 +170,9 @@ class MarketStreamClient:
         logger.warning("market_stream: websocket closed args=%s", args)
 
     def _run(self) -> None:
-        while not self._stop.is_set():
-            payload = self._subscription_payload()
-            if not payload:
-                logger.info("market_stream: no tracked assets, waiting")
-                time.sleep(2)
-                continue
+        from core.ws_utils import run_with_reconnect
+
+        def _factory() -> "websocket.WebSocketApp":
             self._ws = websocket.WebSocketApp(
                 WS_URL,
                 on_open=self._on_open,
@@ -183,15 +180,32 @@ class MarketStreamClient:
                 on_error=self._on_error,
                 on_close=self._on_close,
             )
+            # Start a fresh ping thread each reconnect — old one exited when ws closed
             ping_thread = threading.Thread(target=self._ping_loop, daemon=True)
             ping_thread.start()
-            try:
-                logger.info("market_stream: run_forever starting")
-                self._ws.run_forever()
-            except Exception as exc:
-                logger.warning("market_stream: run_forever exception=%s", exc)
+            return self._ws
+
+        def _on_reconnect() -> None:
             self._reconnect_count += 1
-            time.sleep(3)
+
+        # Wait-for-subscription loop is separate from run_with_reconnect because
+        # we don't want to connect until there's something to subscribe to.
+        while not self._stop.is_set():
+            payload = self._subscription_payload()
+            if not payload:
+                logger.info("market_stream: no tracked assets, waiting")
+                time.sleep(2)
+                continue
+            # Once we have a payload, delegate the reconnect loop. It'll return
+            # only when stop is set OR — if we want reconfiguration — when a
+            # tracked-assets change triggers ws.close() via update_tracked_assets.
+            run_with_reconnect(
+                ws_factory=_factory,
+                stop_event=self._stop,
+                reconnect_delay=3.0,
+                on_reconnect=_on_reconnect,
+                logger_name="market_stream",
+            )
 
     def _ping_loop(self) -> None:
         while not self._stop.is_set() and self._ws:

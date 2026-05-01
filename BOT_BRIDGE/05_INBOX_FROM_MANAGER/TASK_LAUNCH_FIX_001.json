@@ -1,0 +1,56 @@
+{
+  "task_id": "LAUNCH_FIX_001",
+  "title": "Add PID guard to launch_all.py to prevent duplicate launcher instances",
+  "objective": "launch_all.py has no guard against being run while already running. On 2026-04-04, the user ran it multiple times. Each invocation spawned a new bot_core.py and recommendation_api.py. The watchdog inside each launcher also restarted children independently. Result: 6 bot_core.py + 3 launch_all.py + 10 recommendation_api.py running simultaneously. Fix: on startup, write a launcher PID file and refuse to start if another launcher PID is already alive.",
+  "allowed_files": [
+    "sports_bot_v2/launch_all.py"
+  ],
+  "do_not_touch": [
+    "bot_core.py",
+    "core/",
+    "dashboard_server.py",
+    "dashboard.html",
+    "mlb_model/"
+  ],
+  "required_changes": {
+    "1_launcher_pid_file": "On startup, check for runtime/launcher.pid. If it exists, read the PID. If that PID is still alive (use os.kill(pid, 0) — raises OSError if not running), print an error and sys.exit(1). If PID is dead or file missing, write current PID to runtime/launcher.pid.",
+    "2_cleanup_on_exit": "In the finally/cleanup block (KeyboardInterrupt or normal exit), delete runtime/launcher.pid.",
+    "3_no_other_changes": "Do not change the watchdog logic, subprocess start logic, or any other file."
+  },
+  "pseudocode": [
+    "LAUNCHER_PID_FILE = Path('runtime/launcher.pid')",
+    "",
+    "# At startup (before spawning children):",
+    "if LAUNCHER_PID_FILE.exists():",
+    "    try:",
+    "        old_pid = int(LAUNCHER_PID_FILE.read_text().strip())",
+    "        os.kill(old_pid, 0)  # raises OSError if not running",
+    "        print(f'ERROR: launcher already running at PID {old_pid}. Exiting.')",
+    "        sys.exit(1)",
+    "    except (OSError, ValueError):",
+    "        pass  # old PID is dead, safe to continue",
+    "LAUNCHER_PID_FILE.parent.mkdir(parents=True, exist_ok=True)",
+    "LAUNCHER_PID_FILE.write_text(str(os.getpid()))",
+    "",
+    "# In finally/cleanup:",
+    "LAUNCHER_PID_FILE.unlink(missing_ok=True)"
+  ],
+  "acceptance_criteria": [
+    "Running launch_all.py once: starts normally, writes runtime/launcher.pid",
+    "Running launch_all.py a second time while first is alive: prints error and exits immediately without spawning any children",
+    "After the first launcher is stopped (Ctrl+C), runtime/launcher.pid is deleted",
+    "If runtime/launcher.pid exists with a dead PID (e.g. system restart), launcher starts normally",
+    "No other behavior changes — watchdog, child processes, log files unchanged"
+  ],
+  "verification": [
+    "python launch_all.py  # should start normally",
+    "python launch_all.py  # second terminal: should print error and exit",
+    "Ctrl+C the first: runtime/launcher.pid should be gone"
+  ],
+  "rollback": "Revert launch_all.py only.",
+  "notes": [
+    "os.kill(pid, 0) works on Windows with Python — raises OSError if process not found.",
+    "missing_ok=True on Path.unlink() requires Python 3.8+ — acceptable given project uses 3.14.",
+    "runtime/ directory already exists (bot.pid is written there by bot_core.py)."
+  ]
+}

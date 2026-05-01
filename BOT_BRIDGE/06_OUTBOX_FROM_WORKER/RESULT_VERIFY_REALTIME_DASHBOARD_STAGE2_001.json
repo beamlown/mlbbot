@@ -1,0 +1,26 @@
+{
+  "task_id": "VERIFY_REALTIME_DASHBOARD_STAGE2_001",
+  "status": "done",
+  "final_result": "BLOCKED",
+  "evidence": {
+    "sse_route": "/api/stream/state",
+    "sample_sse_request_result": "Invoke-WebRequest http://localhost:8900/api/stream/state -> 404 Not Found",
+    "code_on_disk_present": true,
+    "dashboard_server_code_proof": [
+      "_stream_positions_mark() exists in dashboard_server.py",
+      "route handling for /api/stream/state exists in dashboard_server.py"
+    ],
+    "dashboard_client_code_proof": [
+      "ensureStateStream() exists in dashboard.html",
+      "EventSource('/api/stream/state') hookup exists in dashboard.html",
+      "applyStreamPositionsMark(payload) exists in dashboard.html"
+    ],
+    "polling_fallback_proof": [
+      "GET /api/trades returned live JSON successfully",
+      "GET /api/state returned live JSON successfully"
+    ],
+    "visible_push_metric_proof": "Not provable because the live SSE route is not available from the running server process",
+    "stale_fresh_signal_proof": "Not provable from live stream because /api/stream/state is currently 404"
+  },
+  "conclusion": "Stage 2 code is present on disk, but the running server does not currently expose /api/stream/state. Therefore Stage 2 is not functioning as a real live pushed-update path in the active runtime, and verification is blocked pending a server reload/restart or route activation in the running process. Polling fallback remains intact."
+}

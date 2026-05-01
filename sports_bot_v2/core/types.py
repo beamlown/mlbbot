@@ -134,6 +134,7 @@ class Trade:
     status: str               # "open" | "closed"
     source: str = "bot"
     actual_fill_px: float | None = None  # entry price reflecting real walk-the-book + slippage
+    order_id: str | None = None  # Polymarket order ID (live trades); None for paper trades
 
 
 @dataclass

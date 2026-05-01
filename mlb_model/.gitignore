@@ -1,0 +1,20 @@
+# data and logs are huge, never commit
+data/raw/
+data/features/*.parquet
+logs/
+artifacts/*.pkl
+artifacts/archive/
+
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+
+# editor
+.vscode/
+.idea/
+
+# env
+.env
+.env.local

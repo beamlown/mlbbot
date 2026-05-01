@@ -47,6 +47,26 @@ _feature_columns: list[str] = []
 # Base state run expectancy weights (matches feature_store.py)
 _BASE_STATE_VALUE = {0: 0.0, 1: 0.9, 2: 1.1, 3: 1.3, 4: 1.6, 5: 1.8, 6: 1.9, 7: 2.3}
 
+_PHASE1_FEATURE_NAMES = (
+    "home_sp_quality", "away_sp_quality",
+    "home_sp_recent_form", "away_sp_recent_form",
+    "sp_quality_diff", "park_run_factor",
+    "park_run_factor_x_late", "pregame_prior_source",
+)
+_PHASE2_FEATURE_NAMES = (
+    "current_batter_xwoba", "next3_avg_xwoba", "lineup_avg_xwoba",
+    "current_batter_platoon_advantage", "current_batter_xwoba_x_late",
+)
+_PHASE3_FEATURE_NAMES = (
+    "home_reliever_quality", "away_reliever_quality",
+    "home_bullpen_avg_quality", "away_bullpen_avg_quality",
+    "leverage_index",
+)
+_PHASE4_FEATURE_NAMES = (
+    "wind_out_mph", "temp_f", "is_roof_closed",
+    "in_extras", "ghost_runner_on_2nd",
+)
+
 
 @dataclass
 class InferenceResult:
@@ -89,8 +109,12 @@ def _safe_logit(p: float) -> float:
 
 
 def _build_feature_vector(
-    snapshot: "GameStateSnapshot",
+    snapshot,
     pregame_win_prob: float,
+    phase1_extras: dict | None = None,
+    phase2_extras: dict | None = None,
+    phase3_extras: dict | None = None,
+    phase4_extras: dict | None = None,
 ) -> tuple[np.ndarray, dict[str, float], float]:
     """
     Convert a GameStateSnapshot to the model's feature vector.
@@ -157,15 +181,55 @@ def _build_feature_vector(
         "late_tie_bottom": late_tie_bottom,
     }
 
-    # Data quality: penalize for missing features
+    # Phase-1 features
+    extras = phase1_extras or {}
+    feat["home_sp_quality"] = float(extras.get("home_sp_quality", 100.0))
+    feat["away_sp_quality"] = float(extras.get("away_sp_quality", 100.0))
+    feat["home_sp_recent_form"] = float(extras.get("home_sp_recent_form", 0.0))
+    feat["away_sp_recent_form"] = float(extras.get("away_sp_recent_form", 0.0))
+    feat["sp_quality_diff"] = feat["away_sp_quality"] - feat["home_sp_quality"]
+    feat["park_run_factor"] = float(extras.get("park_run_factor", 1.0))
+    feat["park_run_factor_x_late"] = (feat["park_run_factor"] - 1.0) * feat["late_game"]
+    feat["pregame_prior_source"] = float(extras.get("pregame_prior_source", 1))
+
+    # Phase-2 batter features
+    p2 = phase2_extras or {}
+    feat["current_batter_xwoba"] = float(p2.get("current_batter_xwoba", 100.0))
+    feat["next3_avg_xwoba"] = float(p2.get("next3_avg_xwoba", 100.0))
+    feat["lineup_avg_xwoba"] = float(p2.get("lineup_avg_xwoba", 100.0))
+    feat["current_batter_platoon_advantage"] = float(p2.get("current_batter_platoon_advantage", 0.0))
+    feat["current_batter_xwoba_x_late"] = (feat["current_batter_xwoba"] - 100.0) * feat["late_game"]
+
+    # Phase-3 bullpen + leverage
+    p3 = phase3_extras or {}
+    feat["home_reliever_quality"] = float(p3.get("home_reliever_quality", feat.get("home_sp_quality", 100.0)))
+    feat["away_reliever_quality"] = float(p3.get("away_reliever_quality", feat.get("away_sp_quality", 100.0)))
+    feat["home_bullpen_avg_quality"] = float(p3.get("home_bullpen_avg_quality", 100.0))
+    feat["away_bullpen_avg_quality"] = float(p3.get("away_bullpen_avg_quality", 100.0))
+    feat["leverage_index"] = float(p3.get("leverage_index", 1.0))
+
+    # Phase-4 weather + extras
+    p4 = phase4_extras or {}
+    feat["wind_out_mph"] = float(p4.get("wind_out_mph", 0.0))
+    feat["temp_f"] = float(p4.get("temp_f", 70.0))
+    feat["is_roof_closed"] = float(p4.get("is_roof_closed", 1.0))
+    feat["in_extras"] = 1.0 if float(snapshot.inning) > 9 else 0.0
+    feat["ghost_runner_on_2nd"] = float(p4.get("ghost_runner_on_2nd", 0.0))
+
     quality = 1.0
     if snapshot.home_pitch_count == 0 and snapshot.away_pitch_count == 0:
-        quality -= 0.05   # no pitch count data
+        quality -= 0.05
     if snapshot.base_state == 0 and snapshot.inning > 1:
-        quality -= 0.02   # base state may not be populated
-    if pregame_win_prob == 0.54:
-        quality -= 0.05   # using default prior, not Elo-calibrated
-
+        quality -= 0.02
+    src = int(feat["pregame_prior_source"])
+    if src == 1:
+        quality -= 0.03   # elo (less sharp than Pinnacle)
+    elif src == 2:
+        quality -= 0.10   # full default — visible penalty
+    if extras.get("home_sp_imputed") or extras.get("away_sp_imputed"):
+        quality -= 0.05
+    if p2.get("current_batter_imputed"):
+        quality -= 0.03
     quality = max(0.0, quality)
 
     # Build array in exact feature column order
@@ -173,38 +237,25 @@ def _build_feature_vector(
     return X, feat, quality
 
 
-def infer(
-    snapshot: "GameStateSnapshot",
-    pregame_win_prob: float = 0.54,
-) -> InferenceResult:
-    """
-    Run inference on a live game state.
-    Returns calibrated P(home wins) from the model's perspective.
-    pregame_win_prob: P(home wins) before the game started.
-    """
+def infer(snapshot, pregame_win_prob: float = 0.54,
+          phase1_extras: dict | None = None,
+          phase2_extras: dict | None = None,
+          phase3_extras: dict | None = None,
+          phase4_extras: dict | None = None) -> InferenceResult:
     if _model is None or _calibrator is None:
-        raise RuntimeError("Model artifacts not loaded. Call load_artifacts() first.")
-
-    X, feat_dict, quality = _build_feature_vector(snapshot, pregame_win_prob)
-
-    # Raw prediction
+        raise RuntimeError("Model artifacts not loaded.")
+    X, feat_dict, quality = _build_feature_vector(snapshot, pregame_win_prob,
+                                                   phase1_extras, phase2_extras,
+                                                   phase3_extras, phase4_extras)
     if hasattr(_model, "predict_proba"):
         raw_prob = float(_model.predict_proba(X)[0, 1])
     else:
-        # LightGBM booster
         raw_prob = float(_model.predict(X)[0])
-
-    # Calibrated probability
     cal_prob = float(_calibrator.predict(np.array([raw_prob])))
-
-    # Clip to reasonable range
     cal_prob = max(0.01, min(0.99, cal_prob))
-
     return InferenceResult(
-        p_home=round(cal_prob, 6),
-        p_away=round(1.0 - cal_prob, 6),
-        raw_prob=round(raw_prob, 6),
-        features=feat_dict,
+        p_home=round(cal_prob, 6), p_away=round(1.0 - cal_prob, 6),
+        raw_prob=round(raw_prob, 6), features=feat_dict,
         model_version=_manifest.get("model_version", "mlb_winprob_v1"),
         data_quality=round(quality, 4),
     )
@@ -216,22 +267,14 @@ def is_loaded() -> bool:
 
 # ── Convenience: infer for tracked team (home or away) ────────────────────────
 
-def infer_for_team(
-    snapshot: "GameStateSnapshot",
-    tracked_team: str,
-    pregame_win_prob_home: float = 0.54,
-) -> tuple[float, InferenceResult]:
-    """
-    Return calibrated P(tracked_team wins) regardless of home/away.
-    Also returns the full InferenceResult for logging.
-    """
+def infer_for_team(snapshot, tracked_team, pregame_win_prob_home: float = 0.54,
+                   phase1_extras: dict | None = None,
+                   phase2_extras: dict | None = None,
+                   phase3_extras: dict | None = None,
+                   phase4_extras: dict | None = None):
     from sports.mlb.team_normalizer import normalize
-    result = infer(snapshot, pregame_win_prob_home)
-
+    result = infer(snapshot, pregame_win_prob_home,
+                   phase1_extras, phase2_extras, phase3_extras, phase4_extras)
     tracked = normalize(tracked_team)
-    if tracked == snapshot.home_team:
-        p_tracked = result.p_home
-    else:
-        p_tracked = result.p_away
-
+    p_tracked = result.p_home if tracked == snapshot.home_team else result.p_away
     return round(p_tracked, 6), result

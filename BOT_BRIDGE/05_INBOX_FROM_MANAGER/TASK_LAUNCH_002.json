@@ -1,0 +1,42 @@
+{
+  "task_id": "LAUNCH_002",
+  "title": "Add dashboard_server.py to launch_all.py managed process list",
+  "objective": "dashboard_server.py is currently started manually and has no PID guard, causing duplicate instances every time it is launched. Add it to the PROCESSES list in launch_all.py so the existing watchdog and singleton guard cover it.",
+  "allowed_files": [
+    "launch_all.py"
+  ],
+  "do_not_touch": [
+    "dashboard_server.py",
+    "bot_core.py",
+    "core/",
+    ".env"
+  ],
+  "inputs": [
+    "launch_all.py — PROCESSES list (lines 20-33). Currently contains two entries: shadow_engine and bot_core.",
+    "launch_all.py — SPORTS_BOT_DIR is already defined as Path(__file__).resolve().parent",
+    "launch_all.py — LOG_DIR is already defined as SPORTS_BOT_DIR / 'logs'",
+    "dashboard_server.py lives at SPORTS_BOT_DIR/dashboard_server.py"
+  ],
+  "deliverables": [
+    "Add a third entry to the PROCESSES list for dashboard_server.",
+    "Entry: name='dashboard', command=[sys.executable, 'dashboard_server.py'], cwd=str(SPORTS_BOT_DIR), log_file=str(LOG_DIR / 'dashboard.log')",
+    "No other changes to launch_all.py"
+  ],
+  "acceptance_criteria": [
+    "PROCESSES list has exactly 3 entries: shadow_engine, bot_core, dashboard",
+    "Running python launch_all.py starts all three child processes",
+    "dashboard_server.py starts as a child of the launcher",
+    "Running python launch_all.py a second time while the first is running prints the ERROR: launcher already running message and exits",
+    "No other files changed"
+  ],
+  "patch": {
+    "find": "PROCESSES = [\n    {\n        \"name\": \"shadow_engine\",\n        \"command\": [sys.executable, \"-m\", \"integration.recommendation_api\"],\n        \"cwd\": str(MLB_MODEL_DIR),\n        \"log_file\": str(LOG_DIR / \"shadow_engine.log\"),\n    },\n    {\n        \"name\": \"bot_core\",\n        \"command\": [sys.executable, \"bot_core.py\"],\n        \"cwd\": str(SPORTS_BOT_DIR),\n        \"log_file\": str(LOG_DIR / \"bot_core_launcher.log\"),\n    },\n]",
+    "replace": "PROCESSES = [\n    {\n        \"name\": \"shadow_engine\",\n        \"command\": [sys.executable, \"-m\", \"integration.recommendation_api\"],\n        \"cwd\": str(MLB_MODEL_DIR),\n        \"log_file\": str(LOG_DIR / \"shadow_engine.log\"),\n    },\n    {\n        \"name\": \"bot_core\",\n        \"command\": [sys.executable, \"bot_core.py\"],\n        \"cwd\": str(SPORTS_BOT_DIR),\n        \"log_file\": str(LOG_DIR / \"bot_core_launcher.log\"),\n    },\n    {\n        \"name\": \"dashboard\",\n        \"command\": [sys.executable, \"dashboard_server.py\"],\n        \"cwd\": str(SPORTS_BOT_DIR),\n        \"log_file\": str(LOG_DIR / \"dashboard.log\"),\n    },\n]"
+  },
+  "verification": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2 && python launch_all.py",
+    "Expected output includes: LAUNCHER: shadow_engine started, LAUNCHER: bot_core started, LAUNCHER: dashboard started",
+    "Second terminal: python launch_all.py — must print ERROR: launcher already running"
+  ],
+  "rollback": "Revert launch_all.py only."
+}

@@ -1,0 +1,19 @@
+{
+  "task_id": "SYSTEM_UNIFY_001",
+  "status": "done",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "summary": [
+    "Removed shadow-only advisory recommendations from the Positions panel so only executed paper trades render there.",
+    "Unified open-count displays so pos-count, kpi-open, and cmd-open all follow real DB open trades from enriched.length.",
+    "Changed live paper PnL calculation to use actual paper qty, entry_px, and current_price instead of the shadow feed's fixed-size estimate."
+  ],
+  "notes": [
+    "Shadow data fetching and Shadow drawer tab were left intact for diagnostics/enrichment.",
+    "Scope remained limited to dashboard.html only."
+  ]
+}

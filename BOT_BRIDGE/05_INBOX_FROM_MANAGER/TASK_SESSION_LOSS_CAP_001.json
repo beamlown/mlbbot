@@ -1,0 +1,96 @@
+{
+  "task_id": "SESSION_LOSS_CAP_001",
+  "priority": "HIGH",
+  "type": "implementation",
+  "subsystem": "risk / entry gates / session controls",
+  "allowed_files": ["bot_core.py", "core/risk.py"],
+  "depends_on": "MARKET_RESOLVED_DB_FIELDS_001 must be APPROVED (both touch bot_core.py)",
+  "gate_status": "QUEUED — waiting for MARKET_RESOLVED_DB_FIELDS_001",
+
+  "purpose": "Add hard per-session and daily max-loss kill switches. If realized losses since session start exceed SESSION_MAX_LOSS_USD, or realized losses today exceed DAILY_MAX_LOSS_USD, block all new entries until the operator restarts or the next calendar day. These caps prevent uncontrolled drawdown when the model is wrong repeatedly. Audit found no such caps exist anywhere in the codebase.",
+
+  "context": {
+    "finding": "RISK_PIPELINE_AUDIT_REPORT_001.md — gaps table, severity HIGH: 'No per-session max loss cap, no daily max loss cap found in risk/loop'",
+    "existing_mechanism": "SL cluster detection (core/risk.py:55-63) triggers a loop-level cooldown after N stop-losses in 5 minutes — this is a recovery pause, not a hard cap. It does not prevent re-entry after the cooldown expires regardless of total session loss.",
+    "required_behavior": [
+      "If sum(pnl_usd for closed trades since session_start) <= -SESSION_MAX_LOSS_USD: block all new entries, log ERROR, do not exit open positions",
+      "If sum(pnl_usd for closed trades today UTC) <= -DAILY_MAX_LOSS_USD: same block",
+      "Caps are configurable via .env — SESSION_MAX_LOSS_USD and DAILY_MAX_LOSS_USD",
+      "If env vars are absent or 0, caps are disabled (safe default for backward compatibility)"
+    ]
+  },
+
+  "implementation": {
+    "step1_env_vars": {
+      "where": "bot_core.py — near the existing env var reads at the top of the file",
+      "add": [
+        "SESSION_MAX_LOSS_USD = float(os.getenv('SESSION_MAX_LOSS_USD', '0'))  # 0 = disabled",
+        "DAILY_MAX_LOSS_USD  = float(os.getenv('DAILY_MAX_LOSS_USD',  '0'))  # 0 = disabled"
+      ]
+    },
+    "step2_session_start_tracking": {
+      "where": "bot_core.py — record session start timestamp at process startup, before the main loop",
+      "add": "_session_start_ts = int(time.time())",
+      "note": "This is a module-level global set once at startup. Not a DB write."
+    },
+    "step3_loss_cap_check_function": {
+      "where": "bot_core.py — add a helper function near the other helpers",
+      "add": [
+        "def _session_loss_exceeded() -> bool:",
+        "    if SESSION_MAX_LOSS_USD <= 0 and DAILY_MAX_LOSS_USD <= 0:",
+        "        return False",
+        "    closed = fetch_recent_closed(limit=500)  # already imported",
+        "    if SESSION_MAX_LOSS_USD > 0:",
+        "        session_pnl = sum(t.pnl_usd for t in closed if t.pnl_usd and t.ts_close and int(t.ts_close) >= _session_start_ts)",
+        "        if session_pnl <= -SESSION_MAX_LOSS_USD:",
+        "            logger.error('SESSION LOSS CAP HIT: session_pnl=%.2f limit=%.2f — blocking all new entries', session_pnl, SESSION_MAX_LOSS_USD)",
+        "            return True",
+        "    if DAILY_MAX_LOSS_USD > 0:",
+        "        today_start = int(datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).timestamp())",
+        "        daily_pnl = sum(t.pnl_usd for t in closed if t.pnl_usd and t.ts_close and int(t.ts_close) >= today_start)",
+        "        if daily_pnl <= -DAILY_MAX_LOSS_USD:",
+        "            logger.error('DAILY LOSS CAP HIT: daily_pnl=%.2f limit=%.2f — blocking all new entries', daily_pnl, DAILY_MAX_LOSS_USD)",
+        "            return True",
+        "    return False"
+      ],
+      "note": "datetime and timezone are already imported in bot_core.py. fetch_recent_closed is already imported. Confirm these before writing."
+    },
+    "step4_gate_in_entry_loop": {
+      "where": "bot_core.py — entry loop, before the model bridge/signal evaluation block. Specifically before the section that calls check_entry_gates(). The check should short-circuit the entire entry evaluation for the loop iteration.",
+      "add": [
+        "if _session_loss_exceeded():",
+        "    pass  # cap logged inside helper, skip entry evaluation this loop"
+      ],
+      "note": "Use 'pass' or 'continue' on the outer loop depending on structure — do not exit open-position monitoring. Loss caps block entries only, not exit checks."
+    },
+    "alternative_approach": {
+      "description": "If the above helper is too complex to wire cleanly, an acceptable alternative is to add a check inside check_entry_gates() in core/risk.py as an additional gate. Pass session_pnl and daily_pnl as arguments, check against caps there. Either approach is acceptable — the worker should choose whichever is cleaner given the actual code structure seen in the file.",
+      "note": "If implementing in core/risk.py, the cap values must be read from env vars inside risk.py and the function signature must be extended. Do not pass raw DB queries into risk.py — compute the pnl sums in bot_core.py and pass the float."
+    }
+  },
+
+  "verification": {
+    "steps": [
+      "python -m py_compile bot_core.py",
+      "python -m py_compile core/risk.py  (if modified)",
+      "git diff --name-only  # must show only allowed files",
+      "grep -n 'SESSION_MAX_LOSS_USD\\|DAILY_MAX_LOSS_USD' bot_core.py  # confirm env reads",
+      "grep -n '_session_loss_exceeded\\|SESSION LOSS CAP\\|DAILY LOSS CAP' bot_core.py  # confirm helper and log lines",
+      "Logic trace: with SESSION_MAX_LOSS_USD=0 confirm helper returns False immediately (caps disabled)"
+    ]
+  },
+
+  "do_not": [
+    "Close open positions when caps are hit — caps block entries only",
+    "Reset or modify the DB when caps are hit",
+    "Hard-code cap values — they must come from SESSION_MAX_LOSS_USD and DAILY_MAX_LOSS_USD env vars",
+    "Touch dashboard_server.py, core/paper_exec.py, or any file not in allowed_files",
+    "Change TP/SL thresholds or any existing gate logic",
+    "Start this task before MARKET_RESOLVED_DB_FIELDS_001 is APPROVED"
+  ],
+
+  "result_format": {
+    "file": "BOT_BRIDGE/06_OUTBOX_FROM_WORKER/RESULT_SESSION_LOSS_CAP_001.json",
+    "required_fields": ["decision", "files_changed", "verification", "env_vars_added"]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "task_id": "DASH_011",
+  "status": "done",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "summary": [
+    "Removed resolved/closed paper trades from the Positions panel render list.",
+    "Removed now-unused closedTrades/resolvedPaper logic from renderUnifiedPositions().",
+    "Updated the Positions panel empty state message to 'No open positions'."
+  ],
+  "notes": [
+    "Scope remained limited to dashboard.html only.",
+    "Trade Log path remains untouched, so closed trades still appear there."
+  ]
+}

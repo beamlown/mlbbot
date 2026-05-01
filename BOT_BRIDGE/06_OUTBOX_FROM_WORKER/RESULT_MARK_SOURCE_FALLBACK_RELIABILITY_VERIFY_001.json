@@ -1,0 +1,34 @@
+{
+  "task_id": "MARK_SOURCE_FALLBACK_RELIABILITY_VERIFY_001",
+  "status": "COMPLETE",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_MARK_SOURCE_FALLBACK_RELIABILITY_VERIFY_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_MARK_SOURCE_FALLBACK_RELIABILITY_VERIFY_001.md",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\dashboard.log",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MARK_SOURCE_FALLBACK_RELIABILITY_VERIFY_001.json"
+  ],
+  "exact_lines_areas_changed": [],
+  "summary": "Read-only verification after the fallback-reliability fix. Live SSE samples showed healthy markets now staying on mark_source='polymarket_stream' when fresh, with no immediate evidence of fresh stream marks being overwritten by REST fallback. REST fallback did not dominate the sampled frames.",
+  "verification_evidence": [
+    "Read the post-fix fallback gate in dashboard_server.py around _stream_positions_mark() after the state snapshot.",
+    "Captured five live SSE positions_mark frames from /api/stream/state while 3 open positions were active.",
+    "Observed fresh live cards carrying mark_source='polymarket_stream' with current_price_stale=false across multiple frames.",
+    "Observed stale=true at frame level only when one market lacked a fresh mark; unaffected markets still retained stream-driven values and mark_source='polymarket_stream'.",
+    "Did not observe rest_fallback replacing a fresh stream mark in the sampled verification window."
+  ],
+  "acceptance_criteria_met": {
+    "fresh_stream_marks_not_replaced": true,
+    "rest_fallback_only_when_missing_or_stale": "UNVERIFIED_PARTIAL",
+    "mark_source_reflects_displayed_mark": true,
+    "dashboard_cards_stream_driven_when_healthy": true
+  },
+  "residual_risks": [
+    "Verification window was short; no live rest_fallback event occurred in the sampled SSE frames after the fix, so the fallback-only-when-stale rule is only partially verified from code path plus live stream behavior.",
+    "One sampled market still showed mark_source='polymarket_stream' with current_price=null/current_price_stale=true, indicating upstream stream freshness for that slug can still degrade independently of this fix."
+  ],
+  "restart_required": false,
+  "result_file_path": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MARK_SOURCE_FALLBACK_RELIABILITY_VERIFY_001.json"
+}

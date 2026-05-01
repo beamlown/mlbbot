@@ -1,0 +1,16 @@
+{
+  "task_id": "MODEL_GATING_SPLIT_PROOF_001",
+  "title": "Prove and close current model/execution gating boundary if already clean enough",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "authority_boundary_proof",
+  "allowed_files": ["integration/recommendation_api.py", "core/model_bridge.py", "bot_core.py"],
+  "objective": "Verify whether baseball judgment is already in mlb_model and execution-style gating is already in sports_bot_v2 model_bridge/bot path, and close the item honestly if no real code move is needed.",
+  "acceptance_criteria": [
+    "current boundary documented in plain English",
+    "any remaining real violation explicitly named",
+    "no fake refactor performed",
+    "final status is CLOSED_VERIFIED, PARTIAL, or BLOCKED"
+  ],
+  "rollback": "Proof-only unless a real remaining violation is proven."
+}

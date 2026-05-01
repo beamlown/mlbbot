@@ -1,0 +1,159 @@
+{
+  "task_id": "RISK_AND_TP_VERIFY_001",
+  "phase": 5,
+  "priority": "HIGH",
+  "type": "verification / read-only",
+  "subsystem": "risk / execution / accounting",
+  "allowed_files": "READ-ONLY — no writes to any production file",
+  "depends_on": [
+    "EXECUTION_RISK_MONITOR_001 must be APPROVED",
+    "BANKROLL_SESSION_RULES_001 must be APPROVED",
+    "POSITION_SIZING_RULES_001 must be APPROVED",
+    "TP_SL_SCHEMA_NORMALIZATION_001 must be APPROVED"
+  ],
+  "gate_status": "HOLD_PENDING_ALL_PHASES_1_THROUGH_4",
+
+  "purpose": "End-to-end verification that TP/SL, sizing, held-side pricing, close logic, and bankroll/accounting all agree and work correctly as a system. This is the integration test of all prior phases. No code is changed — the job is to produce documented evidence that the system is correct or to surface remaining gaps.",
+
+  "scope": {
+    "in_scope": [
+      "Read core/risk.py, core/paper_exec.py, bot_core.py, dashboard_server.py",
+      "Query live DB at runtime/trades_sports.db for open/closed trade data",
+      "Check runtime/state.json for session baseline",
+      "Check runtime/resolved_markets.json if it exists",
+      "Observe dashboard at localhost:8900 — read /api/state endpoint output",
+      "Read all spec docs produced by phases 1-4 in 08_SHARED_CONTEXT/"
+    ],
+    "out_of_scope": [
+      "Do not change any file",
+      "Do not restart the bot",
+      "Do not reset the DB",
+      "Do not touch mlb_model/"
+    ]
+  },
+
+  "verification_checks": {
+    "tp_sl_verification": [
+      {
+        "check": "TP_SL_CANONICAL_FUNCTIONS",
+        "method": "Read core/risk.py — confirm get_tp_price() and get_sl_price() (or equivalent canonical functions) exist and are called by check_exit(). If phase 1 added them, confirm they are in use.",
+        "pass_condition": "Single canonical TP/SL price functions exist and are the only source of those values"
+      },
+      {
+        "check": "TP_SL_THRESHOLDS_MATCH_ENV",
+        "method": "Read .env, read core/risk.py constants. Confirm AUTO_TAKE_PROFIT_PCT=0.40, AUTO_STOP_LOSS_PCT=0.12, NEAR_RESOLUTION_PRICE=0.97, TRAILING_STOP_ACTIVATE_PCT=0.10, TRAILING_STOP_DRAWDOWN_PCT=0.12",
+        "pass_condition": "All 5 values match between .env and code"
+      },
+      {
+        "check": "EXIT_REASONS_COMPLETE",
+        "method": "List all exit reasons returned by check_exit(). Confirm each has a log statement and DB persistence in bot_core.py.",
+        "pass_condition": "No exit reason is silently dropped"
+      }
+    ],
+    "sizing_verification": [
+      {
+        "check": "SIZING_FORMULA_MATCHES_SPEC",
+        "method": "Read SIZING_RULES_SPEC_001.md from 08_SHARED_CONTEXT. Read core/paper_exec.py. Confirm formula matches.",
+        "pass_condition": "Code matches spec exactly"
+      },
+      {
+        "check": "SIZING_CAPS_ACTIVE",
+        "method": "Read core/paper_exec.py and core/risk.py. Confirm per-trade and per-session size caps are enforced.",
+        "pass_condition": "All caps confirmed present and non-bypassable"
+      }
+    ],
+    "held_side_pricing_verification": [
+      {
+        "check": "HELD_SIDE_PRICE_ONLY",
+        "method": "Grep core/risk.py, core/paper_exec.py, bot_core.py, dashboard_server.py for any use of bid_yes, bid_no, yes_price, no_price in equity/PnL calculations. Every use must be via _held_bid() or equivalent held-side accessor.",
+        "pass_condition": "Zero raw bid_yes/bid_no used in equity or PnL math"
+      },
+      {
+        "check": "NONE_OB_HANDLING",
+        "method": "Read check_exit() in core/risk.py line 177-179. Confirm that None _held_bid returns are now accompanied by a WARNING log per EXECUTION_RISK_MONITOR_001.",
+        "pass_condition": "Empty OB produces a logged WARNING, not silent skip"
+      }
+    ],
+    "bankroll_verification": [
+      {
+        "check": "BANKROLL_NUMBERS_MATCH_DB",
+        "method": "Query DB: SELECT SUM(pnl_usd) FROM trades WHERE status='closed'. Compare to /api/state lifetime_bankroll - INITIAL_BANKROLL. They must agree within $0.01.",
+        "pass_condition": "DB realized PnL equals dashboard realized PnL"
+      },
+      {
+        "check": "AVAILABLE_CASH_FORMULA",
+        "method": "Read /api/state. Confirm available_cash = lifetime_bankroll - capital_committed (not including unrealized).",
+        "pass_condition": "Formula matches canonical definition"
+      },
+      {
+        "check": "LIVE_EQUITY_SOURCE",
+        "method": "Read /api/state live_equity field. Confirm it is derived from held-side bid prices, not market mid-prices.",
+        "pass_condition": "live_equity derivation uses held-side bid only"
+      }
+    ],
+    "close_logic_verification": [
+      {
+        "check": "RESOLVED_MARKET_CLOSE",
+        "method": "Confirm bot_core.py includes the resolved_markets force-close path from RESOLUTION_WATCHER_INTEGRATE_001. Confirm it logs at INFO with reason=market_resolved.",
+        "pass_condition": "Force-close path present and logging"
+      },
+      {
+        "check": "COOLDOWNS_CORRECT",
+        "method": "Read bot_core.py cooldown block. Confirm: near_resolution=600s, stop_loss=1800s, gap_stop=3600s. Confirm take_profit, trailing_stop, time_exit, market_resolved have no cooldown.",
+        "pass_condition": "Exactly 3 cooldown assignments, all with correct durations"
+      }
+    ]
+  },
+
+  "required_deliverables": {
+    "file": "BOT_BRIDGE/06_OUTBOX_FROM_WORKER/RESULT_RISK_AND_TP_VERIFY_001.json",
+    "also_write": "BOT_BRIDGE/08_SHARED_CONTEXT/RISK_VERIFY_REPORT_001.md",
+    "result_must_include": [
+      "decision: APPROVED | CHANGES_REQUESTED | BLOCKED",
+      "checks_passed: list of check IDs",
+      "checks_partial: list with explanation",
+      "checks_failed: list with detail",
+      "remaining_gaps: list or 'none'",
+      "phase_6_ready: true/false"
+    ],
+    "verify_report_must_include": [
+      "Results table: check_id | result (PASS/PARTIAL/FAIL) | evidence | file:line",
+      "Any deviations from phase 1-4 specs",
+      "Recommended fixes for any PARTIAL or FAIL checks before phase 6",
+      "Overall verdict: SYSTEM VERIFIED | PARTIAL | GAPS REMAIN"
+    ]
+  },
+
+  "preflight_questions": [
+    "Are phases 1-4 all APPROVED?",
+    "Is the bot currently running (check runtime/launcher.pid)?",
+    "Is dashboard accessible at localhost:8900?",
+    "Are SIZING_RULES_SPEC_001.md and BANKROLL_ACCOUNTING_SPEC_001.md available in 08_SHARED_CONTEXT/?"
+  ],
+
+  "acceptance_criteria": [
+    "All verification checks produce a PASS or documented PARTIAL",
+    "Zero checks produce FAIL without explanation",
+    "DB realized PnL agrees with dashboard within $0.01",
+    "No raw bid_yes/bid_no found in equity/PnL calculations",
+    "RISK_VERIFY_REPORT_001.md written with complete evidence table",
+    "No production file was modified"
+  ],
+
+  "proof_of_work": [
+    "Show DB query output for SUM(pnl_usd)",
+    "Show /api/state JSON snapshot (redact sensitive fields if needed)",
+    "Show grep output confirming no raw bid_yes/bid_no in equity math",
+    "Show exact code lines for each PASS check"
+  ],
+
+  "guardrails": [
+    "Do not change any file",
+    "Do not restart the bot",
+    "Do not fake bankroll resets",
+    "Do not reintroduce ambiguous YES/NO economics",
+    "Held-side contract truth must remain the basis for pricing and exit logic",
+    "Preserve audit trail",
+    "Distinguish clearly: VERIFIED | PARTIAL | BLOCKED | SUPERSEDED"
+  ]
+}

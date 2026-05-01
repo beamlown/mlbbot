@@ -1,0 +1,146 @@
+{
+  "task_id": "DASHBOARD_TRUTH_REVERIFY_001",
+  "status": "COMPLETED_WITH_FINDINGS",
+  "timestamp_ct": "2026-04-10 15:24 CDT",
+  "read_only_confirmed": true,
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db"
+  ],
+  "runtime_surfaces_checked": [
+    "http://localhost:8900/api/state",
+    "http://localhost:8900/api/trades?limit=60",
+    "http://localhost:8900/api/games",
+    "http://localhost:8900/api/bankroll",
+    "Dashboard UI at http://localhost:8900"
+  ],
+  "db_queries_executed": [
+    "SELECT * FROM trades WHERE status='open'",
+    "SELECT id, market_slug, side, pnl_usd, entry_px, exit_px, reason_close FROM trades ORDER BY id DESC LIMIT 25",
+    "SELECT pnl_usd FROM trades WHERE status='closed' AND pnl_usd IS NOT NULL ORDER BY COALESCE(ts_close, ts_open) DESC, id DESC LIMIT 25"
+  ],
+  "evidence_summary": {
+    "open_db_rows": 0,
+    "open_api_trades_rows": 0,
+    "api_state_bankroll": {
+      "start": 500.0,
+      "current": 905.89,
+      "net_pnl": 405.89,
+      "capital_committed": 0.0,
+      "available_cash": 905.89,
+      "open_trade_count": 0
+    },
+    "api_state_r25": {
+      "win_rate": 0.52,
+      "wins": 13,
+      "losses": 12,
+      "expectancy": 9.3694,
+      "sample_size": 25
+    },
+    "db_r25_recompute": {
+      "win_rate": 0.52,
+      "wins": 13,
+      "losses": 12,
+      "expectancy": 9.3694352,
+      "sample_size": 25
+    },
+    "ui_live_header": {
+      "bankroll": "$905.89",
+      "open": "0",
+      "committed": "$0.00",
+      "w_pct": "52%"
+    },
+    "ui_positions_tab_summary": {
+      "open_equity": "+$0.00",
+      "realized_pnl": "+$43.62",
+      "open_count": "0",
+      "bankroll": "+$905.89"
+    },
+    "api_bankroll": {
+      "start": 500.0,
+      "current": 905.89,
+      "net_pnl": 405.89
+    }
+  },
+  "display_area_verdicts": [
+    {
+      "area": "1) Open positions panel: DB open rows vs /api/trades vs dashboard display",
+      "verdict": "PASS",
+      "evidence": "DB open rows=0; /api/trades?limit=60 open rows=0; UI shows Open: 0 and no open position cards."
+    },
+    {
+      "area": "2) Bankroll/accounting strip: available_cash, committed, live equity",
+      "verdict": "PASS",
+      "evidence": "/api/state bankroll available_cash=905.89, capital_committed=0.00, open_trade_count=0; UI shows Available Cash $905.89, Committed $0.00, Live Equity +$0.00. Internal consistency holds for zero-open state."
+    },
+    {
+      "area": "3) PnL fields: realized, unrealized, net",
+      "verdict": "FAIL",
+      "evidence": "Top-level net/realized are correct (/api/state pnl.realized=405.8899, api/bankroll net_pnl=405.89, UI Net P&L +$405.89). But Positions tab tile labeled 'Realized P&L' shows +$43.62 (sum of only recently displayed closed trades), not total realized.",
+      "root_cause": "dashboard.html renderPositionsTab computes todayRealized from sliced/visible closed set instead of authoritative realized value from /api/state or /api/bankroll.",
+      "recommended_fix_scope": {
+        "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+        "line_range": "1342-1351",
+        "notes": "Replace closed-slice reduction with authoritative realized/net source and relabel if intentionally showing recent-only metric."
+      }
+    },
+    {
+      "area": "4) r25 win rate: shown vs DB-computed r25",
+      "verdict": "PASS",
+      "evidence": "UI shows 52%; /api/state r25.win_rate=0.52; DB recompute from last 25 closed non-null pnl rows gives 13/25=0.52."
+    },
+    {
+      "area": "5) Position card fields: entry_px/current_px/TP-SL/PnL sign BUY_YES+BUY_NO",
+      "verdict": "UNVERIFIED",
+      "evidence": "No open positions at audit time (DB and API both zero), so no live cards available to validate current_px behavior and sign semantics on BUY_NO in runtime rendering.",
+      "root_cause": "Runtime state had zero open positions; verification requires at least one open BUY_YES and one open BUY_NO card.",
+      "recommended_fix_scope": {
+        "file": "N/A",
+        "line_range": "N/A",
+        "notes": "Follow-up verification run during active positions."
+      }
+    },
+    {
+      "area": "6) Game feed: games shown, status labels accurate",
+      "verdict": "PASS",
+      "evidence": "/api/games includes one in-progress game (PIT@CHC Top 7th) and scheduled games; UI shows PIT 2-0 CHC as live and remaining entries as scheduled markers (S), aligned with API status semantics."
+    },
+    {
+      "area": "7) Mark source: stale mark fallback (mark_source) displaying correctly",
+      "verdict": "FAIL",
+      "evidence": "Backend emits mark_source in positions stream payload, but live position cards do not render mark_source text anywhere. UI source chip shows trade source (bot/model/manual), not mark source (stream/rest_fallback/poll_fallback).",
+      "root_cause": "dashboard.html stores mark_source on position objects but buildUnifiedPositionCards does not display it.",
+      "recommended_fix_scope": {
+        "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+        "line_range": "1021-1031, 906-982",
+        "notes": "Expose mark_source in card metadata and stale indicators so REST fallback visibility is explicit."
+      }
+    }
+  ],
+  "additional_findings": [
+    {
+      "severity": "MEDIUM",
+      "finding": "R25 tile sublabel shows '0 trades' because UI reads s.total_closed, which is absent in /api/state payload.",
+      "evidence": "dashboard.html line ~683 uses (s.total_closed ?? 0); /api/state includes total_trades and r25.sample_size, not total_closed.",
+      "recommended_fix_scope": {
+        "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+        "line_range": "683",
+        "notes": "Use s.total_trades or s.r25.sample_size depending intended label."
+      }
+    }
+  ],
+  "verification_checks": {
+    "no_production_files_modified": true,
+    "result_file_written": true,
+    "result_file_path": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_DASHBOARD_TRUTH_REVERIFY_001.json",
+    "db_open_count_equals_api_open_count": true,
+    "db_open_count": 0,
+    "api_open_count": 0
+  },
+  "approval_recommendation": {
+    "approve_complete": false,
+    "reason": "Two concrete dashboard truth defects remain (Positions-tab realized P&L mis-sourced; mark_source not displayed), plus position-card sign semantics could not be runtime-verified due to zero open positions."
+  }
+}

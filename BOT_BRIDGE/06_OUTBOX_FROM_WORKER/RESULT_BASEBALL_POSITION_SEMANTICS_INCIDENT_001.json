@@ -1,0 +1,19 @@
+{
+  "incident": "BASEBALL_POSITION_SEMANTICS_INCIDENT_001",
+  "final_status": "VERIFIED_CAUSE_FOUND",
+  "affected_trades": [
+    {"id": 160, "market_slug": "mlb-mil-bos-2026-04-08", "side": "BUY_YES"},
+    {"id": 166, "market_slug": "mlb-sea-tex-2026-04-08", "side": "BUY_NO"}
+  ],
+  "current_price_source_after_fix": {
+    "path": "dashboard_server._stream_positions_mark -> GLOBAL_STATE_HUB.snapshot -> core.market_stream.GLOBAL_MARKET_STREAM.update_mark",
+    "source": "polymarket_stream"
+  },
+  "live_equity_path_after_fix": "dashboard_server._stream_positions_mark: live_equity_usd = round(qty * current_price, 4)",
+  "unrealized_path_after_fix": "dashboard_server._stream_positions_mark: unrealized_pnl_usd = round((current_price - entry_px) * qty, 4)",
+  "wrong_semantics_path": "dashboard_server._stream_positions_mark previously special-cased BUY_NO as (entry_px - current_price) * qty while still computing live_equity as qty * current_price",
+  "tp_sl_or_close_inherited_bug": true,
+  "relation_to_bos_yes_incident": "related family, but separate immediate bug: BOS/MIL was wrong held-side team semantics in close pricing interpretation; SEA/TEX was BUY_NO unrealized sign inversion in dashboard/SSE math",
+  "minimum_fix_applied": "Removed BUY_NO special-case sign inversion in dashboard_server._stream_positions_mark so all baseball open positions use one held-contract formula based on current held contract price",
+  "live_proof_summary": "After the fix, open-position SSE/dashboard math uses the same current held price for both live_equity and unrealized. For SEA/TEX BUY_NO, a rise in held NO contract price now implies both higher equity and positive unrealized, not opposite signs."
+}

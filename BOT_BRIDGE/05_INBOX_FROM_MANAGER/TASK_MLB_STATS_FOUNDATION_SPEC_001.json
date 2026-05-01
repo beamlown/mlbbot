@@ -1,0 +1,52 @@
+{
+  "task_id": "MLB_STATS_FOUNDATION_SPEC_001",
+  "title": "Define the canonical raw-data foundation for current-season MLB rebuild work",
+  "priority": "HIGH",
+  "type": "manager/specification task",
+  "track": "Track B — data foundation",
+  "issued": "2026-04-12",
+  "subsystem": "mlb_model data foundation / storage spec",
+  "status": "ACTIVE",
+  "objective": "Define the canonical storage/schema target for season-to-date MLB raw stats and the normalized rebuild-ready derivative layer so all later backfill and updater work can proceed without guessing.",
+  "paper_only_note": "This is paper-only / observation-mode rebuild work. No live model implementation or strategy change is authorized from this task.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\MODEL_REBUILD_TRACK_001.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\EDGE_PROOF_FRAMEWORK_001.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_DATA_INVENTORY_AUDIT_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_DATA_GAP_MAP_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_MODEL_INPUT_PATH_AUDIT_001.json",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\data\\**",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\training\\**",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\runtime\\**"
+  ],
+  "forbidden_actions": [
+    "Edit model code",
+    "Write backfill scripts",
+    "Write updater scripts",
+    "Start data downloads",
+    "Open speculative feature-engineering work"
+  ],
+  "required_work": [
+    "1. Define the exact canonical storage location for season-to-date MLB raw stats.",
+    "2. Define raw versus normalized dataset separation.",
+    "3. Define required entities: games, teams, team game logs, pitcher game logs, bullpen/context fields if available, inning/outs/score-state history if available.",
+    "4. Separate required fields from optional fields.",
+    "5. Define versioning, refresh rules, file format, and partitioning rules.",
+    "6. Define what complete season-to-date coverage means.",
+    "7. Define how the future daily updater appends previous-day completed stats idempotently and safely."
+  ],
+  "acceptance_criteria": [
+    "Concrete spec artifact exists and is implementation-ready",
+    "Storage location and schema separation are explicit",
+    "Required entities and fields are explicit",
+    "Versioning/refresh/partitioning rules are explicit",
+    "Season-to-date completeness is defined",
+    "Daily updater safety rules are defined"
+  ],
+  "verification": [
+    "Show final spec path",
+    "State canonical raw path and normalized path",
+    "State completeness definition and updater append rules"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_STATS_FOUNDATION_SPEC_001.json"
+}

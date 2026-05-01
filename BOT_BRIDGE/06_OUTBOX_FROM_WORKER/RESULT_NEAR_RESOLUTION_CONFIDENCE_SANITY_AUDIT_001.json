@@ -1,0 +1,66 @@
+{
+  "mode_used": "WORKER MODE",
+  "task_selected": "NEAR_RESOLUTION_CONFIDENCE_SANITY_AUDIT_001",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_NEAR_RESOLUTION_CONFIDENCE_SANITY_AUDIT_001.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py"
+  ],
+  "files_changed": [],
+
+  "root_cause_classification": "B — Model sees market price but does not penalize extreme values. In fact, the extreme discrepancy INFLATES confidence.",
+
+  "confidence_formula": {
+    "file": "mlb_model/integration/recommendation_api.py",
+    "line": 207,
+    "formula": "confidence = round(edge_score * infer_result.data_quality * spread_quality, 4)",
+    "components": {
+      "edge_score": "min(1.0, max(0.0, (edge_candidate - min_edge) / 0.10 + 0.5)) — purely edge-based, no market price floor",
+      "data_quality": "from model inference result — measures feature quality, not market resolution state",
+      "spread_quality": "1.0 - (market.spread / max_spread) — order book spread quality"
+    }
+  },
+
+  "does_model_receive_market_price": true,
+  "how_price_is_used": "Market price is used to compute edge: edge_yes = p_tracked - market.p_cost_yes. But market price is NOT used as a suppressor on confidence. The confidence formula has no term that decreases as market price approaches 0 or 1.",
+
+  "near_resolution_inflation_mechanism": {
+    "scenario": "Trade #310: entry_px=0.01005, conf=0.5507, market=mlb-hou-sea-2026-04-10",
+    "explanation": "If model infers p_tracked=0.55 for HOU to win while market price is 0.01 (99% settled against HOU), then edge_yes ≈ 0.55 - 0.01 = 0.54. With min_edge=0.05: edge_score = min(1.0, (0.54-0.05)/0.10 + 0.5) = min(1.0, 5.4) = 1.0. So edge_score maxes out. confidence ≈ 1.0 × data_quality × spread_quality. A stale or overconfident model inference produces a MAXIMUM edge_score, yielding high confidence. The model rewards the very situation it should penalize."
+  },
+
+  "game_state_staleness": {
+    "bridge_check": "model_bridge.py lines 150-155 — game_state_age_sec must be < MAX_GAME_STATE_AGE=60s before intent is approved. This is a bridge-layer check, not a model-layer check.",
+    "recommendation_api": "No staleness gate at the confidence computation step — the model uses whatever snap is returned from get_game_snapshot(). If snap.is_live is True but score/inning state lags by 30-60 seconds, the model may use a score that does not reflect the current market price.",
+    "conclusion": "Game state staleness check exists at bridge level (60s window) but the model itself does not suppress confidence when the game_state_timestamp is old relative to the book_timestamp."
+  },
+
+  "near_resolution_suppressor_in_risk_py": {
+    "exists": true,
+    "location": "core/risk.py lines 198-201",
+    "logic": "If sig.side == BUY_YES and ob.bid_yes >= NEAR_RESOLUTION_PRICE (default 0.92): reject near_resolution_entry. Same for BUY_NO.",
+    "gap": "This catches markets where the WINNING side price is near 1.0 (bid near 0.92+). It does NOT catch markets where the LOSING side price is near 0.0. Trade #310 was a BUY_YES at price 0.01 — bid_yes was ~0.01, far below NEAR_RESOLUTION_PRICE. The gate blocks buying the winning side at the top; it does not block buying the losing side near the bottom.",
+    "min_entry_price_gate": "core/risk.py line 194 — MIN_ENTRY_PRICE (set to 0.22 in .env) IS the correct gate for this case. It blocks entry when ask_side < MIN_ENTRY_PRICE. Trade #310 at entry_px=0.01 WOULD be caught by MIN_ENTRY_PRICE=0.22 — but this gate was not enforcing at the time due to pyc cache / dual-stack issues."
+  },
+
+  "late_inning_block_assessment": {
+    "wired_in_entry_path": true,
+    "note": "LATE_INNING_BLOCK_WIRING_FIX_001 has been applied — LATE_INNING_BLOCK is now a pre-gate check in bot_core.py. However, late-inning block catches inning >= 7, not price-based near-resolution. Trade #310 was in a late inning AND at near-zero price — LATE_INNING_BLOCK would have caught it, but MIN_ENTRY_PRICE is the more targeted gate for this failure mode."
+  },
+
+  "fix_recommendation": "Two-layer fix: (1) Short-term — already applied: MIN_ENTRY_PRICE=0.22 in .env blocks all entries below $0.22. This is the primary circuit breaker for near-resolution markets. It correctly blocks 0.01 entries regardless of model confidence. (2) Medium-term: Add a near-resolution confidence suppressor in recommendation_api.py — when market.p_cost_yes < 0.10 (for BUY_YES) or market.p_cost_no < 0.10 (for BUY_NO), override confidence to 0.0 or a low floor (e.g. 0.15). This prevents the model from producing misleading high-confidence recommendations on near-resolved markets even if the price gate is the last line of defense. This change touches an mlb_model file and should be a separate task with a model-side brief.",
+
+  "proven": [
+    "Model DOES receive current market price — used for edge computation.",
+    "Market price is NOT used as a penalizing factor in confidence formula.",
+    "Extreme edge from near-resolution price discrepancy INFLATES edge_score to 1.0, inflating confidence.",
+    "near_resolution gate in risk.py only catches the winning-side-near-1.0 case, not the losing-side-near-0.0 case.",
+    "MIN_ENTRY_PRICE=0.22 is the correct and sufficient primary gate for this scenario once restart activates it.",
+    "No files modified."
+  ],
+
+  "classification_rationale": "Type B: model receives market price as input (for edge), but the confidence formula has no term that suppresses confidence when price is extreme. The formula structure (edge_score × data_quality × spread_quality) is maximized, not minimized, when the model disagrees with a near-resolved market — this is a model architecture design issue.",
+
+  "recommended_next_step": "Manager review. Primary gate (MIN_ENTRY_PRICE) already applied and awaiting cold restart. Medium-term: open a separate model-side task to add a near-resolution confidence suppressor in recommendation_api.py."
+}

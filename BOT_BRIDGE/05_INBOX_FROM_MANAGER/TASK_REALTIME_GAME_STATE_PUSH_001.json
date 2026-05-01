@@ -1,0 +1,18 @@
+{
+  "task_id": "REALTIME_GAME_STATE_PUSH_001",
+  "title": "Enrich canonical realtime position path with auth-free game-state push",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "realtime_game_state_push",
+  "allowed_files": ["core/state_hub.py", "dashboard_server.py", "dashboard.html"],
+  "objective": "Add auth-free game-state context from the existing /api/games source into the canonical realtime position/SSE path without changing strategy or execution behavior.",
+  "acceptance_criteria": [
+    "live game-state fields reach state_hub",
+    "SSE can emit game-state updates for tracked positions",
+    "dashboard can show fresher live game context",
+    "fallback remains intact",
+    "no truth regression",
+    "rollout is reversible"
+  ],
+  "rollback": "Revert the narrow game-state enrichment changes in core/state_hub.py and dashboard_server.py."
+}

@@ -1,0 +1,93 @@
+{
+  "task_id": "DASHBOARD_REDESIGN_ARCH_001",
+  "title": "Dashboard redesign — architecture spec and payload mapping (spec only, no code)",
+  "status": "HOLD_PENDING_EXECUTION_TRUTH",
+  "gate": "Do NOT begin until EXECUTION_HELD_SIDE_SEMANTICS_001 is APPROVED and its review appears in 07_REVIEWS/REVIEW_EXECUTION_HELD_SIDE_SEMANTICS_001.md. Check CLAUDE_TASK_BOARD.md before starting.",
+  "phase": 0,
+  "depends_on": ["EXECUTION_HELD_SIDE_SEMANTICS_001"],
+  "priority": 1,
+  "subsystem": "dashboard_spec",
+  "type": "spec_only",
+  "allowed_files": [],
+  "production_code_changes": false,
+  "do_not_touch": [
+    "dashboard.html",
+    "dashboard_server.py",
+    "bot_core.py",
+    "core/risk.py",
+    "core/paper_exec.py",
+    "core/db.py",
+    "core/model_bridge.py",
+    "core/types.py",
+    "mlb_model/"
+  ],
+
+  "objective": "Produce a written architecture specification for the full dashboard redesign. This task involves NO code changes. The worker reads the current dashboard.html and dashboard_server.py to understand the existing payload contract, then writes a spec document to 08_SHARED_CONTEXT. The spec must define tabs, focal areas, payload mapping, frontend/backend split, and explicit truth-model preservation rules. All subsequent redesign phases must follow this spec.",
+
+  "truth_model_constraints": {
+    "current_price_authority": "Stream-backed held-side bid only. bid_yes for BUY_YES, bid_no for BUY_NO. Never raw YES price for BUY_NO positions.",
+    "fallback_policy": "Fallback (last known or REST) only when stream data is stale or missing. Must be labeled as fallback.",
+    "shadow_policy": "Shadow/advisory data must not appear in the LIVE or POSITIONS tab as a competing truth source. Shadow is diagnostics only.",
+    "backed_team_semantics": "Positions must display backed_team / faded_team direction, not raw YES/NO contract economics.",
+    "no_new_price_writers": "The redesign must not introduce any new code path that writes or overrides current_price. The single authority chain is: polymarket stream → state_hub → SSE → frontend."
+  },
+
+  "deliverables": [
+    {
+      "file": "C:/Users/johnny/Desktop/BOT_BRIDGE/08_SHARED_CONTEXT/DASHBOARD_REDESIGN_SPEC_001.md",
+      "contents": [
+        "Tab list with exact names: LIVE, POSITIONS, GAMES, HISTORY, SYSTEM",
+        "Default tab on load: LIVE",
+        "For each tab: what data it shows, what it demotes, what it must not show",
+        "LIVE tab layout: focal area order (live game monitor → live position cards → account strip)",
+        "Position card spec: backed_team, faded_team, entry_px, current_held_price, unrealized_pct, live_equity, tp_price, sl_price, size_usd — all named explicitly",
+        "Account strip fields: bankroll, capital_committed, open_count, r25.win_rate, r25.expectancy",
+        "Game monitor fields: home_team, away_team, inning, score, status, model_confidence (if available), active_position flag",
+        "GAMES tab: all live and upcoming games, model shadow recs in clearly labeled secondary context",
+        "HISTORY tab: trade log with team names, side direction, PnL, size — NOT on main page",
+        "SYSTEM tab: stream health, mark counts, fallback status, process topology, bot loop stats",
+        "Payload mapping: for each frontend field, the exact API source (/api/state, /api/games, /api/trades, SSE stream)",
+        "Frontend/backend split: what is computed client-side vs server-side",
+        "List of any new server fields required and why (must be minimal)",
+        "Explicit demotion list: what currently appears above-the-fold that must be removed or moved to secondary tabs",
+        "Truth-model preservation checklist: explicit yes/no for each constraint above"
+      ]
+    }
+  ],
+
+  "preflight_questions": [
+    "Read dashboard.html in full — what tabs/panels currently exist?",
+    "Read dashboard_server.py — what fields does /api/state currently return? What fields does /api/trades return?",
+    "What SSE events does the stream currently emit and what fields do they carry?",
+    "Which fields in the current UI are sourced from shadow vs paper execution vs stream?",
+    "What is the current above-the-fold content and what dominates the mobile view?"
+  ],
+
+  "acceptance_criteria": [
+    "DASHBOARD_REDESIGN_SPEC_001.md exists in 08_SHARED_CONTEXT",
+    "Spec defines all 5 tabs with exact names and default",
+    "Spec defines the LIVE tab focal area order explicitly",
+    "Spec includes a payload mapping table: frontend field → API source",
+    "Spec explicitly names current_held_price as the price authority and states its source",
+    "Spec includes a demotion list",
+    "Spec includes a truth-model preservation checklist with pass/fail for each constraint",
+    "No production code changes — diff of allowed_files is empty"
+  ],
+
+  "proof_of_work": [
+    "Submit path to DASHBOARD_REDESIGN_SPEC_001.md",
+    "Include a summary of the 5-tab layout",
+    "Include the payload mapping table in the result",
+    "Confirm zero production file changes with file diff or explicit statement"
+  ],
+
+  "out_of_scope": [
+    "Any HTML or CSS changes",
+    "Any Python changes",
+    "Any strategy logic changes",
+    "Any new API endpoints",
+    "Any changes to truth model or pricing logic"
+  ],
+
+  "rollback": "No code was changed. Delete DASHBOARD_REDESIGN_SPEC_001.md if spec is rejected."
+}

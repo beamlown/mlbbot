@@ -1,0 +1,78 @@
+{
+  "task_id": "DUPLICATE_ENTRY_FIX_001",
+  "title": "Fix duplicate paper trade entry — DB-level atomic dedup + NULL return handling",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "execution_integrity",
+  "allowed_files": ["core/db.py", "bot_core.py"],
+  "do_not_touch": ["dashboard.html", "dashboard_server.py", "launch_all.py", "core/paper_exec.py", "core/risk.py", "core/model_bridge.py", ".env", "mlb_model/"],
+
+  "objective": "Two bot_core processes are running simultaneously. Both execute the bridge independently. Both read open_slugs from fetch_open_trades(), both see the target slug as NOT open, both pass all gates, both call insert_open_trade() within milliseconds of each other. No DB constraint prevents both writes from succeeding. Result: duplicate open trades for the same slug with identical prices. This has been observed with 6 separate duplicate pairs across today's log and historical 10/3, 11/3 capacity violations from April 4th. The fix: make insert_open_trade() atomic at the DB level so that the second writer always loses, regardless of how many processes are racing.",
+
+  "confirmed_evidence": {
+    "duplicate_events_today": [
+      "15:23:13 — trade=55 and trade=56, mlb-phi-col BUY_NO @0.6532, 4ms apart",
+      "16:16:54 — trade=57 and trade=58, mlb-cin-tex BUY_YES @0.7236, 33ms apart",
+      "16:34:33 — trade=60 and trade=61, mlb-mia-nyy BUY_YES @0.2713, 67ms apart",
+      "18:25:22 — trade=99 and trade=100, mlb-sea-laa BUY_NO @0.4121, 52ms apart",
+      "18:29:02 — trade=101 and trade=102, mlb-stl-det BUY_YES @0.4321, <5ms apart",
+      "18:31:31 — trade=103 and trade=104, mlb-sea-laa BUY_YES @0.7839, <5ms apart"
+    ],
+    "capacity_violations_april4": "BRIDGE SKIP at 10/3 and 11/3 — chronic compounding from prior restarts",
+    "two_process_signature": "Paired duplicate log entries (BRIDGE SKIP, BRIDGE OPEN) consistently appear within 1-70ms throughout the log, confirming two bot_core processes with slightly offset loop timers",
+    "identical_prices": "Each duplicate pair has exactly the same price — both processes fetched the same orderbook snapshot within the same market state window"
+  },
+
+  "deliverables": [
+    {
+      "label": "Add UNIQUE partial index and atomic check-before-insert in core/db.py",
+      "file": "core/db.py",
+      "change_1": {
+        "where": "_CREATE_SQL — after the existing CREATE INDEX statements",
+        "what": "Add a partial UNIQUE index that prevents two open rows for the same slug:\n\n  CREATE UNIQUE INDEX IF NOT EXISTS idx_trades_one_open_per_slug\n  ON trades(market_slug) WHERE status='open';\n\nThis is the hard DB-level guarantee. Even if two processes both pass all application checks, only one INSERT can succeed. The second raises sqlite3.IntegrityError.",
+        "note": "SQLite partial indexes (WHERE clause) are supported since SQLite 3.8.9. The index applies only to rows where status='open', so closing a trade does not violate the constraint — multiple closed rows for the same slug are allowed."
+      },
+      "change_2": {
+        "where": "insert_open_trade() function",
+        "what": "Wrap the insert in a BEGIN IMMEDIATE transaction + pre-check, and catch IntegrityError:\n\n  def insert_open_trade(trade: Trade, sport: str = 'unknown') -> int | None:\n      with _db_conn('insert_open_trade') as conn:\n          conn.execute('BEGIN IMMEDIATE')  # exclusive write lock — prevents concurrent read-check-write races\n          existing = conn.execute(\n              'SELECT id FROM trades WHERE market_slug=? AND status=\\'open\\' LIMIT 1',\n              (trade.market_slug,)\n          ).fetchone()\n          if existing:\n              logger.warning(\n                  'Duplicate open rejected: slug=%s already open id=%s',\n                  trade.market_slug, existing[0]\n              )\n              return None\n          try:\n              c = conn.cursor()\n              c.execute('INSERT INTO trades ...', (...))\n              conn.commit()\n              row_id = c.lastrowid\n              logger.info('Opened trade id=%d %s @ %.4f', row_id, trade.side, trade.entry_px)\n              return row_id\n          except sqlite3.IntegrityError as e:\n              logger.warning('Duplicate insert blocked by constraint: slug=%s err=%s', trade.market_slug, e)\n              return None\n\nBEGIN IMMEDIATE acquires an exclusive write lock at the start of the transaction. The check and the insert happen within the same lock, so no other SQLite writer can interleave. The IntegrityError catch is a final safety net for the UNIQUE index.",
+        "note": "The function return type changes from int to int | None. Callers must handle None."
+      }
+    },
+    {
+      "label": "Handle None return from insert_open_trade in bot_core.py — native loop",
+      "file": "bot_core.py",
+      "where": "Native signal loop, around line 426 — after: trade = open_position(...)",
+      "what": "Currently:\n  trade = open_position(market, sig, ob, mode=mode_ctx.mode)\n  trade_id = insert_open_trade(trade, sport=SPORT)\n  trade.id = trade_id\n  open_count += 1\n  open_per_market[market.market_id] = open_per_market.get(market.market_id, 0) + 1\n\nChange to:\n  trade = open_position(market, sig, ob, mode=mode_ctx.mode)\n  trade_id = insert_open_trade(trade, sport=SPORT)\n  if trade_id is None:\n      logger.info('OPEN SKIPPED (duplicate slug) slug=%s', market.slug)\n      continue\n  trade.id = trade_id\n  open_count += 1\n  open_per_market[market.market_id] = open_per_market.get(market.market_id, 0) + 1"
+    },
+    {
+      "label": "Handle None return from insert_open_trade in bot_core.py — bridge section",
+      "file": "bot_core.py",
+      "where": "Bridge section, around line 484 — after: trade = open_position(..., source='model_bridge')",
+      "what": "Currently:\n  trade = open_position(market, signal, ob, mode=mode_ctx.mode, source='model_bridge')\n  trade_id = insert_open_trade(trade, sport=SPORT)\n  trade.id = trade_id\n  logger.info('BRIDGE OPEN trade=%d ...', trade_id, ...)\n\nChange to:\n  trade = open_position(market, signal, ob, mode=mode_ctx.mode, source='model_bridge')\n  trade_id = insert_open_trade(trade, sport=SPORT)\n  if trade_id is None:\n      logger.info('BRIDGE OPEN SKIPPED (duplicate slug) slug=%s', market.slug)\n      continue\n  trade.id = trade_id\n  logger.info('BRIDGE OPEN trade=%d ...', trade_id, ...)"
+    }
+  ],
+
+  "acceptance_criteria": [
+    "insert_open_trade() returns None instead of crashing when a duplicate open slug is attempted",
+    "insert_open_trade() uses BEGIN IMMEDIATE to make the check-and-insert atomic across concurrent processes",
+    "UNIQUE partial index exists on trades(market_slug) WHERE status='open'",
+    "Native loop logs 'OPEN SKIPPED (duplicate slug)' and continues when insert returns None",
+    "Bridge section logs 'BRIDGE OPEN SKIPPED (duplicate slug)' and continues when insert returns None",
+    "Two bot_core processes racing on the same slug: exactly 1 trade written to DB, second blocked at insert",
+    "Closing a trade (status='closed') still allows future open trades for the same slug — partial index allows this",
+    "No other files modified"
+  ],
+
+  "migration_note": "The CREATE UNIQUE INDEX will fail if duplicate open rows already exist in the DB. Before adding the index, close or void the extra duplicate rows. The simplest migration: after the index creation attempt fails (IntegrityError), log a warning and skip — the BEGIN IMMEDIATE check will still protect against new duplicates even if the index doesn't exist yet. Alternatively, add explicit dedup logic in init_db() to detect and close extras before attempting the index.",
+
+  "verification": [
+    "Read core/db.py — confirm BEGIN IMMEDIATE is present in insert_open_trade()",
+    "Read core/db.py — confirm IntegrityError is caught and returns None",
+    "Read core/db.py — confirm UNIQUE INDEX line is in _CREATE_SQL",
+    "Read bot_core.py — confirm None check after insert_open_trade in native loop",
+    "Read bot_core.py — confirm None check after insert_open_trade in bridge section",
+    "Trace: two concurrent calls to insert_open_trade(slug='mlb-sea-laa-...') → first returns int, second returns None"
+  ],
+
+  "rollback": "Revert core/db.py and bot_core.py. The UNIQUE INDEX, if created in the DB, is harmless — it can be dropped with 'DROP INDEX IF EXISTS idx_trades_one_open_per_slug' if needed. Existing duplicate rows in the DB are not affected by rollback."
+}

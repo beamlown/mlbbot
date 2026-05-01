@@ -1,0 +1,19 @@
+{
+  "task_id": "DASHBOARD_LIVE_SEMANTICS_001",
+  "title": "Clarify live card semantics for side, lifecycle, price, and equity",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "dashboard_live_semantics",
+  "allowed_files": ["dashboard.html"],
+  "objective": "Make live position cards semantically clear without changing strategy or backend math, so users can distinguish held side, lifecycle status, P/L state, and game state immediately.",
+  "acceptance_criteria": [
+    "user can instantly tell held side/outcome",
+    "lifecycle status is separate from held side",
+    "P/L state is separate from held side",
+    "current price / unrealized / live equity are semantically aligned",
+    "cash strip labels are understandable",
+    "stale/unavailable state is explicit",
+    "no truth regression"
+  ],
+  "rollback": "Revert dashboard.html only."
+}

@@ -1,0 +1,71 @@
+{
+  "task_id": "SESSION_MARKET_TRADE_CAP_001",
+  "title": "Add per-session trade count cap per market slug — ban re-entry after N total entries",
+  "priority": "HIGH",
+  "type": "surgical code fix",
+  "issued": "2026-04-10",
+  "subsystem": "entry gates / bot_core",
+  "status": "QUEUED — run after RESTART_CONFIG_HASH_VERIFY_001 PASSES",
+  "depends_on": "RESTART_CONFIG_HASH_VERIFY_001 (APPROVED)",
+  "context": {
+    "problem": "Tonight the bot placed 9 sequential trades on mlb-cws-kc-2026-04-10 (all losses, -$145.46) and 9 on mlb-hou-sea-2026-04-10 (2 wins, -$89.16). There is no mechanism to stop re-entry after repeated losses on the same market. MAX_TRADES_PER_MARKET=1 only prevents concurrent positions — it does not limit cumulative entries in a session.",
+    "evidence": [
+      "CWS-KC: 9 entries in one session. Entry prices descended: 0.62, 0.39, 0.33, 0.23, 0.18, 0.09, 0.06, 0.06, 0.05. Model kept recommending BUY_YES as price cratered.",
+      "ARI-PHI: 6 entries, 0 wins, -$72.21",
+      "COL-SD: 8 entries, 0 wins, -$77.53",
+      "The falling-knife pattern: bot follows the market down, buying the same losing team repeatedly"
+    ],
+    "design": "Add a session-level dict in bot_core that tracks total trade opens per slug. At entry gate time, query the DB for count of trades opened on this slug today. If count >= threshold, reject the entry with a clear log reason. Threshold: configurable via .env as MAX_SLUG_ENTRIES_SESSION, default 3."
+  },
+  "objective": "After MAX_SLUG_ENTRIES_SESSION total entries (open + closed) on a market slug in the current session, block further entries on that slug for the rest of the session.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env"
+  ],
+  "read_only_context_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260411.log"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\polymarket_stream.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\state_hub.py",
+    "Any mlb_model file",
+    "Any file not listed above"
+  ],
+  "forbidden_actions": [
+    "Broad repo sweep",
+    "Refactor unrelated bot_core logic",
+    "Edit dashboard or stream files",
+    "Restart processes",
+    "DB schema changes",
+    "Change exit logic or TP/SL thresholds"
+  ],
+  "required_work": [
+    "1. In bot_core.py, add a DB query inside check_entry_gates() (or immediately before calling it in the bridge loop) that counts total entries for the given slug today (both open and closed).",
+    "2. If count >= MAX_SLUG_ENTRIES_SESSION, return a gate rejection with reason='session_slug_cap_exceeded:{count}>={cap}'.",
+    "3. Add MAX_SLUG_ENTRIES_SESSION to .env with default value 3.",
+    "4. Add the env var read to risk.py (or bot_core.py wherever appropriate — keep consistent with existing gate pattern).",
+    "5. Log the rejection with the same format as other gate rejections: 'BRIDGE GATE REJECT [check_entry_gates] slug=... reasons=[...]'.",
+    "6. The count must include both open and closed trades for today's session — do not count only closed."
+  ],
+  "acceptance_criteria": [
+    "After 3 entries on a slug today, a 4th entry attempt is rejected with 'session_slug_cap_exceeded' reason",
+    "The rejection is logged in the same format as other check_entry_gates rejections",
+    "MAX_SLUG_ENTRIES_SESSION is configurable via .env",
+    "No files outside allowed scope are modified",
+    "python -m py_compile bot_core.py passes",
+    "python -m py_compile core/risk.py passes if risk.py is modified"
+  ],
+  "verification_required": [
+    "Show the exact code path added",
+    "Confirm where in the gate sequence this check runs",
+    "Confirm whether count includes open-status trades in addition to closed",
+    "Run py_compile on every changed file",
+    "State whether restart is required for this fix to take effect"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_SESSION_MARKET_TRADE_CAP_001.json"
+}

@@ -1,0 +1,10 @@
+{
+  "task_id": "LIVE_MODEL_REACTION_AUDIT_001",
+  "mode": "audit_verification_only",
+  "roots_inspected": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE"
+  ],
+  "goal": "Determine exactly what live in-game changes the current mlb_model reacts to, how those changes flow into recommendation updates, what remains missing, and whether the current model is truly live-reactive or only partially so."
+}

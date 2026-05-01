@@ -40,6 +40,7 @@ SESSION_EXPOSURE_CAP_USD = float(os.getenv("SESSION_EXPOSURE_CAP_USD", "0"))
 SESSION_STARTING_BANKROLL_USD = float(os.getenv("SESSION_STARTING_BANKROLL_USD", "500.0"))
 STALE_OB_WARN_SECONDS = int(os.getenv("STALE_OB_WARN_SECONDS", "300"))
 USE_BATCH_PRICES = os.getenv("USE_BATCH_PRICES", "false").strip().lower() in {"1", "true", "yes", "on"}
+USER_STREAM_MIRROR = os.getenv("USER_STREAM_MIRROR", "false").strip().lower() in {"1", "true", "yes", "on"}
 
 BUILD_TAG = f"sports_bot_v2.{SPORT}.2026-03-29"
 ENGINE_TAG = f"sports_paper_{SPORT}"
@@ -509,6 +510,7 @@ def main():
                 "USE_BATCH_PRICES": USE_BATCH_PRICES,
                 "PAPER_SLIPPAGE_ENABLED": os.getenv("PAPER_SLIPPAGE_ENABLED", "true"),
                 "PAPER_SLIPPAGE_CENTS": float(os.getenv("PAPER_SLIPPAGE_CENTS", "2.0")),
+                "USER_STREAM_MIRROR": USER_STREAM_MIRROR,
             },
         }, separators=(",", ":")),
     )
@@ -516,11 +518,41 @@ def main():
     init_db()
     _write_pid()
 
+    # Stair D: boot-time account state reconcile. Paper mode no-ops with a
+    # "no wallet, skipping" log line. Live mode logs drift vs. server-side
+    # open orders and a balance warning if below threshold.
+    try:
+        from core.account_sync import reconcile_positions_on_boot, fetch_balance
+        reconcile_positions_on_boot()
+        fetch_balance()
+    except Exception as exc:
+        logger.warning("account_sync: boot reconcile unexpectedly failed: %s", exc)
+
     try:
         GLOBAL_MARKET_STREAM.start()
         logger.info("market_stream: client started (websocket thread will connect once assets are tracked)")
     except Exception as exc:
         logger.warning("market_stream: start failed: %s", exc)
+
+    # UserStream — opt-in. Connects only when USER_STREAM_MIRROR=true or PHASE=live.
+    # Default env → no ws/user connection, no auth attempt, no creds file written.
+    try:
+        _phase_is_live = os.getenv("PHASE", "paper").strip().lower() == "live"
+        if USER_STREAM_MIRROR or _phase_is_live:
+            from core.user_stream import GLOBAL_USER_STREAM
+            from core.polymarket_auth import provision_api_credentials
+            from core.signer import get_signer
+            try:
+                creds = provision_api_credentials(get_signer())
+                GLOBAL_USER_STREAM.start(api_creds=creds)
+                logger.info("user_stream: client started (USER_STREAM_MIRROR=%s phase_is_live=%s)",
+                            USER_STREAM_MIRROR, _phase_is_live)
+            except RuntimeError as exc:
+                logger.info("user_stream: not starting (%s)", exc)
+        else:
+            logger.info("user_stream: disabled (default) — set USER_STREAM_MIRROR=true to enable")
+    except Exception as exc:
+        logger.warning("user_stream: startup failed unexpectedly: %s", exc)
 
     # ── Restore cooldown and session start from prior state ───────────────
     global _market_cooldown, _session_start_ts, _session_gap_stop_bans
@@ -941,6 +973,13 @@ def main():
                             mode=mode_ctx.mode,
                             source="model_bridge",
                         )
+                        if trade is None:
+                            logger.info(
+                                "BRIDGE: live_exec skipped trade slug=%s — no DB row inserted",
+                                market.slug,
+                            )
+                            _bridge_consumed_slugs.add(market.slug)
+                            continue
                         trade_id = insert_open_trade(trade, sport=SPORT)
                         if trade_id is None:
                             logger.info("BRIDGE OPEN SKIPPED (duplicate slug) slug=%s", market.slug)

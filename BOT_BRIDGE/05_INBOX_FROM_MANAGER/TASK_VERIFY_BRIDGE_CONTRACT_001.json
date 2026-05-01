@@ -1,0 +1,16 @@
+{
+  "task_id": "VERIFY_BRIDGE_CONTRACT_001",
+  "title": "Verify expanded bridge contract survives into execution-facing flow",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "bridge_contract_verification",
+  "allowed_files": ["core/model_bridge.py", "bot_core.py", "integration/recommendation_schema.py"],
+  "objective": "Prove which expanded bridge fields are present, which are consumed by bot_core execution flow, and which are still preserved-but-unused versus silently dropped.",
+  "acceptance_criteria": [
+    "exact field lists included",
+    "code-path proof included",
+    "still-dropped fields explicitly named",
+    "final result explicitly VERIFIED or PARTIAL"
+  ],
+  "rollback": "Verification only unless a hard failure is proven."
+}

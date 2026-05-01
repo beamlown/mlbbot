@@ -1,0 +1,16 @@
+{
+  "task_id": "VERIFY_MODEL_AUTHORITY_001",
+  "title": "Verify local MLB origination is disabled in production mode",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "authority_verification",
+  "allowed_files": ["bot_core.py", "launch_all.py"],
+  "objective": "Prove from current code and startup surfaces that local MLB trade origination is disabled by default in production mode and that bridge/model recommendations remain the only production entry path.",
+  "acceptance_criteria": [
+    "pasted bot_core gate snippet included",
+    "pasted launch/startup snippet included",
+    "env/config search result for ALLOW_LOCAL_MLB_ORIGINATION included",
+    "final result is VERIFIED, PARTIAL, or BLOCKED"
+  ],
+  "rollback": "Verification only unless a hard failure is proven."
+}

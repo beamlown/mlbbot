@@ -1,0 +1,102 @@
+{
+  "task_id": "LATE_INNING_BLOCK_WIRING_FIX_001",
+  "title": "Wire LATE_INNING_BLOCK into the active recommendation-to-entry path",
+  "priority": "HIGH",
+  "type": "surgical code fix",
+  "track": "Track A",
+  "issued": "2026-04-11",
+  "subsystem": "entry gates / inning context / runtime config enforcement",
+  "status": "ACTIVE",
+  "depends_on": "LATE_INNING_BLOCK_WIRING_VERIFY_001 (DONE — inert-config confirmed). This task is the current active task. CONFIG_HASH_INPUTS_FIX_001 and STARTUP_PROOF_BLOCK_001 are queued behind it.",
+
+  "context": {
+    "verify_summary": "LATE_INNING_BLOCK_WIRING_VERIFY_001 confirmed that LATE_INNING_BLOCK=7 exists in .env and inning context exists on the live recommendation object, but the config value is not consumed anywhere in the active recommendation-to-entry path. It is not read in recommendation_api.py, model_bridge.py, or risk.py. bot_core.py does not pass inning context into check_entry_gates(). The block is inert — this is a proven config-enforcement gap, not a theory.",
+    "live_path": "recommendation_api.py → model_bridge.py → bot_core.py → risk.check_entry_gates(...)",
+    "inning_data_status": "Already present on the recommendation/signal object. The missing link is not data acquisition — it is wiring: no active gate consumes inning + LATE_INNING_BLOCK together.",
+    "config_value": "LATE_INNING_BLOCK=7 in .env — block new entries from inning 7 onward."
+  },
+
+  "objective": "Wire a single late-inning entry block into the narrowest active gate surface in the live path so that LATE_INNING_BLOCK=7 actually rejects new entries from inning 7 onward. This must use the existing configured value and existing inning context — no new data acquisition needed.",
+
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py"
+  ],
+  "conditional_allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env — read-only unless the worker proves a tiny plumbing addition (e.g., adding LATE_INNING_BLOCK to the env-var block near top of risk.py) is strictly necessary. .env content must not be modified unless the value is missing or incorrect."
+  ],
+  "read_only_context_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260411.log",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_LATE_INNING_BLOCK_WIRING_VERIFY_001.json"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "Any file not listed in allowed_files or conditional_allowed_files"
+  ],
+  "forbidden_actions": [
+    "Edit recommendation_api.py or model_bridge.py — the fix must land at the gate surface, not the model layer",
+    "Add new inning-data acquisition paths — inning is already on the signal object",
+    "Widen into broader model redesign or strategy changes",
+    "Mix this task with CONFIG_HASH_INPUTS_FIX_001 or STARTUP_PROOF_BLOCK_001 work",
+    "Activate this task while CONFIG_HASH_INPUTS_FIX_001 or STARTUP_PROOF_BLOCK_001 is ACTIVE (file lock)",
+    "Broad repo sweep",
+    "Restart processes",
+    "DB writes",
+    "Open new tasks"
+  ],
+
+  "implementation_guidance": {
+    "preferred_surface": "The narrowest active gate surface with access to both inning context and the entry decision. Two clean options — worker must pick one and justify:",
+    "option_a_bot_core": "In bot_core.py, add an explicit pre-gate check immediately before the check_entry_gates() call. Read signal.inning (or equivalent field name on the Signal object). If inning is not None and inning >= LATE_INNING_BLOCK (read from os.getenv at module level or imported from risk), reject with a log line and continue. This option keeps risk.py signature unchanged.",
+    "option_b_risk_py": "In risk.py check_entry_gates(), add an optional `inning` parameter (default None) and a LATE_INNING_BLOCK read at module level (alongside other env reads). If inning is not None and inning >= LATE_INNING_BLOCK, return False with reason 'late_inning_block'. Then update the bot_core.py call site to pass inning=getattr(signal, 'inning', None). This option keeps gate logic consolidated in risk.py.",
+    "field_name_to_verify": "Worker must confirm the exact field name for inning on the Signal/intent object at the bot_core.py call site (verify via a grep of core/types.py or the signal unpacking in bot_core.py).",
+    "none_handling": "If inning is None (pre-game or data missing), do NOT block. The gate must be a no-op when inning data is unavailable.",
+    "log_format": "Gate reject log should be consistent with existing BRIDGE GATE REJECT format, e.g.: BRIDGE GATE REJECT [late_inning_block] slug=<slug> inning=<N>>=<threshold>"
+  },
+
+  "required_work": [
+    "Confirm the exact field name for inning on the Signal/intent object at the bot_core.py call site (check core/types.py and the signal variable in the bridge loop)",
+    "Confirm LATE_INNING_BLOCK env var is not already read in risk.py at module level (likely absent — add if needed)",
+    "Choose and justify Option A (pre-gate in bot_core.py) or Option B (risk.py gate parameter) based on which is cleaner for this codebase",
+    "Implement the chosen option with minimal diff — no unrelated changes",
+    "Add a BRIDGE GATE REJECT log line so the block is observable in the log",
+    "Run python -m py_compile on every changed Python file",
+    "State whether a process restart is required"
+  ],
+
+  "acceptance_criteria": [
+    "New entries at or after inning 7 are blocked and logged with a BRIDGE GATE REJECT [late_inning_block] line",
+    "Entries with inning=None (pre-game, missing data) are NOT blocked",
+    "Entries before inning 7 are unaffected",
+    "LATE_INNING_BLOCK=7 config value is consumed from os.environ — not hardcoded",
+    "No files outside allowed scope are modified",
+    "python -m py_compile bot_core.py passes",
+    "python -m py_compile core/risk.py passes if risk.py is modified",
+    "Diff is narrow: only the gate surface and call site are changed"
+  ],
+
+  "verification_required": [
+    "Show the exact lines changed in each file",
+    "Show the log format of the new BRIDGE GATE REJECT message",
+    "Confirm the field name used for inning on the signal object",
+    "Confirm which option was implemented (A or B) and why",
+    "Confirm state_hub.py was not touched",
+    "Run py_compile on all changed files and report PASS/FAIL",
+    "State whether restart is required"
+  ],
+
+  "sequencing_notes": {
+    "current_position": "This task is ACTIVE now. It runs before CONFIG_HASH_INPUTS_FIX_001 and STARTUP_PROOF_BLOCK_001, which are queued behind it.",
+    "blocks_next": "CONFIG_HASH_INPUTS_FIX_001 cannot activate until this task is APPROVED (shared file lock: bot_core.py + risk.py).",
+    "no_conflict_with": "SINGLE_STACK_LAUNCH_GUARD_001 (touches launch_all.py only) — no file lock conflict",
+    "conflicts_with": "SESSION_MARKET_TRADE_CAP_001, POST_GAP_STOP_SAME_SIDE_SESSION_BAN_001, TRADE_FORENSICS_SNAPSHOT_001, SESSION_SLUG_LOSS_CAP_001, MARKET_PRICE_SANITY_GATE_001 — all overlap bot_core.py or risk.py. Never run overlapping pairs."
+  },
+
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_LATE_INNING_BLOCK_WIRING_FIX_001.json"
+}

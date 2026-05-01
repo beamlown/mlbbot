@@ -1,0 +1,184 @@
+{
+  "feature_group": "phase1",
+  "new_features": [
+    "home_sp_quality",
+    "away_sp_quality",
+    "home_sp_recent_form",
+    "away_sp_recent_form",
+    "sp_quality_diff",
+    "park_run_factor",
+    "lineup_avg_xwoba",
+    "home_reliever_quality",
+    "away_reliever_quality",
+    "home_bullpen_avg_quality",
+    "away_bullpen_avg_quality",
+    "leverage_index",
+    "wind_out_mph",
+    "temp_f"
+  ],
+  "ablation": {
+    "log_loss_with": 0.46574959572989233,
+    "log_loss_without": 0.4654980017915787,
+    "delta": -0.0002515939383136434,
+    "passed": false
+  },
+  "shap": {
+    "per_feature": {
+      "home_sp_quality": {
+        "importance": 0.026874425838905074,
+        "rank": 15,
+        "passed": true
+      },
+      "away_sp_quality": {
+        "importance": 0.02845833206823362,
+        "rank": 14,
+        "passed": true
+      },
+      "home_sp_recent_form": {
+        "importance": 0.03662816695846335,
+        "rank": 10,
+        "passed": true
+      },
+      "away_sp_recent_form": {
+        "importance": 0.0413360108417865,
+        "rank": 9,
+        "passed": true
+      },
+      "sp_quality_diff": {
+        "importance": 0.035427458848122734,
+        "rank": 11,
+        "passed": true
+      },
+      "park_run_factor": {
+        "importance": 0.05051552386907007,
+        "rank": 7,
+        "passed": true
+      },
+      "lineup_avg_xwoba": {
+        "importance": 0.02261088210870011,
+        "rank": 18,
+        "passed": true
+      },
+      "home_reliever_quality": {
+        "importance": 0.03261993813335446,
+        "rank": 13,
+        "passed": true
+      },
+      "away_reliever_quality": {
+        "importance": 0.024137627501484054,
+        "rank": 16,
+        "passed": true
+      },
+      "home_bullpen_avg_quality": {
+        "importance": 0.06583498508604077,
+        "rank": 6,
+        "passed": true
+      },
+      "away_bullpen_avg_quality": {
+        "importance": 0.08504419110058375,
+        "rank": 4,
+        "passed": true
+      },
+      "leverage_index": {
+        "importance": 0.3383708333606293,
+        "rank": 3,
+        "passed": true
+      },
+      "wind_out_mph": {
+        "importance": 0.01807366792508251,
+        "rank": 21,
+        "passed": true
+      },
+      "temp_f": {
+        "importance": 0.019002193353073325,
+        "rank": 20,
+        "passed": true
+      }
+    },
+    "any_passed": true
+  },
+  "tradable_lift": {
+    "per_feature": {
+      "home_sp_quality": {
+        "high_winrate": 0.8009372002066268,
+        "low_winrate": 0.7590648525450653,
+        "delta_pp": 0.04187234766156156,
+        "passed": true
+      },
+      "away_sp_quality": {
+        "high_winrate": 0.7816227054309123,
+        "low_winrate": 0.7779616604606261,
+        "delta_pp": 0.003661044970286187,
+        "passed": false
+      },
+      "home_sp_recent_form": {
+        "high_winrate": 0.7737193455778077,
+        "low_winrate": 0.7939184519695922,
+        "delta_pp": -0.02019910639178446,
+        "passed": false
+      },
+      "away_sp_recent_form": {
+        "high_winrate": 0.7604869108137082,
+        "low_winrate": 0.7783647538153442,
+        "delta_pp": -0.017877843001635974,
+        "passed": false
+      },
+      "sp_quality_diff": {
+        "high_winrate": 0.7770859277708593,
+        "low_winrate": 0.8061372589674477,
+        "delta_pp": -0.029051331196588426,
+        "passed": false
+      },
+      "park_run_factor": {
+        "skipped": true,
+        "reason": "qcut failed"
+      },
+      "lineup_avg_xwoba": {
+        "high_winrate": 0.7947814066010023,
+        "low_winrate": 0.7868200981408529,
+        "delta_pp": 0.007961308460149419,
+        "passed": false
+      },
+      "home_reliever_quality": {
+        "high_winrate": 0.8111653341639844,
+        "low_winrate": 0.7675374939525883,
+        "delta_pp": 0.043627840211396096,
+        "passed": true
+      },
+      "away_reliever_quality": {
+        "high_winrate": 0.8042824034037843,
+        "low_winrate": 0.7832315073694384,
+        "delta_pp": 0.021050896034345956,
+        "passed": false
+      },
+      "home_bullpen_avg_quality": {
+        "high_winrate": 0.7891005913067534,
+        "low_winrate": 0.7815555785909264,
+        "delta_pp": 0.007545012715826971,
+        "passed": false
+      },
+      "away_bullpen_avg_quality": {
+        "high_winrate": 0.7726879562675155,
+        "low_winrate": 0.8196376186367558,
+        "delta_pp": -0.04694966236924025,
+        "passed": false
+      },
+      "leverage_index": {
+        "high_winrate": 0.6256264906156026,
+        "low_winrate": 0.9658278968623796,
+        "delta_pp": -0.34020140624677697,
+        "passed": false
+      },
+      "wind_out_mph": {
+        "skipped": true,
+        "reason": "not enough unique values"
+      },
+      "temp_f": {
+        "skipped": true,
+        "reason": "not enough unique values"
+      }
+    },
+    "any_passed": true
+  },
+  "verdict": "PROMOTE_MARGINAL"
+}

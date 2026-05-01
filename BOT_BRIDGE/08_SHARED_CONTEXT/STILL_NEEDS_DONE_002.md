@@ -4,14 +4,11 @@
 
 ### 1. Unblock Polymarket user/fill stream auth
 - why it still matters: without user-stream credentials, the system cannot fully rely on realtime user/fill/account-stream truth.
-- **STATUS (2026-04-21):** subsumed by Phase P3 / Stair B of `sports_bot_v2/docs/superpowers/specs/2026-04-20-polymarket-integration-design.md`. Prior April-18 `HANDOFF_RUNTIME_USER_STREAM_AUTH_UNBLOCK_001` quarantined with zero code written — Stair B starts clean with a new `core/user_stream.py` and shared `core/ws_utils.py` reconnect layer. Auth uses `py_clob_client.create_or_derive_api_key()` at boot, cached to `runtime/polymarket_creds.json` (gitignored).
 - exact likely files involved:
-  - `C:\Users\johnny\Desktop\sports_bot_v2\core\user_stream.py`  (new, Stair B)
-  - `C:\Users\johnny\Desktop\sports_bot_v2\core\ws_utils.py`  (new, extracted from market_stream)
-  - `C:\Users\johnny\Desktop\sports_bot_v2\core\polymarket_client.py`  (new, Stair A)
   - `C:\Users\johnny\Desktop\sports_bot_v2\.env`
-  - `C:\Users\johnny\Desktop\sports_bot_v2\runtime\polymarket_creds.json`  (new; gitignored)
-- do now or later: `now` — unblocks after Stair A + Stair C ship; see P3 dependencies in `2026-04-18-trading-bot-improvements-design.md`
+  - runtime/auth config used by the user-stream path
+  - BOT_BRIDGE task chain around `RUNTIME_USER_STREAM_AUTH_UNBLOCK_001`
+- do now or later: `now`
 
 ### 2. Finish final authority separation
 - why it still matters: the intended architecture says `mlb_model` should be the MLB decision authority and `sports_bot_v2` should be execution/risk/monitoring only. Current code is closer, but not fully clean yet.

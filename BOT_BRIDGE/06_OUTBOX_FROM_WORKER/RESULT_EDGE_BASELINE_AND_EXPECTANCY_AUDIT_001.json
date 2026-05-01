@@ -1,0 +1,83 @@
+{
+  "mode_used": "WORKER MODE",
+  "task_selected": "EDGE_BASELINE_AND_EXPECTANCY_AUDIT_001",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_EDGE_BASELINE_AND_EXPECTANCY_AUDIT_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_EDGE_BASELINE_AND_EXPECTANCY_AUDIT_001.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\EDGE_PROOF_FRAMEWORK_001.md",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_EDGE_BASELINE_AND_EXPECTANCY_AUDIT_001.json"
+  ],
+  "verification_performed": [
+    "Confirmed from core/paper_exec.py that pnl_usd is already net of entry and exit fees",
+    "Ran closed-trade DB audit over 277 closed trades / 271 non-zero outcomes",
+    "Computed actual net break-even win rate from net avg_win and net avg_loss",
+    "Computed concentration by top 5 trades and by slug",
+    "Computed expectancy buckets by entry price and by confidence",
+    "Computed era splits and gated-universe slice (confidence >= 0.65 and entry_px >= 0.22)"
+  ],
+  "restart_needed": "No",
+  "result_file_written": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_EDGE_BASELINE_AND_EXPECTANCY_AUDIT_001.json",
+  "observed": [
+    "Fee accounting correction: pnl_usd is already net of fees. No additional fee deduction is warranted.",
+    "Closed trades: 277 total, 271 non-zero outcomes, 71 wins, 200 losses.",
+    "Net total PnL: -91.13. Avg net win: 44.94. Avg net loss: 16.41. Net break-even win rate: 26.7%. Actual net win rate: 26.2%.",
+    "Rolling performance remains weak outside the shortest recent slice: R25 +110.97, R50 -145.46, R100 -488.31.",
+    "Top 5 winning trades sum to +1,111.07. Excluding top 5 trades, remaining 272 trades sum to -1,202.19.",
+    "Single-slug concentration remains severe: `mlb-lad-tor-2026-04-08` contributes +630.79 by itself. Without that slug, total performance is negative by a wide margin.",
+    "Confidence is not monotonic or predictive in the expected direction. Best bucket is 0.30-0.40: +830.38 PnL, 34.7% WR. The 0.60-0.65 bucket is -826.25 PnL, 16.9% WR. >=0.70 is also strongly negative.",
+    "Entry-price buckets are also distorted by outliers: 0.10-0.15 is strongly positive (+524.31), but <0.10 has only 7.4% win rate and is lifted by a few huge winners. 0.22-0.60 ranges are broadly negative.",
+    "BUY_NO materially outperforms BUY_YES in this sample: BUY_NO +463.53 over 82 trades, 32.5% WR. BUY_YES -554.65 over 195 trades, 23.6% WR.",
+    "The current gated universe slice (confidence >= 0.65 and entry_px >= 0.22) is poor in the historical sample available: 5 trades, -59.77 PnL, 20.0% WR. This is not a clean post-restart sample."
+  ],
+  "proven": [
+    {
+      "criterion": "E1",
+      "status": "FAIL",
+      "evidence": "Net expectancy is negative. Total net PnL is -91.13 over 277 closed trades, average trade PnL is -0.329."
+    },
+    {
+      "criterion": "E2",
+      "status": "MARGINAL FAIL",
+      "evidence": "Actual win rate 26.2% is below net break-even 26.7% by about 0.5 percentage points."
+    },
+    {
+      "criterion": "E3",
+      "status": "FAIL",
+      "evidence": "Single-slug concentration is extreme. `mlb-lad-tor-2026-04-08` contributes +630.79, which explains all headline positive offset."
+    },
+    {
+      "criterion": "E4",
+      "status": "FAIL",
+      "evidence": "Top 5 trades contribute +1,111.07 while overall total is -91.13. Excluding top 5 leaves -1,202.19."
+    },
+    {
+      "criterion": "E6",
+      "status": "FAIL",
+      "evidence": "Confidence is anti-predictive in the observed sample. Bucket 0.30-0.40 is strongest (+830.38), while 0.60-0.65 is deeply negative (-826.25)."
+    },
+    {
+      "criterion": "E8",
+      "status": "UNRESOLVED / WEAK",
+      "evidence": "A simple side-average proxy baseline is +1.40 average PnL, but this is not a full random-side simulation. A proper baseline still requires dedicated audit."
+    }
+  ],
+  "likely": [
+    "The strategy is not deeply catastrophic on the corrected fee basis, but it still does not show proven positive edge. The narrow miss on break-even is overshadowed by severe concentration and confidence inversion.",
+    "The dominant weakness is no longer fee accounting. It is concentration and signal-quality instability.",
+    "BUY_NO may be structurally stronger than BUY_YES in the current system, but that conclusion is still vulnerable to outlier concentration and should not yet be promoted to a fix.",
+    "The clean-runtime/gated-era proof remains unavailable. Any claim of restored edge after the verified restart would still be premature until a clean post-restart sample accumulates."
+  ],
+  "ruled_out": [
+    "Ruled out: the preliminary claim that net PnL should be approximately -636 because fees were omitted from pnl_usd. That claim is false on the audited close path.",
+    "Ruled out: any current claim of proven edge from the available historical sample.",
+    "Ruled out: confidence being reliably predictive in the direction intended by the current score."
+  ],
+  "recommended_next_step": "Proceed to the next analytical audit, not code changes. The smallest justified next step is MODEL_SIGNAL_QUALITY_AUDIT_001 to explain why lower-confidence buckets outperform higher-confidence buckets and why BUY_NO materially outperforms BUY_YES. CLEAN_RUNTIME_WINDOW_AUDIT_001 should still be deferred until at least 30 post-restart trades exist, because E5/E7 cannot be proven yet from this mixed-era dataset.",
+  "queued_next_list": [
+    "MODEL_SIGNAL_QUALITY_AUDIT_001",
+    "CLEAN_RUNTIME_WINDOW_AUDIT_001"
+  ]
+}

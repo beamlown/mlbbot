@@ -1,0 +1,117 @@
+{
+  "task_id": "AUTHORITY_SEPARATION_CLEANUP_001",
+  "title": "Remove local MLB origination code from sports_bot_v2 and decouple execution gating from mlb_model",
+  "priority": "HIGH",
+  "subsystem": "authority-model",
+  "prerequisite_task": "AUTHORITY_SEPARATION_AUDIT_001 — APPROVED 2026-04-10",
+  "objective": "Remove the gated local MLB decision path from sports_bot_v2/bot_core.py and decouple execution-style gating from mlb_model. Work in two clearly separated tiers. Do not touch the bridge execution path, model_bridge.py, or any file not listed below.",
+
+  "context": "AUTHORITY_SEPARATION_AUDIT_001 identified 8 violations across 5 files. sports_bot_v2 violations are inactive (gated by ALLOW_LOCAL_MLB_ORIGINATION=0) and safe to remove. mlb_model violations are active — execution gating logic currently lives inside the model layer and must be decoupled carefully. The intended architecture: mlb_model emits recommendation + metadata only; sports_bot_v2 enforces all execution gates. model_bridge.py and bot_core.py bridge path (lines 560-637) are already correct and must not be touched.",
+
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\signal_base.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\core\\execution_guard.py"
+  ],
+
+  "do_not_touch": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py — confirmed clean, do not touch",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py lines 560-637 — bridge execution path, do not touch",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db",
+    "Any file not listed in allowed_files above"
+  ],
+
+  "work_tiers": {
+    "tier_1_low_risk": {
+      "description": "Remove gated local MLB origination path from sports_bot_v2 — these lines are dead by default (ALLOW_LOCAL_MLB_ORIGINATION=0) and safe to remove",
+      "items": [
+        {
+          "violation_id": "SBV2-001 + SBV2-002 + SBV2-003",
+          "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+          "target_lines": "113 (ALLOW_LOCAL_MLB_ORIGINATION env read) and 441-478 (entire local origination block: gate check + date gate + signal generation + local entry gating)",
+          "action": "Remove the full local origination block (lines 441-478) and the ALLOW_LOCAL_MLB_ORIGINATION config line (line 113). The bridge path at 560-637 is the sole survivor.",
+          "constraint": "Do not remove or alter any line in the bridge path block (560-637). Verify the loop still runs correctly after removal by reading the surrounding context."
+        },
+        {
+          "violation_id": "SBV2-004",
+          "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\signal_base.py",
+          "target_lines": "106-269 (local MLB decision engine)",
+          "action": "Remove the MLB-specific local decision path. Before removing, read lines 1-105 and 270+ to confirm no non-MLB sport still calls these functions. If another sport still calls them, remove only the MLB branch and leave the rest intact — do not break other sports.",
+          "constraint": "Read the full file first. Only remove what is exclusively MLB. Do not remove any shared utility functions."
+        }
+      ]
+    },
+    "tier_2_coordination": {
+      "description": "Decouple execution gating from mlb_model — these are active code paths; be precise and minimal",
+      "items": [
+        {
+          "violation_id": "MLB-004",
+          "file": "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+          "target_lines": "40 (ROLLBACK_DISABLE flag) and 122-125 (new_entries_disabled early return)",
+          "action": "Remove ROLLBACK_DISABLE global and its early-return guard. New-entry lifecycle control belongs in sports_bot_v2, not in the model. The model should always emit its best recommendation.",
+          "constraint": "Confirm no other part of recommendation_api.py references ROLLBACK_DISABLE before removing."
+        },
+        {
+          "violation_id": "MLB-001 + MLB-002",
+          "file": "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+          "target_lines": "105 (execution_guard import) and 187-212 (check_all_gates call block)",
+          "action": "Remove the import of check_all_gates/check_size_tier/compute_confidence from execution_guard. Remove the check_all_gates call and its result handling (lines 187-212). The model should return its recommendation and confidence metadata unconditionally — bot_core/model_bridge enforces execution gates on the receiving side.",
+          "constraint": "After removing the gate call, verify the recommendation return path still reaches the caller cleanly. Do not leave dangling variable references. Read lines 180-240 for full context before editing."
+        },
+        {
+          "violation_id": "MLB-003",
+          "file": "C:\\Users\\johnny\\Desktop\\mlb_model\\core\\execution_guard.py",
+          "target_lines": "1-141 (entire module)",
+          "action": "After removing all imports and call sites in recommendation_api.py above, delete or empty this file. If deleting, confirm no other mlb_model file imports from it first (grep for 'execution_guard' across the mlb_model directory before deleting).",
+          "constraint": "Do not delete this file until the import in recommendation_api.py line 105 is already removed. Verify no other mlb_model file imports it."
+        }
+      ]
+    }
+  },
+
+  "execution_order": [
+    "1. Complete tier_1 first (bot_core.py + signal_base.py). These are independent of tier_2.",
+    "2. Then complete tier_2 in this order: MLB-004 (ROLLBACK_DISABLE) → MLB-001+MLB-002 (import + gate call removal) → MLB-003 (execution_guard.py deletion, only after imports are gone).",
+    "3. Do not interleave tier_1 and tier_2 edits."
+  ],
+
+  "deliverables": [
+    "List of exact files changed with before/after line ranges for each edit",
+    "Confirmation that signal_base.py MLB path was removed without breaking other sports",
+    "Confirmation that execution_guard.py has no remaining importers before deletion",
+    "Confirmation that bot_core.py bridge path (560-637) is untouched",
+    "Confirmation that model_bridge.py is untouched",
+    "Any residual risks or deferred items"
+  ],
+
+  "acceptance_criteria": [
+    "bot_core.py no longer contains ALLOW_LOCAL_MLB_ORIGINATION or local signal generation for MLB",
+    "bot_core.py bridge path (560-637) compiles and is logically unchanged",
+    "signal_base.py MLB decision engine removed or MLB branch isolated",
+    "recommendation_api.py no longer imports or calls execution_guard functions",
+    "recommendation_api.py no longer contains ROLLBACK_DISABLE",
+    "execution_guard.py deleted or emptied with no remaining importers",
+    "No other allowed file has unresolved references to removed symbols",
+    "Result written to 06_OUTBOX_FROM_WORKER as RESULT_AUTHORITY_SEPARATION_CLEANUP_001.json"
+  ],
+
+  "verification": [
+    "After edits: read bot_core.py loop section to confirm bridge path still intact",
+    "After edits: grep mlb_model directory for 'execution_guard' — expect zero results",
+    "After edits: grep sports_bot_v2 for 'ALLOW_LOCAL_MLB_ORIGINATION' — expect zero results",
+    "Report any import errors or broken references found during review"
+  ],
+
+  "rollback": "Revert only the files listed in allowed_files. All changes are removals of dead or decoupled code — reverting restores prior state exactly. A bot restart is required for changes to take effect.",
+
+  "restart_required": true,
+  "restart_note": "After this task is reviewed and approved, a full stack restart is required before the cleanup takes effect at runtime.",
+
+  "status": "OPEN — waiting for DASHBOARD_TRUTH_REVERIFY_001 to complete before pickup"
+}

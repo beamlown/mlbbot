@@ -1,0 +1,17 @@
+{
+  "task_id": "VERIFY_REALTIME_MARKET_STREAM_STAGE1_FINAL",
+  "title": "Final end-to-end verification of realtime Polymarket market stream Stage 1",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "realtime_market_stream_final_verification",
+  "allowed_files": ["core/market_stream.py", "core/state_hub.py", "dashboard_server.py", "dashboard.html"],
+  "objective": "Prove that true live Polymarket marks now flow end-to-end from runtime market stream into state_hub and through /api/stream/state SSE for tracked open positions.",
+  "acceptance_criteria": [
+    "SSE shows mark_source = polymarket_stream for at least one tracked position",
+    "current_price is stream-backed and non-null",
+    "state_hub -> SSE path is proven end-to-end",
+    "fallback still exists",
+    "final result is VERIFIED, PARTIAL, or BLOCKED"
+  ],
+  "rollback": "Verification only unless a hard failure is proven."
+}

@@ -1,0 +1,11 @@
+{
+  "task_id": "LIVE_MODEL_CADENCE_TUNING_001",
+  "mode": "narrow_live_model_tuning",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\sports\\mlb\\game_state_service.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\sports\\mlb\\market_state_stream.py",
+    "BOT_BRIDGE task/result/review files"
+  ],
+  "goal": "Tighten the existing live-reactive recommendation cadence safely without redesigning strategy, retraining the model, widening scope, or increasing unnecessary API burn."
+}

@@ -174,3 +174,113 @@ def test_refresh_tick_sizes_only_fetches_missing(tmp_path, monkeypatch):
     assert fake_client.get_tick_size.call_count == 2
     assert pm._tick_cache["tok_b"] == 0.001
     assert pm._tick_cache["tok_c"] == 0.001
+
+
+def test_save_tick_cache_writes_atomically(tmp_path, monkeypatch):
+    """Concurrent _save_tick_cache calls must serialize; the final file must
+    contain the full union of tokens written. Proves the lock + atomic replace
+    prevent partial-state corruption."""
+    import core.polymarket_client as pm
+    import threading
+
+    cache_path = tmp_path / "ticks.json"
+    monkeypatch.setattr(pm, "TICK_SIZE_CACHE_PATH", cache_path)
+    pm._tick_cache = {}
+    pm._tick_cache_loaded = True  # skip disk load
+
+    def writer(tid_prefix: str, count: int):
+        for i in range(count):
+            pm._tick_cache[f"{tid_prefix}_{i}"] = 0.01
+            pm._save_tick_cache()
+
+    threads = [
+        threading.Thread(target=writer, args=("A", 20)),
+        threading.Thread(target=writer, args=("B", 20)),
+        threading.Thread(target=writer, args=("C", 20)),
+    ]
+    for t in threads: t.start()
+    for t in threads: t.join()
+
+    # All 60 tokens must be present in the final file — no partial overwrites
+    on_disk = json.loads(cache_path.read_text(encoding="utf-8"))
+    assert len(on_disk) == 60, f"expected 60 tokens, got {len(on_disk)}"
+    assert all(on_disk[f"A_{i}"] == 0.01 for i in range(20))
+    assert all(on_disk[f"B_{i}"] == 0.01 for i in range(20))
+    assert all(on_disk[f"C_{i}"] == 0.01 for i in range(20))
+
+
+def test_save_tick_cache_uses_atomic_replace(tmp_path, monkeypatch):
+    """A crash mid-write must not leave a partial file. Verify by checking
+    the tempfile pattern: if save fails after temp write but before replace,
+    the real file must be untouched."""
+    import core.polymarket_client as pm
+    cache_path = tmp_path / "ticks.json"
+    cache_path.write_text('{"pre_existing": 0.001}', encoding="utf-8")
+    monkeypatch.setattr(pm, "TICK_SIZE_CACHE_PATH", cache_path)
+    pm._tick_cache = {"new_token": 0.01}
+    pm._tick_cache_loaded = True
+
+    # Simulate replace() failing mid-save
+    real_replace = pm.Path.replace
+    def failing_replace(self, target):
+        raise OSError("simulated rename failure")
+    monkeypatch.setattr(pm.Path, "replace", failing_replace)
+
+    pm._save_tick_cache()  # should swallow (already does)
+
+    # Original file must be unchanged
+    on_disk = json.loads(cache_path.read_text(encoding="utf-8"))
+    assert on_disk == {"pre_existing": 0.001}, f"original corrupted: {on_disk}"
+    # Restore for other tests
+    monkeypatch.setattr(pm.Path, "replace", real_replace)
+
+
+def test_get_balance_allowance_returns_usdc_float():
+    """get_balance_allowance wraps ClobClient.get_balance_allowance and
+    returns the allowance.balance as a float (converted from py_clob_client's
+    decimal-string representation)."""
+    import core.polymarket_client as pm
+    pm._client = None
+    fake_client = MagicMock()
+    # py_clob_client returns a dict-ish with 'balance' as stringified int6
+    fake_client.get_balance_allowance.return_value = {"balance": "250000000"}  # 250 USDC (6 decimals)
+    with patch("core.polymarket_client._get_client", return_value=fake_client):
+        bal = pm.get_balance_allowance()
+    assert bal == pytest.approx(250.0)
+
+
+def test_get_balance_allowance_returns_none_on_empty():
+    import core.polymarket_client as pm
+    pm._client = None
+    fake_client = MagicMock()
+    fake_client.get_balance_allowance.return_value = {}
+    with patch("core.polymarket_client._get_client", return_value=fake_client):
+        assert pm.get_balance_allowance() is None
+
+
+def test_get_my_trades_returns_list_of_trades():
+    """get_my_trades passes the since_ts filter to py_clob_client and returns
+    the raw list (parsing stays in account_sync)."""
+    import core.polymarket_client as pm
+    pm._client = None
+    fake_client = MagicMock()
+    fake_client.get_trades.return_value = [
+        {"id": "t1", "price": "0.55", "size": "100", "market": "0xm1", "timestamp": "1716000000"},
+        {"id": "t2", "price": "0.42", "size": "50",  "market": "0xm2", "timestamp": "1716000100"},
+    ]
+    with patch("core.polymarket_client._get_client", return_value=fake_client):
+        trades = pm.get_my_trades(since_ts=1716000000)
+    assert len(trades) == 2
+    assert trades[0]["id"] == "t1"
+
+
+def test_get_my_orders_returns_list_of_orders():
+    """get_my_orders returns the raw SDK response. Empty list is valid
+    (no open orders)."""
+    import core.polymarket_client as pm
+    pm._client = None
+    fake_client = MagicMock()
+    fake_client.get_orders.return_value = []
+    with patch("core.polymarket_client._get_client", return_value=fake_client):
+        orders = pm.get_my_orders()
+    assert orders == []

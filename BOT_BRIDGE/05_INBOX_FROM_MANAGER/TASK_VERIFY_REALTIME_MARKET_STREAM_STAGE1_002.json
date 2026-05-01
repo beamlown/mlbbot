@@ -1,0 +1,16 @@
+{
+  "task_id": "VERIFY_REALTIME_MARKET_STREAM_STAGE1_002",
+  "title": "Verify true live Polymarket mark ingress for realtime market stream Stage 1",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "realtime_market_stream_verification",
+  "allowed_files": ["core/market_stream.py", "core/state_hub.py", "dashboard_server.py"],
+  "objective": "Prove whether true live Polymarket market marks are entering runtime state and reaching SSE for tracked open positions.",
+  "acceptance_criteria": [
+    "true live Polymarket marks proven in runtime",
+    "SSE shows stream-backed mark_source for at least one tracked open position",
+    "current_price no longer null solely due to zero subscription",
+    "fallback still exists"
+  ],
+  "rollback": "Verification only unless a hard failure is proven."
+}

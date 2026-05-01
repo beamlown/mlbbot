@@ -1,0 +1,24 @@
+{
+  "task_id": "DASH_008",
+  "status": "done",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "summary": [
+    "Removed hardcoded TP_PRICE and SL_PCT constants from dashboard.html.",
+    "Updated the probability track builder to read r.tp_price and r.sl_price from API-backed trade/shadow objects instead of JS constants."
+  ],
+  "commands_run": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2",
+    "python dashboard_server.py",
+    "python -c \"from pathlib import Path; text=Path('dashboard.html').read_text(encoding='utf-8'); print('TP_PRICE' in text, 'SL_PCT' in text)\""
+  ],
+  "result": [
+    "Dashboard server started successfully.",
+    "Verification output was 'False False', confirming neither TP_PRICE nor SL_PCT remains in dashboard.html."
+  ],
+  "risks": [
+    "HANDOFF_DASH_008.md was missing; execution followed TASK_DASH_008.json only."
+  ],
+  "next_recommended_task": "none"
+}

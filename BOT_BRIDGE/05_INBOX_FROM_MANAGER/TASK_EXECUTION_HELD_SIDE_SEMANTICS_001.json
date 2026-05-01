@@ -1,0 +1,119 @@
+{
+  "task_id": "EXECUTION_HELD_SIDE_SEMANTICS_001",
+  "title": "Normalize execution-side held-contract semantics — unified current_held_price in risk.py and paper_exec.py",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "execution_integrity",
+  "allowed_files": [
+    "core/risk.py",
+    "core/paper_exec.py"
+  ],
+  "do_not_touch": [
+    "bot_core.py",
+    "core/model_bridge.py",
+    "core/types.py",
+    "core/db.py",
+    "dashboard_server.py",
+    "dashboard.html",
+    "mlb_model/"
+  ],
+
+  "objective": "The dashboard/SSE held-contract math was fixed in BASEBALL_POSITION_SEMANTICS_INCIDENT_001 to use a unified formula: live_equity = current_held_price * qty, unrealized = (current_held_price - entry_held_price) * qty regardless of BUY_YES or BUY_NO. The execution-side code in core/risk.py and core/paper_exec.py handles the math correctly but expresses it through raw if/else branches on trade.side == 'BUY_YES'. This creates an audit gap: close_position(), check_exit(), mark_to_market(), and mark_to_market_value() all re-implement the same held-side lookup independently. The normalization task is to extract a single _held_bid() helper in each file and rename the computed mark to current_held_price so that every formula in both files is visibly unified around the held contract — not around a YES/NO distinction. This is a code-clarity/normalization change only. The math does not change. No strategy logic changes.",
+
+  "current_state": {
+    "paper_exec_close_position": "exit_px = _fill_price_exit(trade.side, ob) — correct (uses bid_no for BUY_NO) but formula reads as (exit_px - entry_px) * qty with no explicit 'held' framing",
+    "paper_exec_mark_to_market_value": "exit_sim = _fill_price_exit(trade.side, ob) — correct but same implicit framing",
+    "risk_check_exit": "if trade.side == 'BUY_YES': mark = ob.bid_yes else: mark = ob.bid_no — correct but raw branching; mark is not named current_held_price",
+    "risk_mark_to_market": "if trade.side == 'BUY_YES': mark = ob.bid_yes else: mark = ob.bid_no — same raw branching",
+    "pnl_formula_everywhere": "(mark - trade.entry_px) * trade.qty or (exit_px - entry_px) * qty — correct but no explicit held-price naming"
+  },
+
+  "deliverables": [
+    {
+      "file": "core/paper_exec.py",
+      "changes": [
+        {
+          "what": "Add _held_bid(side: str, ob: OBSnapshot) -> float | None helper at module level, before close_position().",
+          "exact_body": "def _held_bid(side: str, ob: OBSnapshot) -> float | None:\n    return ob.bid_yes if side == 'BUY_YES' else ob.bid_no",
+          "why": "Single canonical source of truth for which side's bid is the held-contract mark. Removes repeated if/else from close_position and mark_to_market_value."
+        },
+        {
+          "what": "Normalize close_position() to use _held_bid() for the mark step (NOT for exit_px — _fill_price_exit already handles slippage correctly).",
+          "current_gross_pnl_line": "gross_pnl = (exit_px - entry_px) * qty",
+          "new_comment": "Add an inline comment: # held-contract gain: exit is bid of the held side minus entry cost",
+          "no_formula_change": true,
+          "note": "The formula (exit_px - entry_px) * qty is correct for both sides because exit_px is already the held-side bid with slippage. Add a comment and optionally rename exit_px to held_exit_px within close_position() for readability."
+        },
+        {
+          "what": "Normalize mark_to_market_value() to use _held_bid().",
+          "current_code": "exit_sim = _fill_price_exit(trade.side, ob)\nreturn (exit_sim - trade.entry_px) * trade.qty",
+          "new_code": "current_held_price = _held_bid(trade.side, ob)\nif current_held_price is None:\n    return 0.0\nheld_exit_sim = current_held_price * (1.0 - PAPER_SLIPPAGE_PCT)\nheld_exit_sim = max(0.01, min(0.99, held_exit_sim))\nreturn (held_exit_sim - trade.entry_px) * trade.qty",
+          "note": "This replaces the _fill_price_exit call with a direct bid-based sim using _held_bid, making the held-price concept explicit. The slippage math is identical to what _fill_price_exit was doing."
+        }
+      ]
+    },
+    {
+      "file": "core/risk.py",
+      "changes": [
+        {
+          "what": "Add _held_bid(side: str, ob: OBSnapshot) -> float | None helper at module level, before check_exit().",
+          "exact_body": "def _held_bid(side: str, ob: OBSnapshot) -> float | None:\n    return ob.bid_yes if side == 'BUY_YES' else ob.bid_no",
+          "why": "Removes the repeated if/else from check_exit() and mark_to_market(). Makes held-contract concept the single named concept."
+        },
+        {
+          "what": "Normalize check_exit() mark lookup.",
+          "current_code": "if trade.side == 'BUY_YES':\n    mark = ob.bid_yes\nelse:\n    mark = ob.bid_no\n\nif mark is None:\n    return False, ''",
+          "new_code": "current_held_price = _held_bid(trade.side, ob)\nif current_held_price is None:\n    return False, ''",
+          "then_replace_all_mark_references_with": "current_held_price",
+          "note": "Rename every reference to 'mark' in check_exit() to 'current_held_price'. The formula (current_held_price - trade.entry_px) / trade.entry_px is the held-contract unrealized pct — identical math, explicit naming. Also rename unrealized_pct to held_unrealized_pct for clarity."
+        },
+        {
+          "what": "Normalize mark_to_market() mark lookup.",
+          "current_code": "if trade.side == 'BUY_YES':\n    mark = ob.bid_yes\nelse:\n    mark = ob.bid_no\nif mark is None:\n    return 0.0\nreturn (mark - trade.entry_px) * trade.qty",
+          "new_code": "current_held_price = _held_bid(trade.side, ob)\nif current_held_price is None:\n    return 0.0\nreturn (current_held_price - trade.entry_px) * trade.qty",
+          "note": "Same math, explicit held-price naming."
+        }
+      ]
+    }
+  ],
+
+  "what_does_not_change": [
+    "All PnL formulas — math is already correct",
+    "TP/SL percentage thresholds (AUTO_TAKE_PROFIT_PCT, AUTO_STOP_LOSS_PCT)",
+    "Trailing stop logic",
+    "NEAR_RESOLUTION_PRICE check (current_held_price >= NEAR_RESOLUTION_PRICE is correct for both sides: for BUY_NO, if bid_no >= 0.92 the NO outcome is nearly resolved in your favor)",
+    "SL cluster cooldown logic",
+    "All entry gate logic in check_entry_gates()",
+    "Trade schema / DB fields",
+    "No new env vars",
+    "No behavioral difference — this is a readability normalization only"
+  ],
+
+  "why_this_is_safe": [
+    "_held_bid() is a one-line function with the same conditional that existed inline — no logic change.",
+    "Renaming 'mark' to 'current_held_price' is a variable rename inside each function — no change to what is computed.",
+    "The mark_to_market_value() rewrite in paper_exec replaces _fill_price_exit(trade.side, ob) with explicit _held_bid() + inline slippage — identical result because _fill_price_exit is: base = bid_no (or bid_yes), fill = base * (1 - slippage).",
+    "close_position() formula stays (exit_px - entry_px) * qty — just gets a clarifying comment."
+  ],
+
+  "acceptance_criteria": [
+    "core/risk.py defines _held_bid(side, ob) returning ob.bid_yes or ob.bid_no",
+    "check_exit() uses current_held_price = _held_bid(trade.side, ob) instead of the raw if/else mark lookup",
+    "mark_to_market() in risk.py uses current_held_price = _held_bid(trade.side, ob)",
+    "core/paper_exec.py defines _held_bid(side, ob) returning ob.bid_yes or ob.bid_no",
+    "mark_to_market_value() in paper_exec uses _held_bid() and names the result current_held_price",
+    "close_position() has a clarifying comment that gross_pnl is held-contract gain: held_exit_px (bid of held side) minus entry_held_px",
+    "No formulas change — same math, explicit naming",
+    "No other files modified"
+  ],
+
+  "verification": [
+    "Read core/risk.py — confirm _held_bid() exists and check_exit() uses current_held_price",
+    "Read core/paper_exec.py — confirm _held_bid() exists and mark_to_market_value() uses current_held_price",
+    "Trace: BUY_NO trade with ob.bid_no=0.62, entry_px=0.41 → current_held_price=0.62, held_unrealized_pct=(0.62-0.41)/0.41=+0.512 → take_profit fires (>0.85? no — 0.512 < 0.85, so no TP). Trace again with ob.bid_no=0.78, entry_px=0.41 → (0.78-0.41)/0.41=0.902 → TP fires. Verify sign is positive (held contract gained value).",
+    "Trace: BUY_YES trade with ob.bid_yes=0.33, entry_px=0.41 → current_held_price=0.33, held_unrealized_pct=(0.33-0.41)/0.41=-0.195 → stop_loss fires (-0.195 <= -0.20? no — borderline). Trace with ob.bid_yes=0.31 → (0.31-0.41)/0.41=-0.244 → SL fires.",
+    "No other files modified — confirmed."
+  ],
+
+  "rollback": "Revert core/risk.py and core/paper_exec.py. No DB changes, no schema changes, no strategy changes."
+}

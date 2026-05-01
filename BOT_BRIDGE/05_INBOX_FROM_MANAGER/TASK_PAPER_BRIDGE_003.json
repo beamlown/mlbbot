@@ -1,0 +1,67 @@
+{
+  "task_id": "PAPER_BRIDGE_003",
+  "title": "Live gate verification pass — enable model bridge and confirm end-to-end behavior",
+  "objective": "Enable ENABLE_MODEL_BRIDGE=True, run the bot, observe BRIDGE GATE PASS and BRIDGE GATE REJECT log lines, and confirm that at least one model_bridge-sourced paper position appears in state.json and the DB if a qualifying live recommendation exists. If all gates behave correctly, leave ENABLE_MODEL_BRIDGE=True in the submitted patch. Paper mode only.",
+
+  "paper_only_notice": "THIS IS PAPER MODE ONLY. No real money. No live order placement. No exchange connection.",
+
+  "context": "PAPER_BRIDGE_002 built and verified the full persistence path by code inspection and kill-switch log confirmation. This task is the live behavior verification pass. The only code change is flipping ENABLE_MODEL_BRIDGE from False to True.",
+
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py"
+  ],
+
+  "do_not_touch": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\types.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\db.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\signal_base.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model"
+  ],
+
+  "the_one_change": "In core/model_bridge.py, change ENABLE_MODEL_BRIDGE = False to ENABLE_MODEL_BRIDGE = True. Nothing else.",
+
+  "what_to_observe": [
+    "Run python bot_core.py and let it complete at least 2-3 full loops",
+    "Confirm BRIDGE DISABLED log lines are gone",
+    "Confirm BRIDGE GATE REJECT lines appear (expected — most recommendations will fail staleness, confidence, or date gates during any given run)",
+    "Confirm BRIDGE GATE PASS lines appear if a qualifying live recommendation exists",
+    "If a GATE PASS occurs: check runtime/state.json open positions for an entry with source=model_bridge",
+    "If a GATE PASS occurs: note the slug, side, edge, and confidence values logged",
+    "If no GATE PASS occurs in this window: that is acceptable — report what gates rejected and why"
+  ],
+
+  "acceptance_criteria": [
+    "ENABLE_MODEL_BRIDGE = True in submitted patch",
+    "No BRIDGE DISABLED log lines during the run",
+    "BRIDGE GATE REJECT lines observed with rejection reasons logged",
+    "No unhandled exceptions or crashes from the bridge code",
+    "Bot continues to run its existing paper trade loop normally alongside the bridge",
+    "If a GATE PASS occurred: source=model_bridge present on the position in state.json or DB",
+    "If no GATE PASS occurred: gate rejection reasons are clearly reported in the result"
+  ],
+
+  "if_no_live_games_available": "If no same-day live MLB games are present during the verification window, BRIDGE GATE REJECT with reason=slug_date_mismatch or not_live is the expected output. Report this clearly — it is not a failure. The gates are working correctly.",
+
+  "verification": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2",
+    "python bot_core.py",
+    "Let run for at least 2-3 loops (90+ seconds)",
+    "Check logs for BRIDGE GATE PASS / BRIDGE GATE REJECT",
+    "If GATE PASS: check runtime/state.json for source=model_bridge position"
+  ],
+
+  "deliverables": [
+    "model_bridge.py with ENABLE_MODEL_BRIDGE = True",
+    "exact BRIDGE GATE REJECT lines observed and their reasons",
+    "exact BRIDGE GATE PASS lines if any",
+    "state.json position entry if a model_bridge trade was opened",
+    "confirmation that existing bot paper trades were unaffected"
+  ],
+
+  "rollback": "Set ENABLE_MODEL_BRIDGE = False in core/model_bridge.py. No other files were changed."
+}

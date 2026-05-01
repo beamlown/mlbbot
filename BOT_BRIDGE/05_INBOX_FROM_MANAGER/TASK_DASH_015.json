@@ -1,0 +1,53 @@
+{
+  "task_id": "DASH_015",
+  "title": "Position card: WIN/LOSE direction, TP/SL/Size boxes, command bar win rate",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "dashboard_html",
+  "allowed_files": ["dashboard.html"],
+  "do_not_touch": ["dashboard_server.py", "launch_all.py", "bot_core.py", "core/", "mlb_model/", ".env"],
+
+  "objective": "Three UI improvements to position cards and the command bar: (1) Replace the YES/NO pill with WIN/LOSE so the user can immediately see which team they're backing without knowing contract semantics. (2) Add TP, SL, and Position Size stat boxes to position cards — the API already returns these fields (tp_price, sl_price, qty, entry_px) but they're not displayed. (3) Add win rate to the command bar so it's always visible on mobile.",
+
+  "deliverables": [
+    {
+      "label": "Change action pill from YES/NO to WIN/LOSE in buildUnifiedPositionCards()",
+      "file": "dashboard.html",
+      "where": "buildUnifiedPositionCards() — the line that sets aLabel (currently 'YES' or 'NO')",
+      "change": "Find:\n  const aLabel = isYes ? 'YES' : 'NO';\nReplace with:\n  const aLabel = isYes ? 'WIN' : 'LOSE';"
+    },
+    {
+      "label": "Add TP, SL, Size stat boxes to position cards",
+      "file": "dashboard.html",
+      "where": "buildUnifiedPositionCards() — the .pos-stats block with Entry/Current/Confidence boxes",
+      "change": "After the existing 3 stat boxes (Entry, Current, Confidence), add 3 more:\n\n  const sizeUsd = (r.qty != null && r.entry_px != null)\n      ? fmtUsd(r.qty * r.entry_px)\n      : (r.shadow_position_size_usd ? fmtUsd(r.shadow_position_size_usd) : '—');\n\nAdd to the stat boxes template:\n  <div class=\"stat-box\"><div class=\"stat-label\">TP</div><div class=\"stat-val green\">${fmtPx(r.tp_price)}</div></div>\n  <div class=\"stat-box\"><div class=\"stat-label\">SL</div><div class=\"stat-val red\">${fmtPx(r.sl_price)}</div></div>\n  <div class=\"stat-box\"><div class=\"stat-label\">Size</div><div class=\"stat-val\">${sizeUsd}</div></div>\n\nThe .pos-stats CSS grid already uses repeat(3, 1fr) — adding 3 more boxes creates a clean 2-row layout automatically. No CSS changes needed."
+    },
+    {
+      "label": "Add win rate to command bar",
+      "file": "dashboard.html",
+      "where": "Command bar HTML — near the cmdbar-stat spans for Open and P&L",
+      "change": "Add to the command bar stat line:\n  <span class=\"cmdbar-stat\">W%: <b id=\"cmd-winrate\">—</b></span>\n\nIn the updateState(s) function (where cmd-open and cmd-pnl are bound), add:\n  const wr = s?.r25?.win_rate;\n  $('cmd-winrate').textContent = wr != null ? (wr * 100).toFixed(0) + '%' : '—';"
+    }
+  ],
+
+  "acceptance_criteria": [
+    "Position card action pill shows 'WIN' for BUY_YES trades and 'LOSE' for BUY_NO trades",
+    "Position cards show 6 stat boxes: Entry, Current, Confidence (row 1), TP, SL, Size (row 2)",
+    "TP and SL values are displayed as decimal prices (e.g. 0.76, 0.33)",
+    "Size shows dollar amount (e.g. $50.00) computed from qty * entry_px",
+    "Command bar shows W%: XX% (or W%: — if no data)",
+    "Win rate in command bar updates when /api/state returns r25.win_rate",
+    "No JS console errors",
+    "No other files modified"
+  ],
+
+  "verification": [
+    "Open dashboard on mobile or narrow browser window",
+    "Any open position card: action pill says WIN or LOSE (not YES/NO)",
+    "Any open position card: 6 stat boxes visible — TP and SL show decimal prices, Size shows $",
+    "Command bar top of screen: W%: shown (may be — if no trades yet)",
+    "Check browser console: no JS errors"
+  ],
+
+  "rollback": "Revert dashboard.html only."
+}

@@ -1,0 +1,32 @@
+{
+  "task_id": "SHADOW_001",
+  "status": "done",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py"
+  ],
+  "summary": [
+    "Extended /api/mlb-shadow to compute dashboard-ready shadow fields: entry price, current price, unrealized dollar PnL, TP price, SL price, advisory label, and status labels.",
+    "Updated the MLB shadow UI to show shadow-only labeling, dollar PnL, entry/current price, TP/SL targets, and status text per shadow position without touching execution or model logic.",
+    "Used a fixed estimated shadow size from SHADOW_POSITION_SIZE_USD (default $50) for dollar PnL display, as allowed by the handoff."
+  ],
+  "commands_run": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2",
+    "python dashboard_server.py"
+  ],
+  "tests_run": [
+    "Started dashboard_server.py and confirmed the server came up on http://localhost:8900.",
+    "Verified the API/server layer now emits fields required for entry/current/TP/SL/status/dollar PnL rendering."
+  ],
+  "result": [
+    "Shadow panel now includes entry price, current price, live unrealized dollar PnL, TP target price, SL target price, and status labels including OPEN, TP_ZONE, SL_ZONE, RESOLVED_WIN, RESOLVED_LOSS, and PENDING.",
+    "UI now clearly labels the panel as 'Shadow Advisory — Not Executed'.",
+    "No execution behavior or model logic was changed."
+  ],
+  "risks": [
+    "Verification in this environment confirmed the server started successfully, but I did not visually inspect the browser-rendered panel from here.",
+    "Current price is derived from latest logged ask_yes/ask_no in the shadow log; if the log is stale, displayed live PnL/status will reflect the latest available shadow snapshot rather than a fresh book pull.",
+    "Dollar PnL uses estimated fixed size unless future tasking adds explicit shadow sizing to the log payload."
+  ],
+  "next_recommended_task": "none"
+}

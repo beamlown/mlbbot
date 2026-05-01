@@ -1,0 +1,18 @@
+{
+  "task_id": "EXECUTION_CONTRACT_BIND_001",
+  "title": "Bind safe rich bridge fields into execution-facing flow",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "execution_contract_binding",
+  "allowed_files": ["bot_core.py", "core/model_bridge.py", "core/paper_exec.py", "integration/recommendation_schema.py"],
+  "objective": "Bind a safe subset of already-transported model-issued fields into execution and monitoring flow without adding new strategy logic.",
+  "acceptance_criteria": [
+    "execution uses a richer subset of model-issued fields than before",
+    "TP/SL handling is bound where applicable",
+    "size handling is bound where applicable and safe",
+    "monitoring/debug truth can access held outcome, matchup, freshness, and reasons",
+    "no new strategy logic",
+    "no truth regression"
+  ],
+  "rollback": "Revert the narrow binding changes in bot_core.py and core/paper_exec.py."
+}

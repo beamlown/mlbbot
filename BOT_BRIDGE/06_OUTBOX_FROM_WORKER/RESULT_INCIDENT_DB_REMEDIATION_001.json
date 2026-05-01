@@ -1,0 +1,53 @@
+{
+  "task_id": "INCIDENT_DB_REMEDIATION_001",
+  "status": "done_with_followup_needed",
+  "production_code_changed": false,
+  "db_backup_path": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\09_ARCHIVE\\trades_sports_pre_remediation_20260405_191246.db",
+  "safeguards": {
+    "single_duplicate_writer_removed_before_db_write": true,
+    "remaining_entry_writer_stopped_before_db_write": true,
+    "backup_created_before_remediation": true
+  },
+  "cleanup_rule_applied": {
+    "keep": "earliest open row per duplicate market_slug",
+    "void_extras": {
+      "status": "closed",
+      "ts_close": "remediation timestamp used",
+      "exit_px": "entry_px",
+      "pnl_usd": 0.0,
+      "fees_usd": 0.0,
+      "reason_close": "duplicate_remediation_void"
+    },
+    "deleted_rows": false
+  },
+  "remediation_actions": {
+    "kept_ids": [101],
+    "voided_ids": [102],
+    "unique_index_created": true,
+    "index_name": "idx_trades_one_open_per_slug"
+  },
+  "verification": {
+    "db_backup_exists": true,
+    "duplicate_open_rows_remediated": true,
+    "unique_index_exists": true,
+    "db_open_rows_after": [
+      {"id": 101, "market_slug": "mlb-stl-det-2026-04-05", "status": "open"},
+      {"id": 113, "market_slug": "mlb-hou-oak-2026-04-05", "status": "open"}
+    ],
+    "db_open_row_count_after": 2,
+    "duplicate_open_group_count_after": 0,
+    "new_duplicate_opens_after_fix": false,
+    "single_live_stack_intact": false,
+    "api_state_matches_db_open_rows": false,
+    "api_state_note": "Current /api/state remained stale and reported open=3 during the short verification window.",
+    "topology_note": "A restarted bot_core process tree exists, but it is not cleanly reattached to the original launcher parent tree."
+  },
+  "evidence": {
+    "db_path": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db",
+    "post_fix_index_sql": "CREATE UNIQUE INDEX idx_trades_one_open_per_slug ON trades(market_slug) WHERE status='open'",
+    "post_fix_open_rows_have_no_duplicates": true,
+    "post_fix_log_observation": "No new duplicate pair was observed in the short post-fix verification window; a single new BRIDGE OPEN trade=113 was observed."
+  },
+  "remaining_issue": "Runtime/process topology and state refresh remain imperfect after remediation. DB is repaired, but /api/state alignment and clean single-stack supervision still need a follow-up ops verification step.",
+  "blocked": false
+}

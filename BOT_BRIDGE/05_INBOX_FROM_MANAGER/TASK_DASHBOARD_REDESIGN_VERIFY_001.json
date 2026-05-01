@@ -1,0 +1,137 @@
+{
+  "task_id": "DASHBOARD_REDESIGN_VERIFY_001",
+  "title": "Dashboard redesign — truth preservation and usability verification",
+  "status": "HOLD_PENDING_EXECUTION_TRUTH",
+  "gate": "Do NOT begin until DASHBOARD_PERFORMANCE_POLISH_001 is APPROVED.",
+  "phase": 5,
+  "depends_on": [
+    "EXECUTION_HELD_SIDE_SEMANTICS_001",
+    "DASHBOARD_REDESIGN_ARCH_001",
+    "DASHBOARD_REDESIGN_SHELL_001",
+    "DASHBOARD_LIVE_COMMAND_CENTER_001",
+    "DASHBOARD_POSITIONS_HISTORY_SYSTEM_001",
+    "DASHBOARD_PERFORMANCE_POLISH_001"
+  ],
+  "priority": 6,
+  "subsystem": "dashboard_verification",
+  "type": "verification",
+  "allowed_files": [],
+  "production_code_changes": false,
+  "do_not_touch": [
+    "dashboard.html",
+    "dashboard_server.py",
+    "bot_core.py",
+    "core/risk.py",
+    "core/paper_exec.py",
+    "core/db.py",
+    "core/model_bridge.py",
+    "core/types.py",
+    "mlb_model/"
+  ],
+
+  "objective": "Verify that the redesigned dashboard preserves the verified truth model end-to-end. No code changes. Read-only verification against the architecture spec and the known incidents. Produce a written verification report.",
+
+  "verification_checklist": {
+    "truth_model": [
+      {
+        "check": "BUY_YES position pricing",
+        "method": "Identify any open BUY_YES position. Read its current_held_price from the LIVE tab. Confirm it matches bid_yes from /api/stream/state or state_hub, not bid_no.",
+        "pass": "current_held_price == bid_yes for BUY_YES"
+      },
+      {
+        "check": "BUY_NO position pricing",
+        "method": "Identify any open BUY_NO position. Read its current_held_price from the LIVE tab. Confirm it matches bid_no, not bid_yes.",
+        "pass": "current_held_price == bid_no for BUY_NO — this is the SEA/TEX incident check"
+      },
+      {
+        "check": "Unrealized PnL sign correctness",
+        "method": "For a BUY_NO position where bid_no > entry_px, confirm unrealized_pct is positive (profit). For a BUY_NO position where bid_no < entry_px, confirm unrealized_pct is negative (loss).",
+        "pass": "Sign is correct for both sides — this directly re-checks the SEA/TEX incident root cause"
+      },
+      {
+        "check": "Close price truth",
+        "method": "Review HISTORY or POSITIONS tab for recently closed trades. Confirm exit_px for a BUY_NO close is a NO-side price (near 0.5-0.99 range), not a YES-side price.",
+        "pass": "Closed BUY_NO exit_px reflects NO contract bid, not YES price — this checks BOS/MIL incident root cause"
+      },
+      {
+        "check": "No shadow competing with position truth",
+        "method": "Open LIVE tab. Confirm no advisory/shadow section appears. Open GAMES tab. Confirm advisory section is visually distinct and labeled.",
+        "pass": "Shadow absent from LIVE tab. Advisory clearly labeled in GAMES tab."
+      },
+      {
+        "check": "Stale stream detection",
+        "method": "If possible, note the last stream update age shown in SYSTEM tab. Confirm stale badge appears on position card prices if stream is older than 30s.",
+        "pass": "STALE badge behavior present (even if not triggered if stream is live)"
+      },
+      {
+        "check": "backed_team display",
+        "method": "Confirm position cards show team name (e.g. 'LAD WIN') not raw market slug.",
+        "pass": "No raw slug visible on LIVE or POSITIONS tab cards"
+      }
+    ],
+    "usability": [
+      {
+        "check": "Default tab",
+        "method": "Load http://localhost:8900. Confirm LIVE tab is active by default.",
+        "pass": "LIVE tab active on load"
+      },
+      {
+        "check": "Mobile layout",
+        "method": "Resize browser to 390px or use dev tools. Confirm no horizontal scroll, cards stack vertically.",
+        "pass": "No horizontal scroll at 390px"
+      },
+      {
+        "check": "Trade log not on main page",
+        "method": "Confirm trade log is in HISTORY tab only, not visible on LIVE tab.",
+        "pass": "Trade log absent from LIVE tab DOM (or display:none)"
+      },
+      {
+        "check": "Account strip always visible",
+        "method": "Switch between all 5 tabs. Confirm command bar / account strip remains visible on all tabs.",
+        "pass": "Bankroll and win rate visible on all tabs"
+      },
+      {
+        "check": "No JS errors",
+        "method": "Open browser console. Confirm no errors on load and after 30s of operation.",
+        "pass": "Zero JS errors in console"
+      }
+    ]
+  },
+
+  "deliverables": [
+    {
+      "file": "C:/Users/johnny/Desktop/BOT_BRIDGE/06_OUTBOX_FROM_WORKER/RESULT_DASHBOARD_REDESIGN_VERIFY_001.json",
+      "contents": [
+        "task_id: DASHBOARD_REDESIGN_VERIFY_001",
+        "decision: PASS or FAIL",
+        "truth_model_checks: pass/fail for each check above with observed values",
+        "usability_checks: pass/fail for each check above",
+        "incidents_re_verified: explicit statement on whether SEA/TEX BUY_NO pricing and BOS/MIL close pricing are correct in the redesigned dashboard",
+        "outstanding_issues: any checks that could not be verified and why",
+        "recommendation: proceed to DASHBOARD_REDESIGN_AUDIT_001 or fix required"
+      ]
+    }
+  ],
+
+  "acceptance_criteria": [
+    "All truth model checks pass",
+    "All usability checks pass",
+    "Explicit confirmation that BUY_NO current_held_price = bid_no (not bid_yes)",
+    "Explicit confirmation that shadow is absent from LIVE tab",
+    "Zero JS errors confirmed",
+    "No production code changes"
+  ],
+
+  "proof_of_work": [
+    "Submit result JSON with per-check pass/fail and observed values",
+    "Include explicit statement on SEA/TEX and BOS/MIL incident re-verification",
+    "Confirm zero file changes"
+  ],
+
+  "out_of_scope": [
+    "Any code changes",
+    "Any fixes — if verification fails, raise CHANGES_REQUESTED against the relevant implementation phase, not this task"
+  ],
+
+  "rollback": "No changes made. Nothing to revert."
+}

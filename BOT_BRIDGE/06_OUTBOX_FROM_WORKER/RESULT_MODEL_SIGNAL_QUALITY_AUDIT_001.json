@@ -1,0 +1,68 @@
+{
+  "mode_used": "WORKER MODE",
+  "task_selected": "MODEL_SIGNAL_QUALITY_AUDIT_001",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_MODEL_SIGNAL_QUALITY_AUDIT_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_MODEL_SIGNAL_QUALITY_AUDIT_001.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_TASK_BOARD.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_STATUS.md"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MODEL_SIGNAL_QUALITY_AUDIT_001.json"
+  ],
+  "verification_performed": [
+    "Tested the central outlier hypothesis on the 0.30-0.40 confidence bucket by removing trades 183, 184, 185, and 316",
+    "Recomputed confidence-bucket PnL and win rates with and without those outliers",
+    "Computed side-by-confidence splits to test whether inversion is concentrated on BUY_NO or BUY_YES",
+    "Compared reason_close composition for the 0.30-0.40 and 0.60-0.65 buckets",
+    "Measured slug concentration within the 0.30-0.40 bucket"
+  ],
+  "restart_needed": "No",
+  "result_file_written": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MODEL_SIGNAL_QUALITY_AUDIT_001.json",
+  "observed": [
+    "The 0.30-0.40 bucket appears very strong in raw form: 96 trades, +830.38 PnL, 34.7% win rate.",
+    "The central outlier set is enormous: trades 183, 184, 185, and 316 contribute +895.25 combined.",
+    "After removing trades 183/184/185/316, the 0.30-0.40 bucket flips from +830.38 to -64.87 and its win rate falls from 34.7% to 31.9%.",
+    "The 0.60-0.65 bucket remains poor even after this adjustment: 86 trades, -826.25 PnL, 16.9% win rate.",
+    "The low-confidence apparent strength is concentrated in BUY_NO. BUY_NO in the 0.30-0.40 bucket is +836.17 across 31 trades. BUY_YES in that same bucket is roughly flat to slightly negative (-5.79 across 65 trades).",
+    "Within the 0.30-0.40 bucket, slug concentration is extreme. `mlb-lad-tor-2026-04-08` contributes +686.86 by itself. `mlb-tex-lad-2026-04-10` adds +133.67. Those two slugs dominate the bucket.",
+    "Reason-close composition differs sharply by bucket. In 0.30-0.40, take_profit contributes +1496.13, offsetting large stop_loss and gap_stop losses. In 0.60-0.65, stop_loss and gap_stop dominate (-1270.45 combined), while take_profit contributes only +445.51.",
+    "High-confidence buckets remain bad across the board: 0.65-0.70 is -21.08, >=0.70 is -120.15, both with poor win rates."
+  ],
+  "proven": [
+    {
+      "point": "The apparent confidence inversion is largely driven by a tiny outlier set, not by a stable broad low-confidence advantage.",
+      "evidence": "Removing trades 183, 184, 185, and 316 changes the 0.30-0.40 bucket from +830.38 to -64.87."
+    },
+    {
+      "point": "The low-confidence bucket's strength is concentrated in BUY_NO, not shared symmetrically across sides.",
+      "evidence": "BUY_NO 0.30-0.40 = +836.17 across 31 trades; BUY_YES 0.30-0.40 = -5.79 across 65 trades."
+    },
+    {
+      "point": "The 0.30-0.40 bucket is heavily slug-concentrated.",
+      "evidence": "`mlb-lad-tor-2026-04-08` alone contributes +686.86 inside the bucket."
+    },
+    {
+      "point": "Higher-confidence buckets are genuinely poor in this sample even without relying on the low-confidence outlier explanation.",
+      "evidence": "0.60-0.65 = -826.25 over 86 trades; >=0.70 = -120.15 over 7 trades."
+    },
+    {
+      "point": "The dominant failure mode in higher-confidence buckets is not lack of winners alone, but severe stop_loss and gap_stop damage.",
+      "evidence": "For 0.60-0.65, stop_loss = -587.07 and gap_stop = -683.38, far outweighing take_profit = +445.51."
+    }
+  ],
+  "likely": [
+    "Hypothesis S1 is confirmed: the confidence inversion mostly disappears once the outlier set is removed. The framework should not treat 0.30-0.40 as truly superior based on the raw bucket headline.",
+    "This shifts the interpretation from 'confidence is inverted' toward 'confidence is not yet proven predictive, and high-confidence trades are still materially bad.'",
+    "The more serious live concern is not that low confidence is secretly best. It is that medium-high and high confidence are failing badly, especially through gap-stop damage and repeated adverse follow-through.",
+    "BUY_NO may still have a relative advantage over BUY_YES in the current system, but the sample is too contaminated by concentration and historical bugs to promote that to a fix recommendation yet."
+  ],
+  "ruled_out": [
+    "Ruled out: a broad, robust low-confidence edge in the 0.30-0.40 bucket. The bucket turns negative after removing four trades.",
+    "Ruled out: the idea that the confidence inversion by itself proves the gate is wrong. The stronger evidence is sample contamination plus high-confidence weakness."
+  ],
+  "recommended_next_step": "Keep this in the audit lane. The next justified task remains CLEAN_RUNTIME_WINDOW_AUDIT_001 once at least 30 post-restart trades exist. That is the cleanest way to test whether the repaired gate era preserves the same high-confidence weakness or whether the historical failure was mostly contamination from the pre-fix runtime. No code changes are justified from this audit alone.",
+  "queued_next_list": [
+    "CLEAN_RUNTIME_WINDOW_AUDIT_001"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "task_id": "RISK_PIPELINE_AUDIT_001",
+  "decision": "CHANGES_REQUESTED",
+  "audit_complete": true,
+  "report_path": "BOT_BRIDGE/08_SHARED_CONTEXT/RISK_PIPELINE_AUDIT_REPORT_001.md",
+  "gaps_found": [
+    "market_resolved close path omits reason_close/ts_close persistence",
+    "no per-session max loss cap",
+    "no daily max loss cap",
+    "sizing is not bankroll/drawdown aware",
+    "/api/bankroll uses 30-day grouped history rather than canonical lifetime realized query"
+  ],
+  "broken_invariants": [
+    "Every close should persist exit_px and reason_close, but market_resolved closes persist exit_px while reason_close is NULL"
+  ],
+  "immediate_risks": [
+    "HIGH: Incomplete close audit trail for resolved-market exits (missing reason_close/ts_close)",
+    "HIGH: Missing hard loss caps (session/daily) allows uncontrolled drawdown",
+    "HIGH: Fixed/confidence-only sizing without bankroll guard can over-risk shrinking equity"
+  ],
+  "repo_audited": "C:/Users/johnny/Desktop/sports_bot_v2",
+  "proof": {
+    "py_compile_bot_core": "passed",
+    "risk_import": "passed",
+    "paper_exec_readable": true,
+    "env_present": true,
+    "types_import": "passed",
+    "git_diff_name_only": "empty"
+  },
+  "status_recommendation": "needs_follow_up_task"
+}

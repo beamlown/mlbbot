@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 from pathlib import Path
 from typing import Any, Callable
 
@@ -34,6 +35,7 @@ BACKOFF_MS = int(os.getenv("POLYMARKET_CLIENT_BACKOFF_MS", "500"))
 _client: ClobClient | None = None
 _tick_cache: dict[str, float] = {}
 _tick_cache_loaded: bool = False
+_tick_cache_lock = threading.Lock()
 
 
 def _get_client() -> ClobClient:
@@ -61,11 +63,21 @@ def _load_tick_cache() -> None:
 
 
 def _save_tick_cache() -> None:
-    try:
-        TICK_SIZE_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        TICK_SIZE_CACHE_PATH.write_text(json.dumps(_tick_cache, indent=2), encoding="utf-8")
-    except Exception as exc:
-        logger.warning("tick_size cache save failed path=%s err=%s", TICK_SIZE_CACHE_PATH, exc)
+    """Atomically persist _tick_cache to disk. Serialized via _tick_cache_lock
+    to prevent concurrent-write corruption. Uses write-to-temp + Path.replace()
+    so a crash mid-write leaves the existing file intact.
+    """
+    with _tick_cache_lock:
+        try:
+            TICK_SIZE_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            tmp_path = TICK_SIZE_CACHE_PATH.with_suffix(TICK_SIZE_CACHE_PATH.suffix + ".tmp")
+            tmp_path.write_text(
+                json.dumps(_tick_cache, indent=2),
+                encoding="utf-8",
+            )
+            tmp_path.replace(TICK_SIZE_CACHE_PATH)
+        except Exception as exc:
+            logger.warning("tick_size cache save failed path=%s err=%s", TICK_SIZE_CACHE_PATH, exc)
 
 
 def _coerce_batch_float_dict(
@@ -206,3 +218,67 @@ def refresh_tick_sizes(token_ids: list[str]) -> int:
         except Exception as exc:
             logger.warning("refresh_tick_sizes: fetch failed token=%s err=%s", tid, exc)
     return fetched
+
+
+# --- Authenticated GET helpers (Stair D) -------------------------------------
+# These require API credentials. They are never called by paper mode; the
+# caller (core.account_sync) checks creds-availability first. DummySigner
+# can't produce creds (polymarket_auth raises), so these stay unexercised
+# in paper mode by construction.
+
+_USDC_DECIMALS = 1_000_000  # Polygon USDC has 6 decimals
+
+
+def get_balance_allowance() -> float | None:
+    """Fetch USDC balance (in whole USDC) from the connected wallet.
+    Returns None if the response is missing or unparseable."""
+    client = _get_client()
+    resp = retry_with_backoff(
+        lambda: client.get_balance_allowance(),
+        retries=RETRIES, backoff_ms=BACKOFF_MS,
+    )
+    if not isinstance(resp, dict):
+        return None
+    raw_balance = resp.get("balance")
+    try:
+        # py_clob_client returns int6-as-string; convert to whole USDC
+        return float(raw_balance) / _USDC_DECIMALS if raw_balance is not None else None
+    except (TypeError, ValueError):
+        logger.warning("get_balance_allowance: unparseable balance=%r", raw_balance)
+        return None
+
+
+def get_my_trades(since_ts: int | None = None) -> list[dict]:
+    """Fetch my trade history. If since_ts is given, filter client-side to
+    events after that unix timestamp (py_clob_client's own since filter
+    isn't uniformly supported)."""
+    client = _get_client()
+    resp = retry_with_backoff(
+        lambda: client.get_trades(),
+        retries=RETRIES, backoff_ms=BACKOFF_MS,
+    )
+    if not isinstance(resp, list):
+        return []
+    if since_ts is None:
+        return resp
+    out: list[dict] = []
+    for t in resp:
+        if not isinstance(t, dict):
+            continue
+        try:
+            ts = int(float(t.get("timestamp") or 0))
+        except (TypeError, ValueError):
+            ts = 0
+        if ts >= since_ts:
+            out.append(t)
+    return out
+
+
+def get_my_orders() -> list[dict]:
+    """Fetch my currently-open orders."""
+    client = _get_client()
+    resp = retry_with_backoff(
+        lambda: client.get_orders(),
+        retries=RETRIES, backoff_ms=BACKOFF_MS,
+    )
+    return resp if isinstance(resp, list) else []

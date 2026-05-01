@@ -1,0 +1,70 @@
+{
+ "task_id": "LIVE_CARD_PNL_SIGN_REGRESSION_001",
+ "status": "ACTIVE",
+ "priority": "HIGH",
+ "type": "runtime_truth_fix",
+ "goal": "Fix the live card unrealized PnL sign regression by ensuring the running dashboard_server.py process is using the corrected held-contract math, then re-verify the LIVE card against current runtime output.",
+ "current_proven_state": [
+ "On-disk dashboard_server.py already contains the corrected unified held-contract formula in _stream_positions_mark(): unrealized_pnl_usd = (current_price - entry_px) * qty with no BUY_NO sign branch.",
+ "The running localhost:8900 dashboard_server.py process was not restarted after BASEBALL_POSITION_SEMANTICS_INCIDENT_001.",
+ "Live SSE proof captured CIN/MIA with current_price=0.53 and live_equity=48.83, but unrealized_pnl_usd=+1.1701.",
+ "Math proves that +1.1701 matches the old incorrect BUY_NO formula: (entry_px - current_price) * qty.",
+ "Therefore the current live regression is caused by stale in-memory server code, not a new on-disk code defect."
+ ],
+ "required_outcome": [
+ "Restart or otherwise activate the current dashboard_server.py runtime so localhost:8900 serves the corrected on-disk code.",
+ "Re-verify that LIVE card unrealized PnL sign matches held-contract math.",
+ "Do not redesign the dashboard.",
+ "Do not widen scope.",
+ "Do not change strategy/model logic."
+ ],
+ "allowed_files": [
+ "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+ "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html only if strictly necessary for verification aid",
+ "BOT_BRIDGE task/result/review files"
+ ],
+ "allowed_runtime_surfaces": [
+ "http://localhost:8900/api/stream/state",
+ "http://localhost:8900/api/state",
+ "http://localhost:8900/api/trades?limit=60",
+ "live dashboard behavior at http://localhost:8900",
+ "read-only runtime/log/process inspection"
+ ],
+ "out_of_scope": [
+ "No redesign of LIVE cards",
+ "No new semantics pass",
+ "No execution/risk/model changes",
+ "No broad git reset",
+ "No unrelated runtime cleanup"
+ ],
+ "before_doing_anything_reply_with_only": [
+ "1. whether this is confirmed runtime-staleness or still needs re-proof",
+ "2. exact runtime/process surfaces you will inspect",
+ "3. whether you expect runtime-only change or code change"
+ ],
+ "deliverables": [
+ "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_LIVE_CARD_PNL_SIGN_REGRESSION_001.json",
+ "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_LIVE_CARD_PNL_SIGN_REGRESSION_001.md",
+ "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_LIVE_CARD_PNL_SIGN_REGRESSION_001.json",
+ "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\07_REVIEWS\\PROVISIONAL_REVIEW_LIVE_CARD_PNL_SIGN_REGRESSION_001.md"
+ ],
+ "acceptance_criteria": [
+ "localhost:8900 is confirmed to be serving the corrected dashboard_server.py runtime",
+ "a live SSE sample shows unrealized_pnl_usd consistent with current_price, entry_px, and qty",
+ "LIVE card unrealized sign matches live_equity - committed capital",
+ "no new truth regression is introduced"
+ ],
+ "proof_of_work_rules": [
+ "Include one exact before/after runtime proof sample",
+ "State whether the fix was runtime-only or code-plus-runtime",
+ "Include the exact result/review file paths",
+ "Do not just summarize"
+ ],
+ "final_reply_format": [
+ "1. final status: VERIFIED | PARTIAL | BLOCKED",
+ "2. whether runtime restart/activation was required",
+ "3. one before/after proof summary",
+ "4. any mismatch found",
+ "5. exact result/review file paths"
+ ]
+}

@@ -1,0 +1,16 @@
+{
+  "task_id": "LIVE_SESSION_VERIFY_002",
+  "mode": "live_verification_only",
+  "runtime_target": "http://localhost:8900",
+  "rules": [
+    "do_not_change_production_code_unless_hard_failure_proven",
+    "do_not_redesign_anything",
+    "do_not_widen_scope"
+  ],
+  "verification_goals": [
+    "live_game_card_progression",
+    "live_market_progression",
+    "position_math_sanity_if_new_paper_trade_opens",
+    "truth_source_sanity"
+  ]
+}

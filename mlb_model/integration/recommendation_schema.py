@@ -65,11 +65,15 @@ class Recommendation:
     action: ACTION              # "BUY_YES" | "BUY_NO" | "NO_TRADE"
     size_tier: SIZE_TIER        # "normal" (edge≥0.05) | "strong" (edge≥0.08) | "none"
     size_mult: float            # position size multiplier (1.0 = normal, 1.5 = strong)
+    tp_price: float | None = None  # take-profit price (if model-issued)
+    sl_price: float | None = None  # stop-loss price (if model-issued)
+    recommended_size_dollars: float | None = None  # model-recommended position size in USD
+    recommended_size_units: float | None = None    # model-recommended position size in units
 
     # ── Model metadata ────────────────────────────────────────────────────────
-    model_version: str          # e.g. "mlb_winprob_v1_lgbm"
-    data_quality: float         # 0-1 confidence in feature completeness
-    confidence: float           # normalized 0-1 (derived from edge and quality)
+    model_version: str = "mlb_winprob_v1"  # e.g. "mlb_winprob_v1_lgbm"
+    data_quality: float = 0.0   # 0-1 confidence in feature completeness
+    confidence: float = 0.0     # normalized 0-1 (derived from edge and quality)
     reasons: list[str] = field(default_factory=list)
 
     # ── Game state snapshot ───────────────────────────────────────────────────
@@ -112,6 +116,10 @@ class Recommendation:
             "action": self.action,
             "size_tier": self.size_tier,
             "size_mult": self.size_mult,
+            "tp_price": self.tp_price,
+            "sl_price": self.sl_price,
+            "recommended_size_dollars": self.recommended_size_dollars,
+            "recommended_size_units": self.recommended_size_units,
             "model_version": self.model_version,
             "data_quality": self.data_quality,
             "confidence": self.confidence,

@@ -1,0 +1,89 @@
+{
+  "task_id": "DASHBOARD_TRUTH_FIXES_001",
+  "title": "Fix three dashboard truth defects found in DASHBOARD_TRUTH_REVERIFY_001",
+  "priority": "HIGH",
+  "subsystem": "dashboard",
+  "prerequisite_task": "DASHBOARD_TRUTH_REVERIFY_001 — CHANGES_REQUESTED 2026-04-10",
+  "objective": "Fix exactly three defects in dashboard.html identified by the reverify audit. No other files. No scope expansion.",
+
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+
+  "do_not_touch": [
+    "dashboard_server.py — all three fixes are UI-only in dashboard.html",
+    "bot_core.py",
+    "core/risk.py",
+    "core/paper_exec.py",
+    "core/model_bridge.py",
+    "launch_all.py",
+    ".env",
+    "trades_sports.db",
+    "Any file not listed in allowed_files"
+  ],
+
+  "fixes": [
+    {
+      "fix_id": "FIX-1",
+      "severity": "FAIL",
+      "area": "Positions tab Realized P&L",
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+      "target_lines": "1342-1351",
+      "problem": "renderPositionsTab computes todayRealized by summing sliced/visible closed trades in the current display window, producing an arbitrary partial sum instead of total realized P&L. UI shows +$43.62 while true realized is +$405.89.",
+      "fix": "Replace the closed-slice reduction with the authoritative value already available in the API response: use /api/state pnl.realized or /api/bankroll net_pnl. If the intent is to show a recent/rolling metric only, relabel the tile clearly (e.g. 'Recent P&L') so it is not confused with lifetime realized P&L.",
+      "constraint": "Do not change the data source for any other PnL display area. Only fix the Positions tab tile that is mis-computing this value."
+    },
+    {
+      "fix_id": "FIX-2",
+      "severity": "FAIL",
+      "area": "mark_source not displayed on position cards",
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+      "target_lines": "1021-1031 and 906-982",
+      "problem": "buildUnifiedPositionCards receives mark_source on position objects from the backend SSE stream but never renders it in the card UI. The source chip shows trade source (model_bridge) only, not mark source (stream / rest_fallback / poll_fallback). Operator cannot see whether card pricing is live or stale-fallback.",
+      "fix": "Add a small mark_source indicator to the card metadata row or stale badge area. When mark_source is 'rest_fallback' or 'poll_fallback', display a visible indicator (e.g. a chip or badge labeled 'REST' or 'POLL'). When mark_source is 'stream', it can be subtle or omitted if space is tight. Do not remove the existing trade-source chip.",
+      "constraint": "Do not alter card layout for any field other than adding this indicator. Keep it compact."
+    },
+    {
+      "fix_id": "FIX-3",
+      "severity": "MEDIUM",
+      "area": "R25 tile sublabel shows 0 trades",
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+      "target_lines": "~683",
+      "problem": "UI reads s.total_closed ?? 0 for the R25 tile sublabel, but /api/state does not expose total_closed — it exposes total_trades and r25.sample_size. Result: sublabel always shows '0 trades'.",
+      "fix": "Replace s.total_closed with s.r25?.sample_size for the sample-size sublabel. If the intent is to show total closed trades ever, use s.total_trades instead (confirm which is more meaningful for the operator context).",
+      "constraint": "Only change this one field reference. Do not alter the r25 win-rate display or any other r25 field."
+    }
+  ],
+
+  "deliverables": [
+    "Exact lines changed for each of the three fixes",
+    "Before/after for the Positions tab realized P&L value (confirm it now reads from /api/state or /api/bankroll)",
+    "Before/after for mark_source display (confirm it renders rest_fallback/poll_fallback indicator)",
+    "Before/after for R25 sublabel (confirm it no longer shows 0 when trades exist)",
+    "Confirmation that no other files were touched",
+    "Confirmation that existing open-positions panel, bankroll strip, r25 win-rate, and game feed are unaffected"
+  ],
+
+  "acceptance_criteria": [
+    "Positions tab Realized P&L tile reads authoritative value from /api/state or /api/bankroll — not a closed-trade slice sum",
+    "mark_source chip or badge appears on position cards and shows rest_fallback/poll_fallback distinctly from stream",
+    "R25 tile sublabel shows a non-zero sample count when trades exist",
+    "Only dashboard.html was modified",
+    "No regression to: open-positions count, bankroll strip, r25 win-rate percentage, game feed",
+    "Result written to 06_OUTBOX_FROM_WORKER as RESULT_DASHBOARD_TRUTH_FIXES_001.json"
+  ],
+
+  "verification": [
+    "Read /api/bankroll and confirm UI Positions tab now shows the same net_pnl value",
+    "Read /api/state and confirm r25 sublabel now shows r25.sample_size (or total_trades) rather than 0",
+    "Confirm mark_source field is present in SSE payload and rendered on position cards",
+    "Confirm no other tiles or panels changed values unexpectedly"
+  ],
+
+  "rollback": "Revert dashboard.html only. No runtime restart required — dashboard.html is served statically from the running server.",
+
+  "restart_required": false,
+  "restart_note": "dashboard.html is served as a static file. Browser refresh is sufficient to pick up changes after the file is saved.",
+
+  "status": "OPEN"
+}

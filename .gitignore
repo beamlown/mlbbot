@@ -24,10 +24,11 @@ env/
 # Node
 node_modules/
 
-# Runtime state — everything under any `runtime/` dir is ephemeral
-# (pidfiles, per-session state, order-book snapshots, market dumps).
-runtime/
-**/runtime/
+# Runtime state
+runtime/bot.pid
+runtime/launcher.pid
+runtime/state.json
+runtime/ob_snapshots/
 
 # Databases
 *.db
@@ -47,7 +48,3 @@ desktop.ini
 .vscode/
 .idea/
 *.swp
-
-# Control plane local state (DB + per-run logs)
-control_plane/data/
-

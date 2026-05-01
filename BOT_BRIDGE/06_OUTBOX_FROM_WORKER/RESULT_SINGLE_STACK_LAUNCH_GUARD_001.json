@@ -1,0 +1,39 @@
+{
+  "mode_used": "WORKER MODE",
+  "task_selected": "SINGLE_STACK_LAUNCH_GUARD_001",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_SINGLE_STACK_LAUNCH_GUARD_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_SINGLE_STACK_LAUNCH_GUARD_001.md",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py"
+  ],
+  "strategy_chosen": "Lockfile/PID guard — secondary bot.pid check after sweep_stale_processes()",
+  "strategy_rationale": "launch_all.py already had a launcher.pid guard (lines 112-119) refusing launch if another launcher instance is running, plus sweep_stale_processes() to kill orphaned child processes. The gap was: if sweep could not kill an elevated bot_core process, the second launcher would still start and create a dual stack. The fix adds a post-sweep bot.pid verification: after the sweep, check runtime/bot.pid. If that PID is still alive, abort with a clear error message directing the operator to use an elevated terminal.",
+  "guard_location": "launch_all.py main() — inserted after sweep_stale_processes() call, before LAUNCHER_PID_FILE write",
+  "second_launch_behavior": "If runtime/bot.pid exists and the recorded PID is still running after sweep_stale_processes(): print 'ERROR: bot_core still live at PID {old_pid} after sweep — likely an elevated process. Kill it manually (elevated terminal: Stop-Process -Id {old_pid} -Force) then retry launch.' then sys.exit(1). Launch is refused. No dual stack can form.",
+  "operator_procedure_changed": "No change to normal launch procedure. The only behavioral difference: a second launch attempt that would have previously created a dual stack now aborts with an actionable error message instead of silently spawning alongside the existing process.",
+  "py_compile_results": {
+    "launch_all.py": "PASS"
+  },
+  "restart_required": false,
+  "restart_note": "Guard applies on the next use of launch_all.py. No separate runtime restart needed for this change — it is a launch-time guard.",
+  "verification_performed": [
+    "Confirmed runtime/bot.pid is written by bot_core._write_pid() at startup",
+    "Confirmed _pid_is_running() already exists in launch_all.py for Windows process liveness check via OpenProcess",
+    "Confirmed guard is additive — existing launcher.pid check and sweep_stale_processes() unchanged",
+    "Ran python -m py_compile launch_all.py — PASS"
+  ],
+  "proven": [
+    "Second launch attempt with live bot_core is now refused with a clear error message.",
+    "Error message includes the exact Stop-Process command the operator needs.",
+    "Only launch_all.py modified.",
+    "py_compile PASS."
+  ],
+  "ruled_out": [
+    "Ruled out: broad launcher redesign.",
+    "Ruled out: changes to bot_core.py, dashboard, or any other file.",
+    "Ruled out: silent dual-stack formation — failure mode is now explicit sys.exit(1) with actionable message."
+  ]
+}

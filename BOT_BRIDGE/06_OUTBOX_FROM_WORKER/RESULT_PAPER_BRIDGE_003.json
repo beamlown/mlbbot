@@ -1,0 +1,30 @@
+{
+  "task_id": "PAPER_BRIDGE_003",
+  "status": "done",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py"
+  ],
+  "kill_switch_status": "ENABLE_MODEL_BRIDGE = True — confirmed active",
+  "gate_reject_lines": [
+    "2026-04-04 18:05:11,105 [INFO] core.model_bridge: BRIDGE GATE REJECT [rec_age] slug=mlb-sd-bos-2026-04-04 reason=age=175.1s",
+    "2026-04-04 18:05:11,105 [INFO] core.model_bridge: BRIDGE GATE REJECT [rec_age] slug=mlb-bal-pit-2026-04-04 reason=age=265.0s",
+    "2026-04-04 18:05:11,105 [INFO] core.model_bridge: BRIDGE GATE REJECT [rec_age] slug=mlb-mil-kc-2026-04-03 reason=age=6827.4s",
+    "2026-04-04 18:05:11,105 [INFO] core.model_bridge: BRIDGE GATE REJECT [rec_age] slug=mlb-tor-cws-2026-04-04 reason=age=7786.0s",
+    "2026-04-04 18:05:11,105 [INFO] core.model_bridge: BRIDGE GATE REJECT [rec_age] slug=mlb-lad-wsh-2026-04-04 reason=age=8956.0s"
+  ],
+  "gate_pass_lines": "none observed in this window",
+  "model_bridge_position": "none — no gate pass in this window",
+  "existing_trades_unaffected": "yes",
+  "result": [
+    "ENABLE_MODEL_BRIDGE was flipped to True and BRIDGE DISABLED lines were gone during the run.",
+    "Bridge produced expected BRIDGE GATE REJECT lines with explicit reasons; observed failures were stale recommendation age.",
+    "No bridge crash or unhandled exception occurred; bot continued running its normal paper loop and runtime/state.json remained valid.",
+    "No BRIDGE GATE PASS occurred during the observation window, so no source=model_bridge position was created."
+  ],
+  "risks": [
+    "A non-fatal startup log appeared from db migration path: duplicate column name: source. Bot continued normally, but db migration logging could be made quieter in a later cleanup task.",
+    "No qualifying fresh live recommendation existed during the verification window, so source=model_bridge creation was not observed live.",
+    "Process host terminated the run with SIGKILL after observation windows, so only the captured logs above are included."
+  ],
+  "next_recommended_task": "PAPER_BRIDGE_004 — clean up duplicate-column migration logging and/or run another live verification window when fresh same-day actionable recommendations are present."
+}

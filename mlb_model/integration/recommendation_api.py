@@ -82,22 +82,6 @@ def _get_pregame_prob_for_game(home_team: str, away_team: str, date: str) -> flo
     return 0.54
 
 
-def _suppress_confidence_for_extreme_prices(confidence: float, ask_yes: float, ask_no: float) -> float:
-    """
-    Suppress confidence when market prices are near 0 or 1.
-    Extreme prices indicate high market certainty; our model edge becomes less meaningful.
-    """
-    EXTREME_THRESHOLD = 0.05  # prices < 5% or > 95%
-    SUPPRESSION_FACTOR = 0.7  # reduce confidence by 30% when either side is extreme
-
-    if ask_yes is not None and (ask_yes < EXTREME_THRESHOLD or ask_yes > 1.0 - EXTREME_THRESHOLD):
-        confidence *= SUPPRESSION_FACTOR
-    if ask_no is not None and (ask_no < EXTREME_THRESHOLD or ask_no > 1.0 - EXTREME_THRESHOLD):
-        confidence *= SUPPRESSION_FACTOR
-
-    return max(0.0, min(1.0, confidence))
-
-
 def generate_recommendation_for_game(
     home_team: str,
     away_team: str,
@@ -117,6 +101,17 @@ def generate_recommendation_for_game(
     from sports.mlb.winprob_inference import infer_for_team, is_loaded
     from sports.mlb.market_state_stream import get_market_state, compute_edge
     from sports.mlb.team_normalizer import normalize
+    from sports.mlb.pregame_prior_live import get_live_pregame_prior
+    from sports.mlb.pitcher_quality_live import lookup_pitcher_quality
+    from sports.mlb.park_factor_live import lookup_park_factor
+    from sports.mlb.batter_quality_live import lookup_batter_xwoba, lookup_batters_avg_xwoba
+    from sports.mlb.lineup_live import fetch_live_lineup, LineupError
+    from sports.mlb.reliever_quality_live import lookup_reliever_quality
+    from sports.mlb.bullpen_quality_live import lookup_bullpen_quality
+    from sports.mlb.leverage_index_live import lookup_leverage_index
+    from sports.mlb.weather_live import lookup_weather_for_game
+    from sports.mlb.mlb_game_pk_resolver import resolve_game_pk
+    from datetime import date as _date
 
     ts = _now_iso()
 
@@ -152,11 +147,117 @@ def generate_recommendation_for_game(
         return _no_trade("registry_not_live")
 
     # Pregame prior
-    pregame_prob = _get_pregame_prob_for_game(home_team, away_team, snap.date)
+    try:
+        _gd = _date.fromisoformat(snap.date)
+    except Exception:
+        _gd = _date.today()
+    prior_result = get_live_pregame_prior(normalize(home_team), normalize(away_team), _gd)
+    pregame_prob = prior_result.home_prob
+    pregame_prior_source = prior_result.source
+
+    # Resolve MLB Stats API game_pk (ESPN IDs don't map to MLBAM IDs; we need
+    # MLB Stats API game_pk so lineup_live returns MLBAM pitcher/batter IDs that
+    # match pitcher_quality.parquet / batter_quality.parquet).
+    mlb_game_pk = resolve_game_pk(normalize(home_team), normalize(away_team), _gd)
+    lineup_snap = None
+    if mlb_game_pk:
+        try:
+            lineup_snap = fetch_live_lineup(mlb_game_pk)
+        except (LineupError, Exception) as _e:
+            logger.warning("lineup fetch failed for mlb_game_pk=%s: %s", mlb_game_pk, _e)
+
+    # Pick MLBAM pitcher IDs for each side (starter from the day's boxscore).
+    # Fall back to ESPN's snap.home_pitcher_id if MLB Stats API didn't populate.
+    if lineup_snap is not None:
+        mlb_home_pid = lineup_snap.home_starter_id or lineup_snap.home_current_pitcher_id
+        mlb_away_pid = lineup_snap.away_starter_id or lineup_snap.away_current_pitcher_id
+        mlb_home_cur = lineup_snap.home_current_pitcher_id
+        mlb_away_cur = lineup_snap.away_current_pitcher_id
+    else:
+        mlb_home_pid = mlb_home_cur = snap.home_pitcher_id
+        mlb_away_pid = mlb_away_cur = snap.away_pitcher_id
 
     # Model inference
+    sp_home = lookup_pitcher_quality(str(mlb_home_pid), _gd)
+    sp_away = lookup_pitcher_quality(str(mlb_away_pid), _gd)
+    park_id = getattr(snap, "venue_id", None) or getattr(snap, "park_id", None) or "unknown"
+    park_factor = lookup_park_factor(str(park_id), _gd.year)
+    phase1_extras = {
+        "home_sp_quality": sp_home.sp_quality,
+        "away_sp_quality": sp_away.sp_quality,
+        "home_sp_recent_form": sp_home.sp_recent_form,
+        "away_sp_recent_form": sp_away.sp_recent_form,
+        "park_run_factor": park_factor,
+        "pregame_prior_source": pregame_prior_source,
+        "home_sp_imputed": sp_home.imputed,
+        "away_sp_imputed": sp_away.imputed,
+    }
+
+    # Phase-2: batter quality + lineup — reuses lineup_snap from above
+
+    if lineup_snap is not None:
+        cur_batter = lookup_batter_xwoba(str(lineup_snap.current_batter_id), _gd)
+        if snap.inning_half == 0:
+            lineup_ids = lineup_snap.away_lineup
+        else:
+            lineup_ids = lineup_snap.home_lineup
+        pos = lineup_snap.current_lineup_position
+        next3_ids = []
+        if lineup_ids and pos > 0:
+            for i in range(1, 4):
+                idx = (pos - 1 + i) % len(lineup_ids)
+                next3_ids.append(lineup_ids[idx])
+        next3_avg = lookup_batters_avg_xwoba(next3_ids, _gd) if next3_ids else 100.0
+        lineup_avg = lookup_batters_avg_xwoba(lineup_ids, _gd) if lineup_ids else 100.0
+        stand = lineup_snap.current_batter_stand
+        throws = lineup_snap.current_pitcher_throws
+        if stand == "S":
+            platoon = 1.0
+        elif (stand == "L" and throws == "R") or (stand == "R" and throws == "L"):
+            platoon = 1.0
+        else:
+            platoon = 0.0
+        p2_imputed = cur_batter.imputed
+        phase2_extras = {
+            "current_batter_xwoba": cur_batter.batter_xwoba,
+            "next3_avg_xwoba": next3_avg,
+            "lineup_avg_xwoba": lineup_avg,
+            "current_batter_platoon_advantage": platoon,
+            "current_batter_imputed": p2_imputed,
+        }
+    else:
+        phase2_extras = {
+            "current_batter_xwoba": 100.0, "next3_avg_xwoba": 100.0,
+            "lineup_avg_xwoba": 100.0, "current_batter_platoon_advantage": 0.0,
+            "current_batter_imputed": True,
+        }
+        p2_imputed = True
+
+    # Phase-3: bullpen + leverage (use MLBAM current-pitcher IDs, not ESPN IDs)
+    home_rel = lookup_reliever_quality(str(mlb_home_cur), _gd) if snap.home_is_bullpen else None
+    away_rel = lookup_reliever_quality(str(mlb_away_cur), _gd) if snap.away_is_bullpen else None
+    phase3_extras = {
+        "home_reliever_quality": home_rel.reliever_quality if home_rel else phase1_extras["home_sp_quality"],
+        "away_reliever_quality": away_rel.reliever_quality if away_rel else phase1_extras["away_sp_quality"],
+        "home_bullpen_avg_quality": lookup_bullpen_quality(normalize(home_team), _gd),
+        "away_bullpen_avg_quality": lookup_bullpen_quality(normalize(away_team), _gd),
+        "leverage_index": lookup_leverage_index(
+            inning=snap.inning, outs=snap.outs,
+            base_state=snap.base_state, score_diff=snap.score_diff,
+        ),
+    }
+
+    # Phase-4: weather + extras
+    w = lookup_weather_for_game(str(getattr(snap, "game_id", "") or getattr(snap, "game_pk", "")))
+    phase4_extras = {
+        "wind_out_mph": w.wind_out_mph,
+        "temp_f": w.temp_f,
+        "is_roof_closed": 1 if w.is_roof_closed else 0,
+        "ghost_runner_on_2nd": 1 if (snap.inning > 9 and _gd.year >= 2020 and snap.outs == 0) else 0,
+    }
+
     try:
-        p_tracked, infer_result = infer_for_team(snap, tracked_team, pregame_prob)
+        p_tracked, infer_result = infer_for_team(snap, tracked_team, pregame_prob, phase1_extras, phase2_extras, phase3_extras, phase4_extras)
     except Exception as e:
         logger.warning("Inference failed for %s vs %s: %s", home_team, away_team, e)
         return _no_trade(f"inference_error:{e}")
@@ -184,33 +285,11 @@ def generate_recommendation_for_game(
         action_candidate = "NO_TRADE"
         edge_candidate = max(edge_yes, edge_no)
 
-    # Near-resolution suppressor: cap confidence at 0.0 and suppress trades
-    # when entry-side market price is near-zero (< 0.10)
-    near_resolution_suppressed = False
-    near_res_threshold = float(os.getenv("NEAR_RESOLUTION_PRICE_THRESHOLD", "0.10"))
-    if action_candidate == "BUY_YES":
-        if edges["p_cost_yes"] < near_res_threshold:
-            action_candidate = "NO_TRADE"
-            near_resolution_suppressed = True
-    elif action_candidate == "BUY_NO":
-        if edges["p_cost_no"] < near_res_threshold:
-            action_candidate = "NO_TRADE"
-            near_resolution_suppressed = True
-
     if action_candidate == "NO_TRADE":
         # Still build a full recommendation for shadow logging
         size_tier = "none"
         size_mult = 0.0
-        if near_resolution_suppressed:
-            # Include which side and price triggered the suppression
-            if edges["p_cost_yes"] < near_res_threshold:
-                gate_reasons = [f"near_resolution_suppressor:yes_price={edges['p_cost_yes']:.4f}<{near_res_threshold}"]
-            elif edges["p_cost_no"] < near_res_threshold:
-                gate_reasons = [f"near_resolution_suppressor:no_price={edges['p_cost_no']:.4f}<{near_res_threshold}"]
-            else:
-                gate_reasons = ["near_resolution_suppressor"]
-        else:
-            gate_reasons = [f"edge_too_small:yes={edge_yes:.4f},no={edge_no:.4f}"]
+        gate_reasons = [f"edge_too_small:yes={edge_yes:.4f},no={edge_no:.4f}"]
     else:
         gate_reasons = []
         strong_edge = float(os.getenv("STRONG_EDGE_THRESHOLD", "0.08"))
@@ -225,29 +304,100 @@ def generate_recommendation_for_game(
             size_tier = "none"
             size_mult = 0.0
 
-    # Build reasons list
+    # Build reasons list — grounded in the actual model feature vector
+    # (infer_result.features) so each line reflects data the model used.
     reasons = []
+    feat = infer_result.features
+    _BASE_NAMES = {
+        0: "empty", 1: "1st", 2: "2nd", 3: "3rd",
+        4: "1st&2nd", 5: "1st&3rd", 6: "2nd&3rd", 7: "loaded",
+    }
+
     if snap.score_diff != 0:
         leader = snap.home_team if snap.score_diff > 0 else snap.away_team
-        reasons.append(f"{leader} leads by {abs(snap.score_diff)}")
-    reasons.append(f"inning {snap.inning} {'bot' if snap.inning_half else 'top'}, {snap.outs} outs")
-    if snap.home_is_bullpen or snap.away_is_bullpen:
-        reasons.append("bullpen in game")
-    reasons.append(f"pregame_prior={pregame_prob:.3f}")
+        reasons.append(f"{leader} +{abs(snap.score_diff)}")
+    else:
+        reasons.append("tied")
+
+    half_word = "bot" if snap.inning_half else "top"
+    reasons.append(
+        f"inn {snap.inning}{half_word}, {snap.outs} out, bases {_BASE_NAMES.get(snap.base_state, '?')}"
+        f" (re={feat['base_state_value']:.1f})"
+    )
+
+    reasons.append(
+        f"progress={feat['game_progress']:.2f} late_w={feat['late_game']:.2f}"
+        + (" [late-tie-bot]" if feat.get('late_tie_bottom', 0) > 0 else "")
+    )
+
+    fav = snap.home_team if pregame_prob >= 0.5 else snap.away_team
+    reasons.append(
+        f"pregame: {fav} {max(pregame_prob, 1-pregame_prob):.0%} (elo_norm={feat['elo_diff_norm']:+.2f})"
+    )
+
+    pitcher_bits = []
+    if snap.home_pitch_count > 0 or snap.home_is_bullpen:
+        pitcher_bits.append(
+            f"H {snap.home_pitch_count}p tto{feat['home_tto']:.1f}"
+            + (" BP" if snap.home_is_bullpen else "")
+        )
+    if snap.away_pitch_count > 0 or snap.away_is_bullpen:
+        pitcher_bits.append(
+            f"A {snap.away_pitch_count}p tto{feat['away_tto']:.1f}"
+            + (" BP" if snap.away_is_bullpen else "")
+        )
+    if pitcher_bits:
+        reasons.append("pitchers: " + " | ".join(pitcher_bits))
+
+    reasons.append(
+        f"model: p_home={infer_result.p_home:.3f} (raw={infer_result.raw_prob:.3f},"
+        f" q={infer_result.data_quality:.2f})"
+    )
+
+    # Phase-1 enrichment in reasons
+    src_name = ["sharp", "elo", "default"][pregame_prior_source]
+    reasons.append(
+        f"prior: {src_name} | sp_diff={feat.get('sp_quality_diff', 0):+.0f} (FIP-)"
+        f" | park={feat.get('park_run_factor', 1.0):.2f}"
+    )
+    if sp_home.imputed or sp_away.imputed:
+        reasons.append(
+            f"sp_imputed: H={sp_home.imputed}/A={sp_away.imputed}"
+        )
+
+    # Phase-2 batter features in reasons
+    bxw = feat.get("current_batter_xwoba", 100)
+    n3 = feat.get("next3_avg_xwoba", 100)
+    plat = "+" if feat.get("current_batter_platoon_advantage", 0) else "-"
+    reasons.append(
+        f"batter: xwoba={bxw:.0f} next3={n3:.0f} platoon{plat}"
+    )
+    if p2_imputed:
+        reasons.append("batter_imputed")
+
+    # Phase-3 bullpen + leverage in reasons
+    hrq = feat.get("home_reliever_quality", 100)
+    arq = feat.get("away_reliever_quality", 100)
+    li = feat.get("leverage_index", 1.0)
+    reasons.append(f"pen: h={hrq:.0f} a={arq:.0f} | LI={li:.1f}")
+
+    # Phase-4 weather + extras
+    wm = feat.get("wind_out_mph", 0.0)
+    tf = feat.get("temp_f", 70.0)
+    roof = "closed" if feat.get("is_roof_closed", 1) else "open"
+    extras_flag = "EXTRAS" if feat.get("in_extras", 0) else ""
+    gr = "ghost" if feat.get("ghost_runner_on_2nd", 0) else ""
+    reasons.append(f"weather: wind={wm:+.0f}mph temp={tf:.0f}F roof={roof} {extras_flag} {gr}".rstrip())
+
     if gate_reasons:
         reasons.extend(gate_reasons[:3])
 
-    if action_candidate == "NO_TRADE" and near_resolution_suppressed:
-        confidence = 0.0
-    else:
-        max_spread = float(os.getenv("MAX_SPREAD", "0.035"))
-        spread_quality = 1.0 - (market.spread or 0.0) / max_spread if market.spread is not None else 0.8
-        spread_quality = max(0.0, min(1.0, spread_quality))
-        min_edge = float(os.getenv("MIN_EDGE_THRESHOLD", "0.05"))
-        edge_score = min(1.0, max(0.0, (edge_candidate - min_edge) / 0.10 + 0.5))
-        confidence = edge_score * infer_result.data_quality * spread_quality
-        confidence = _suppress_confidence_for_extreme_prices(confidence, market.ask_yes, market.ask_no)
-        confidence = round(confidence, 4)
+    max_spread = float(os.getenv("MAX_SPREAD", "0.035"))
+    spread_quality = 1.0 - (market.spread or 0.0) / max_spread if market.spread is not None else 0.8
+    spread_quality = max(0.0, min(1.0, spread_quality))
+    min_edge = float(os.getenv("MIN_EDGE_THRESHOLD", "0.05"))
+    edge_score = min(1.0, max(0.0, (edge_candidate - min_edge) / 0.10 + 0.5))
+    confidence = round(edge_score * infer_result.data_quality * spread_quality, 4)
 
     is_home = normalize(tracked_team) == normalize(home_team)
 
@@ -274,6 +424,10 @@ def generate_recommendation_for_game(
         action=action_candidate,
         size_tier=size_tier,
         size_mult=size_mult,
+        tp_price=getattr(infer_result, "tp_price", None),
+        sl_price=getattr(infer_result, "sl_price", None),
+        recommended_size_dollars=getattr(infer_result, "recommended_size_dollars", None),
+        recommended_size_units=getattr(infer_result, "recommended_size_units", None),
         model_version=infer_result.model_version,
         data_quality=infer_result.data_quality,
         confidence=confidence,
@@ -388,6 +542,8 @@ def _discover_mlb_markets() -> list[dict]:
         skipped_parse = 0
         skipped_not_live = 0
         skipped_dup_event = 0
+        skipped_future_scheduled = 0
+        future_scheduled_slugs: list[str] = []
         unparseable_examples: list[str] = []
 
         for event in events:
@@ -551,6 +707,18 @@ def _discover_mlb_markets() -> list[dict]:
                     continue
 
                 tracked_team, opponent = parsed
+
+                # Classify future-scheduled events (option b): skip registry check
+                # for events dated after today. Registry only holds today's games.
+                if game_date > today:
+                    skipped_future_scheduled += 1
+                    future_scheduled_slugs.append(event_slug)
+                    logger.debug(
+                        "Skip future_scheduled: event=%r date=%s parsed=(%s vs %s)",
+                        event_slug, game_date, tracked_team, opponent,
+                    )
+                    continue
+
                 tracked_team_registry = _registry_alias(tracked_team)
                 opponent_registry = _registry_alias(opponent)
 
@@ -575,23 +743,6 @@ def _discover_mlb_markets() -> list[dict]:
                     skipped_not_live += 1
                     logger.info(
                         "NOT-LIVE [not_live_status] event=%r  date=%s"
-                        "  parsed=(%s vs %s)"
-                        "  registry_match=%s@%s  status=%s  is_live=%s",
-                        event_slug, game_date,
-                        tracked_team, opponent,
-                        game_reg.away_team, game_reg.home_team,
-                        game_reg.status, game_reg.is_live,
-                    )
-                    continue
-
-                # Slug date guard: tomorrow's pre-created betting event must not
-                # attach to today's live game.  Both pass the date window and the
-                # team-name match, but game_date > today means this event is for a
-                # future game, not the one currently in progress.
-                if game_date > today:
-                    skipped_not_live += 1
-                    logger.info(
-                        "NOT-LIVE [future_dated_slug] event=%r  date=%s"
                         "  parsed=(%s vs %s)"
                         "  registry_match=%s@%s  status=%s  is_live=%s",
                         event_slug, game_date,
@@ -651,10 +802,13 @@ def _discover_mlb_markets() -> list[dict]:
         logger.info(
             "Discovery: %d live | skipped: %d non-mlb/date, %d closed, "
             "%d non-moneyline/no-keyword, %d unparseable, %d not-live, "
-            "%d duplicate_event_market",
+            "%d future_scheduled, %d duplicate_event_market",
             len(markets), skipped_non_mlb, skipped_closed,
-            skipped_keyword, skipped_parse, skipped_not_live, skipped_dup_event,
+            skipped_keyword, skipped_parse, skipped_not_live,
+            skipped_future_scheduled, skipped_dup_event,
         )
+        if future_scheduled_slugs:
+            logger.info("INFO future events: %s", future_scheduled_slugs)
         if unparseable_examples:
             logger.info("Unparseable market samples:\n%s", "\n".join(unparseable_examples))
         return markets

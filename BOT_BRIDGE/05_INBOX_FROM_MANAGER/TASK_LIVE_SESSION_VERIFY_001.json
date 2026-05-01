@@ -1,0 +1,17 @@
+{
+  "task_id": "LIVE_SESSION_VERIFY_001",
+  "mode": "verification_only",
+  "success_criteria": [
+    "live game card behavior proven during an actual live window",
+    "market and game data update coherently",
+    "equity and PnL remain mathematically sane",
+    "stale and fallback behavior is honest"
+  ],
+  "hard_failure": [
+    "contradictory live values",
+    "broken card math",
+    "shadow or debug source overriding main live truth",
+    "verified runtime mismatch causing misleading live display"
+  ],
+  "status": "in_progress"
+}

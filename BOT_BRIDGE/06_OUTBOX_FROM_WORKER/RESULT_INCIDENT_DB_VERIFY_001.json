@@ -1,0 +1,50 @@
+{
+  "task_id": "INCIDENT_DB_VERIFY_001",
+  "status": "done",
+  "verification_only": true,
+  "production_code_changed": false,
+  "cleanup_performed": false,
+  "db_verification": {
+    "exact_db_path": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db",
+    "unique_index_exists": false,
+    "index_name_expected": "idx_trades_one_open_per_slug"
+  },
+  "findings": {
+    "duplicate_open_rows_still_exist": true,
+    "duplicate_open_groups": {
+      "mlb-stl-det-2026-04-05": [101, 102]
+    },
+    "duplicate_rows_still_open": true,
+    "duplicate_rows_should_already_be_resolved": "not_proven",
+    "new_duplicates_after_containment": "not_observed_in_this_verification_window",
+    "api_state_matches_db_truth": false
+  },
+  "evidence": {
+    "db_open_rows": [
+      {"id": 101, "market_slug": "mlb-stl-det-2026-04-05", "status": "open", "entry_px": 0.43215, "qty": 115.700567, "source": "model_bridge"},
+      {"id": 102, "market_slug": "mlb-stl-det-2026-04-05", "status": "open", "entry_px": 0.43215, "qty": 115.700567, "source": "model_bridge"},
+      {"id": 113, "market_slug": "mlb-hou-oak-2026-04-05", "status": "open", "entry_px": 0.599985, "qty": 83.335417, "source": "model_bridge"}
+    ],
+    "db_open_row_count": 3,
+    "state_open_positions_count": 2,
+    "state_status_line": "loop=591 sport=baseball mode=conservative open=2 guard_block=140",
+    "duplicate_log_reference": [
+      "19:02:37 trade=111 and trade=112 on mlb-hou-oak-2026-04-05 BUY_YES @ 0.8341 before containment"
+    ],
+    "recent_closed_for_duplicate_slug": {
+      "mlb-stl-det-2026-04-05": []
+    }
+  },
+  "conclusions": [
+    "The remaining active stack is using the expected live DB file at C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db.",
+    "The expected unique open-slug protection index is absent from the live DB schema.",
+    "Duplicate open rows still exist for mlb-stl-det-2026-04-05 (ids 101 and 102), and both are still open.",
+    "No new duplicate pair was observed after containment during this verification window, but the verification window is limited.",
+    "Backend truth is still not fully aligned with /api/state because DB open rows count is 3 while /api/state currently reports 2 open positions."
+  ],
+  "cleanup_recommendation": {
+    "safe_row_cleanup_recommended": "conditional_yes",
+    "reason": "Duplicate open rows clearly still exist, but automatic cleanup should only happen under a dedicated approved rule for which row to keep and how to close/void extras without corrupting accounting.",
+    "not_done_here": true
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "task_id": "DASH_010",
+  "title": "Fix section title and badge count — 'Active Positions' confusion",
+  "objective": "The 'Active Positions' section title and its badge count (2) contradict the command bar 'Open: 0'. The badge counts all unified positions (open + shadow + resolved), while cmd-open only counts truly open bot positions. Users see two different numbers for what appears to be the same concept. Fix both.",
+  "allowed_files": ["dashboard.html"],
+  "do_not_touch": ["dashboard_server.py", "launch_all.py", "bot_core.py"],
+  "status": "QUEUED — DO NOT START. Wait for REVIEW_DASH_009.md Decision: APPROVED before executing.",
+  "queued_reason": "Same file as DASH_009 — activate only after DASH_009 is APPROVED",
+
+  "context": {
+    "symptom": "Command bar shows 'Open: 0' but 'Active Positions' badge shows '2'. Both are technically correct but count different things: cmd-open reads state.json open_positions (live bot state), pos-count reads unified.length (open + shadow + recently resolved). Side-by-side, they contradict each other.",
+    "line_refs": {
+      "section_title": "line 351 — <span class=\"section-title\">Active Positions</span>",
+      "pos_count_set": "line 796 — $('pos-count').textContent = unified.length;"
+    }
+  },
+
+  "deliverables": [
+    {
+      "label": "Fix A — rename section title",
+      "file": "dashboard.html",
+      "where": "line 351",
+      "change": "Change:\n  <span class=\"section-title\">Active Positions</span>\nTo:\n  <span class=\"section-title\">Positions</span>"
+    },
+    {
+      "label": "Fix B — badge counts only live positions",
+      "file": "dashboard.html",
+      "where": "renderUnifiedPositions() line ~796",
+      "change": "Change:\n  $('pos-count').textContent = unified.length;\nTo:\n  $('pos-count').textContent = enriched.length + shadowOnly.length;\n\nThis makes the badge reflect only open paper trades + shadow-only advisory positions — matching what cmd-open and kpi-open track. Resolved paper cards are still rendered below but are not counted in the badge."
+    }
+  ],
+
+  "acceptance_criteria": [
+    "Section header reads 'Positions' not 'Active Positions'",
+    "When there are 0 open trades and 0 shadow positions but 2 resolved trades showing, badge reads '0' not '2'",
+    "Badge increments correctly when a live open position exists",
+    "cmd-open and pos-count badge now agree when there are no shadow-only positions",
+    "Resolved position cards still render — they are not hidden, just not counted in the badge"
+  ],
+
+  "verification": [
+    "Reload dashboard. Section title should read 'Positions'.",
+    "With current state (0 open, 2 resolved), badge should show '0'.",
+    "Resolved cards should still be visible below.",
+    "No JS console errors."
+  ],
+
+  "rollback": "Revert dashboard.html only."
+}

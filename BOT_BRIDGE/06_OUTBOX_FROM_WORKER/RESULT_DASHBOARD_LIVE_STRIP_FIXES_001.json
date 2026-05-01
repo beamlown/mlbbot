@@ -1,0 +1,23 @@
+{
+  "task_id": "DASHBOARD_LIVE_STRIP_FIXES_001",
+  "decision": "IMPLEMENTED",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "commit": "7b33f18",
+  "fix1_committed_tile": {
+    "status": "DONE",
+    "detail": "Added id='live-committed' to the LIVE tab Capital Committed tile and bound it in renderState() alongside cash-committed."
+  },
+  "fix2_bankroll_mtm": {
+    "status": "DONE",
+    "detail": "Added module-level _availableCash, stored available_cash from state, and updated kpi-bankroll in applyStreamPositionsMark() to available_cash + live_equity_total."
+  },
+  "fix3_feed_status": {
+    "status": "DONE",
+    "detail": "Changed stale banner wording from a contradictory recency string to 'Market feed live · prices stale'."
+  },
+  "rollback": {
+    "method": "Revert sports_bot_v2/dashboard.html to the previous version, removing id='live-committed', removing _availableCash usage, restoring cost-basis bankroll display in SSE handler, and restoring prior stale banner wording."
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "task_id": "SESSION_PNL_TRUE_START_FIX_001",
+  "title": "Track true session PnL from actual session start, not last restart",
+  "priority": "MEDIUM",
+  "type": "surgical code fix",
+  "issued": "2026-04-10",
+  "subsystem": "dashboard visibility / session accounting",
+  "status": "ACTIVE",
+  "depends_on": "MARKET_COOLDOWN_PERSIST_001 (APPROVED)",
+  "context": {
+    "problem_statement": "Tonight's approved audit found that session PnL is under-counted because session_start_ts tracks the last restart, not the actual beginning of the trading session.",
+    "manager_intent": "Implement the smallest safe fix so session PnL aligns with the intended trading session start rather than restart timing."
+  },
+  "objective": "Make session PnL reflect the actual trading session start instead of simply the most recent restart timestamp.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py"
+  ],
+  "conditional_allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json path only through existing code if strictly required"
+  ],
+  "read_only_context_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260410.log",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db (SELECT only)"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py",
+    "Any file not listed above"
+  ],
+  "forbidden_actions": [
+    "Broad repo sweep",
+    "Read every file in the repo",
+    "Unrelated refactors",
+    "Restart processes",
+    "DB writes",
+    "Open new tasks"
+  ],
+  "required_work": [
+    "Inspect how session_start_ts is currently set and how session_pnl is computed",
+    "Implement the smallest safe change so session PnL tracks the intended trading session start rather than the last restart",
+    "Preserve current lifetime PnL behavior",
+    "Keep the patch local and minimal"
+  ],
+  "acceptance_criteria": [
+    "Session PnL no longer simply resets to the last restart timestamp",
+    "Lifetime PnL remains unchanged",
+    "No files outside allowed scope are modified",
+    "python -m py_compile bot_core.py passes if changed",
+    "python -m py_compile dashboard_server.py passes if changed"
+  ],
+  "verification_required": [
+    "Show the exact function/section changed",
+    "Explain old behavior vs new behavior",
+    "State how actual session start is determined after the patch",
+    "Run py_compile on each changed Python file",
+    "State whether restart is required for the fix to take effect"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_SESSION_PNL_TRUE_START_FIX_001.json"
+}

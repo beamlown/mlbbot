@@ -1,0 +1,82 @@
+{
+  "task_id": "SESSION_PNL_DASHBOARD_001",
+  "title": "Expose session P&L on dashboard — show today's performance separate from lifetime",
+  "priority": "MEDIUM",
+  "subsystem": "dashboard-accounting",
+  "status": "OPEN — ready for worker pickup",
+
+  "objective": "Surface session P&L (performance since last bot restart) on the dashboard so the operator can distinguish today's trading from lifetime history at a glance. Currently only lifetime realized P&L is shown. The session_start_ts already exists in bot_core.py as an in-memory global — it just needs to be written to state.json and then read and computed by dashboard_server.py.",
+
+  "context": "bot_core.py sets _session_start_ts = int(time.time()) at module load. This value is used internally by _session_loss_exceeded() but is never written to state.json or exposed via API. dashboard_server.py reads state.json for all bankroll fields. The fix is two-step: (1) write session_start_ts into state.json in bot_core.py _write_state(), and (2) have dashboard_server.py read that timestamp and compute session_pnl = SUM(pnl_usd WHERE ts_close >= session_start_ts) from the DB, then add session_pnl and session_start_ts to the /api/state bankroll block.",
+
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py"
+  ],
+
+  "do_not_touch": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\db.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db",
+    "Any file not listed in allowed_files above"
+  ],
+
+  "changes_required": {
+
+    "change_1_bot_core": {
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+      "instructions": [
+        "Read the file. Locate _write_state() — the function that writes runtime/state.json.",
+        "Find where the 'pnl' block is assembled inside _write_state().",
+        "Add session_start_ts to that block: 'session_start_ts': _session_start_ts",
+        "Do not change any other part of _write_state(). Do not change _session_start_ts initialization.",
+        "This is a one-line addition to the state dict. Nothing else changes."
+      ]
+    },
+
+    "change_2_dashboard_server": {
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+      "instructions": [
+        "Read the file. Locate the /api/state handler and the bankroll block assembly.",
+        "Find where state.json is read and bankroll fields are assembled for the response.",
+        "After reading session_start_ts from the state dict (default to 0 if missing), add a DB query: session_pnl = SELECT COALESCE(SUM(pnl_usd), 0) FROM trades WHERE status='closed' AND ts_close >= session_start_ts",
+        "Add two new fields to the bankroll block in the /api/state response: 'session_pnl': session_pnl and 'session_start_ts': session_start_ts",
+        "If session_start_ts is 0 or missing, session_pnl should return 0 gracefully — do not raise an error.",
+        "Also add session_pnl to the /api/bankroll response if that endpoint exists and has a net_pnl field, for consistency.",
+        "Use the same DB connection pattern already used in dashboard_server.py — do not introduce a new DB path."
+      ]
+    }
+  },
+
+  "acceptance_criteria": [
+    "bot_core.py _write_state() writes session_start_ts to state.json pnl block",
+    "dashboard_server.py /api/state bankroll block includes session_pnl and session_start_ts",
+    "session_pnl = SUM(pnl_usd WHERE closed AND ts_close >= session_start_ts)",
+    "session_start_ts missing from state.json returns session_pnl=0 gracefully, no crash",
+    "lifetime realized P&L field unchanged",
+    "python -m py_compile passes for both files",
+    "No other files modified"
+  ],
+
+  "verification": [
+    "Read state.json after a bot loop tick and confirm session_start_ts field is present in pnl block",
+    "Call GET /api/state and confirm bankroll block contains session_pnl and session_start_ts",
+    "Confirm session_pnl is <= net_pnl (session can't exceed lifetime)",
+    "Confirm session_pnl changes correctly if a trade closes during the session"
+  ],
+
+  "rollback": "Remove session_start_ts from _write_state() pnl block in bot_core.py. Remove session_pnl and session_start_ts reads from dashboard_server.py. Restart bot.",
+
+  "restart_required": true,
+  "restart_note": "bot_core.py change requires restart to begin writing session_start_ts to state.json.",
+
+  "deliverables": [
+    "RESULT_SESSION_PNL_DASHBOARD_001.json in 06_OUTBOX_FROM_WORKER",
+    "Exact lines changed in both files",
+    "Sample /api/state response snippet showing session_pnl and session_start_ts fields",
+    "py_compile confirmation for both files"
+  ]
+}

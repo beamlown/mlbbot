@@ -1,0 +1,65 @@
+{
+  "mode_used": "WORKER MODE",
+  "active_tasks_found": [
+    "MLB_DATA_INVENTORY_AUDIT_001",
+    "MLB_MODEL_INPUT_PATH_AUDIT_001"
+  ],
+  "task_selected": "MLB_CONFIDENCE_CALIBRATION_AUDIT_001",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\01_RULES\\WORKER_RULES.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_TASK_BOARD.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_STATUS.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_MLB_CONFIDENCE_CALIBRATION_AUDIT_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_MLB_CONFIDENCE_CALIBRATION_AUDIT_001.md",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\logs\\shadow_recommendations.jsonl"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_CONFIDENCE_CALIBRATION_AUDIT_001.json"
+  ],
+  "verification_performed": [
+    "Confirmed the task is enabled on the board",
+    "Confirmed the brief and handoff are present in 05_INBOX_FROM_MANAGER",
+    "Confirmed this remains paper-only / observation-mode work",
+    "Read the confidence generation path in recommendation_api.py",
+    "Read the bridge approval path in model_bridge.py",
+    "Read the shadow recommendation log sample",
+    "Ran narrow read-only trade-history queries against trades_sports.db to compute bucketed outcome performance",
+    "Recomputed confidence buckets with and without the known outlier set {183,184,185,316} to separate contamination from structural calibration failure"
+  ],
+  "restart_needed": "No",
+  "result_file_written": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_CONFIDENCE_CALIBRATION_AUDIT_001.json",
+  "calibration_summary": {
+    "confidence_generation_path": "confidence is computed in recommendation_api.py as edge_score * infer_result.data_quality * spread_quality, then passed through model_bridge.py with minimum-threshold and freshness filtering",
+    "historical_bucket_results_with_outliers": [
+      {"bucket": "<0.30", "n": 14, "pnl": 91.514944, "win_rate": 0.42857142857142855},
+      {"bucket": "0.30-0.40", "n": 95, "pnl": 830.3769950000001, "win_rate": 0.3473684210526316},
+      {"bucket": "0.40-0.50", "n": 44, "pnl": -66.57140500000001, "win_rate": 0.29545454545454547},
+      {"bucket": "0.50-0.55", "n": 11, "pnl": -33.229523, "win_rate": 0.18181818181818182},
+      {"bucket": "0.55-0.60", "n": 14, "pnl": 54.25731600000001, "win_rate": 0.14285714285714285},
+      {"bucket": "0.60-0.65", "n": 83, "pnl": -826.247153, "win_rate": 0.1686746987951807},
+      {"bucket": "0.65-0.70", "n": 3, "pnl": -21.081322, "win_rate": 0.0},
+      {"bucket": ">=0.70", "n": 7, "pnl": -120.146142, "win_rate": 0.14285714285714285}
+    ],
+    "historical_bucket_results_without_known_outliers": [
+      {"bucket": "<0.30", "n": 14, "pnl": 91.514944, "win_rate": 0.42857142857142855},
+      {"bucket": "0.30-0.40", "n": 91, "pnl": -64.87074399999999, "win_rate": 0.31868131868131866},
+      {"bucket": "0.40-0.50", "n": 44, "pnl": -66.57140500000001, "win_rate": 0.29545454545454547},
+      {"bucket": "0.50-0.55", "n": 11, "pnl": -33.229523, "win_rate": 0.18181818181818182},
+      {"bucket": "0.55-0.60", "n": 14, "pnl": 54.25731600000001, "win_rate": 0.14285714285714285},
+      {"bucket": "0.60-0.65", "n": 83, "pnl": -826.247153, "win_rate": 0.1686746987951807},
+      {"bucket": "0.65-0.70", "n": 3, "pnl": -21.081322, "win_rate": 0.0},
+      {"bucket": ">=0.70", "n": 7, "pnl": -120.146142, "win_rate": 0.14285714285714285}
+    ],
+    "verdict": "Confidence is not calibrated in a monotonic, usable way. It is not cleanly inverted across the whole range, but it is structurally unreliable and higher-confidence bands are materially bad in the historical sample."
+  },
+  "inversion_monotonicity_summary": {
+    "higher_confidence_predicts_better_outcomes": false,
+    "confidence_inverted": "Not cleanly or globally. The strongest apparent inversion in 0.30-0.40 is mostly an outlier artifact.",
+    "monotonicity": "Broken. Outcome quality does not improve as confidence rises; 0.60+ bands are especially poor.",
+    "usable_confidence_bands": "No robust usable confidence band is proven from this sample. The 0.30-0.40 bucket loses its apparent advantage once known outliers are removed, and the 0.60+ buckets remain deeply negative.",
+    "contamination_note": "Known outliers explain most of the raw low-confidence bucket strength, but even after removing them the confidence ladder still does not become healthy or monotonic."
+  },
+  "recommended_next_enabled_task": "MLB_NEAR_RESOLUTION_SANITY_AUDIT_001. This input-path audit already showed that market-price / near-resolution awareness is stronger in the post-model layer than in the model core, and this calibration audit showed confidence is structurally unreliable. The next enabled task should explain how near-dead markets can still become actionable despite the current signal/confidence stack."
+}

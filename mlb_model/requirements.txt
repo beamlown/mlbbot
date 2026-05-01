@@ -10,3 +10,4 @@ pyarrow>=13.0.0          # parquet I/O
 requests>=2.31.0
 python-dotenv>=1.0.0
 flask>=3.0.0             # recommendation API (Phase 2+)
+shap>=0.45

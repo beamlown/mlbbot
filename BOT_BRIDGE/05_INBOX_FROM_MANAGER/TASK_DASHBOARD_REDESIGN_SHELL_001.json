@@ -1,0 +1,89 @@
+{
+  "task_id": "DASHBOARD_REDESIGN_SHELL_001",
+  "title": "Dashboard redesign — shell, layout, tab navigation, default LIVE view",
+  "status": "HOLD_PENDING_EXECUTION_TRUTH",
+  "gate": "Do NOT begin until EXECUTION_HELD_SIDE_SEMANTICS_001 is APPROVED. Additionally, DASHBOARD_REDESIGN_ARCH_001 must be APPROVED and DASHBOARD_REDESIGN_SPEC_001.md must exist in 08_SHARED_CONTEXT before any coding begins.",
+  "phase": 1,
+  "depends_on": ["EXECUTION_HELD_SIDE_SEMANTICS_001", "DASHBOARD_REDESIGN_ARCH_001"],
+  "priority": 2,
+  "subsystem": "dashboard_shell",
+  "type": "implementation",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "do_not_touch": [
+    "dashboard_server.py",
+    "bot_core.py",
+    "core/risk.py",
+    "core/paper_exec.py",
+    "core/db.py",
+    "core/model_bridge.py",
+    "core/types.py",
+    "mlb_model/"
+  ],
+
+  "objective": "Implement the outer shell of the redesigned dashboard: dark premium layout, 5-tab navigation (LIVE, POSITIONS, GAMES, HISTORY, SYSTEM), default active tab = LIVE, responsive structure, CSS design tokens. Tab panels are empty placeholders at this phase. No business logic. No data binding. The goal is to establish the visual skeleton that subsequent phases fill in. All existing functionality is preserved behind the new shell by keeping the current JS/data logic intact but visually reorganized.",
+
+  "design_requirements": {
+    "color_scheme": "Dark theme: background #0d0f14 or similar near-black, accent #00d4ff or similar cold blue, muted borders, subtle card backgrounds",
+    "typography": "Clean monospace or system sans-serif. Bold for numbers. Muted for labels.",
+    "layout": "Full-height single-page app. Top command bar fixed. Tab nav below command bar. Tab content fills remaining height.",
+    "tab_nav": "5 tabs: LIVE (default), POSITIONS, GAMES, HISTORY, SYSTEM. Tab switching is pure JS, no page reload.",
+    "command_bar": "Persistent top strip showing: bankroll, open positions count, capital committed, win rate. Always visible regardless of active tab.",
+    "responsiveness": "Must work on mobile without horizontal scroll. Stack cards vertically on narrow screens.",
+    "animations": "Subtle tab transition only. No bounce, no slide. Opacity fade or instant switch acceptable. No CSS animations on data values.",
+    "no_flicker": "Tab panels use display:none / display:block (or CSS classes). No DOM destruction/recreation on tab switch."
+  },
+
+  "deliverables": [
+    {
+      "file": "dashboard.html",
+      "changes": [
+        "New CSS design tokens block (--color-bg, --color-surface, --color-accent, --color-text, --color-muted, --color-positive, --color-negative)",
+        "Top command bar section (always visible): bankroll, open count, capital committed, win rate — read from existing /api/state fields",
+        "Tab navigation bar with 5 tabs: LIVE, POSITIONS, GAMES, HISTORY, SYSTEM",
+        "5 tab panel containers (empty at this phase, to be filled by subsequent tasks): #tab-live, #tab-positions, #tab-games, #tab-history, #tab-system",
+        "Tab switching JS: clicking a tab shows its panel and hides others. Default: LIVE active.",
+        "Existing data-fetching JS (poll loops, SSE, renderTrades, buildUnifiedPositionCards etc.) preserved but may be temporarily invisible — do not delete any existing logic",
+        "Remove old layout wrappers that conflict with new shell (dead DOM only — keep all JS functions)"
+      ]
+    }
+  ],
+
+  "preflight_questions": [
+    "Read DASHBOARD_REDESIGN_SPEC_001.md — what is the exact tab list and default tab?",
+    "Read dashboard.html in full — what existing JS functions must be preserved?",
+    "What CSS classes currently drive the layout? Will they conflict with the new shell?",
+    "What does the command bar currently show? Does it already have the right fields?",
+    "Does dashboard_server.py need any changes to support the shell? (Answer should be: no)"
+  ],
+
+  "acceptance_criteria": [
+    "dashboard.html loads at http://localhost:8900 without JS errors",
+    "5 tabs visible: LIVE, POSITIONS, GAMES, HISTORY, SYSTEM",
+    "Default tab on load is LIVE",
+    "Tab switching works — clicking HISTORY shows only HISTORY content, etc.",
+    "Command bar is visible on all tabs and shows bankroll + win rate (even if data is stale at this phase)",
+    "No existing JS functions deleted — all previous data logic preserved in source",
+    "No horizontal scroll on 390px-wide viewport (iPhone)",
+    "No CSS animations on numeric data values",
+    "dashboard_server.py not modified — confirmed by diff"
+  ],
+
+  "proof_of_work": [
+    "Submit screenshot or curl output showing dashboard loads without errors",
+    "Confirm tab switching works with a description of what each tab currently shows (empty panels labeled is fine)",
+    "Confirm dashboard_server.py diff is empty",
+    "Confirm all previous JS render functions still exist in source (grep for buildUnifiedPositionCards, renderTrades, updateState)"
+  ],
+
+  "out_of_scope": [
+    "Populating tab content with real data (that is phases 2-3)",
+    "Any server-side changes",
+    "Any truth model changes",
+    "Any changes to data fetching or SSE logic",
+    "Any strategy/model changes"
+  ],
+
+  "rollback": "Revert dashboard.html only. No server changes to revert."
+}

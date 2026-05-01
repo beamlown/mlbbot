@@ -1,0 +1,39 @@
+{
+  "task_id": "INCIDENT_PROCESS_DB_001",
+  "title": "Incident debug / containment — duplicate process topology and DB enforcement",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "incident_debug",
+  "allowed_files": [],
+  "do_not_touch": [
+    "dashboard.html",
+    "dashboard_server.py",
+    "launch_all.py",
+    "bot_core.py",
+    "core/",
+    ".env",
+    "mlb_model/"
+  ],
+  "objective": "Narrow incident debug and containment task. First preserve evidence. Then verify duplicate process topology, DB path usage, unique index presence, bridge insert path usage, launcher responsibility, and whether safe containment can reduce the live stack to one valid topology. No production code changes allowed unless exact minimal fix is proven necessary, in which case stop and report BLOCKED.",
+  "phases": {
+    "phase_1_containment": [
+      "capture evidence first",
+      "identify duplicate stack processes",
+      "report intended single valid process topology",
+      "if safe, stop duplicate extra stack processes so one valid stack remains",
+      "preserve logs and evidence"
+    ],
+    "phase_2_root_cause": [
+      "verify exact DB file path each active bot process is using",
+      "verify whether trades table has expected unique open-slug index",
+      "verify whether insert_open_trade is the path used for bridge-created trades",
+      "verify whether launch_all.py is responsible for duplicate spawning",
+      "verify whether bot_core.py instances belong to one launcher or multiple launchers"
+    ]
+  },
+  "deliverables": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_INCIDENT_PROCESS_DB_001.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_INCIDENT_PROCESS_DB_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\07_REVIEWS\\PROVISIONAL_REVIEW_INCIDENT_PROCESS_DB_001.md"
+  ]
+}

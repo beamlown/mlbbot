@@ -1,0 +1,24 @@
+{
+  "task_id": "DASH_002",
+  "status": "done",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "summary": [
+    "Compacted unified position cards by removing probability track bars, sparklines, and reasons rows.",
+    "Reduced pos-stats to exactly three boxes: Entry, Current, Confidence.",
+    "Removed duplicate Live PnL display from the stat grid while keeping the large PnL display in the badge column."
+  ],
+  "commands_run": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2",
+    "python dashboard_server.py"
+  ],
+  "result": [
+    "Dashboard server started successfully after the card compaction changes.",
+    "Position card template no longer renders probTrack, sparkline, or reasons tags, and PnL appears only once per card."
+  ],
+  "risks": [
+    "Browser-side visual confirmation was not performed from here; verification was limited to successful server startup and template inspection."
+  ],
+  "next_recommended_task": "DASH_003"
+}

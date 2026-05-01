@@ -1,0 +1,19 @@
+{
+  "task_id": "DASH_013",
+  "status": "done",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "summary": [
+    "Updated renderShadowFeed() to gate ticker inning text on LIVE status using gameStatusChip().",
+    "Pre-game shadow ticker rows no longer show misleading inning suffixes from warmup data.",
+    "Live in-game shadow ticker rows still retain inning display."
+  ],
+  "notes": [
+    "Scope remained limited to dashboard.html only.",
+    "No server-side files were touched."
+  ]
+}

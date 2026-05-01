@@ -1,0 +1,50 @@
+{
+  "status": "ok",
+  "summary": "Paper accounting audit complete. 4 invariants CONFIRMED, 1 invariant FIXED. Dashboard mark-to-market now uses held-side bid price consistently.",
+  "files_changed": [
+    "C:\Users\johnny\Desktop\sports_bot_v2\dashboard_server.py"
+  ],
+  "changes": [
+    {
+      "file": "dashboard_server.py",
+      "lines": "474-483",
+      "invariant": "I2 (live_equity uses held-side bid price)",
+      "description": "Fixed mark-to-market calculation to use best_bid instead of current_price. Moved live_equity accumulation inside best_bid availability check to ensure consistency with unrealized_pnl.",
+      "summary": "Use best_bid for mark-to-market; only accumulate when best_bid available"
+    }
+  ],
+  "audit_results": {
+    "I1_available_cash": {
+      "status": "CONFIRMED",
+      "formula": "available_cash = bankroll_usd - total_committed_usd",
+      "notes": "Formula is correct and implemented consistently"
+    },
+    "I2_live_equity_bid": {
+      "status": "FIXED",
+      "formula": "live_equity_usd = qty * held_side_bid_price",
+      "issue": "Used current_price instead of best_bid; accumulated even when best_bid was None",
+      "fix_applied": "Use best_bid consistently; only accumulate when best_bid available"
+    },
+    "I3_session_pnl_anchor": {
+      "status": "CONFIRMED",
+      "formula": "session_pnl = sum(pnl_usd where ts_close >= session_start_ts)",
+      "verified": "Query sum -91.1263 matches state.json realized -91.1263"
+    },
+    "I4_lifetime_realized_pnl": {
+      "status": "CONFIRMED",
+      "formula": "lifetime_realized_pnl = sum(pnl_usd where status='closed')",
+      "verified": "DB query -91.1263 matches state.json -91.1263"
+    },
+    "I5_no_double_counting": {
+      "status": "CONFIRMED",
+      "description": "Closed trades cleanly separated from open positions via SQL filters"
+    }
+  },
+  "compilation": {
+    "dashboard_server.py": "PASS"
+  },
+  "deliverables": [
+    "BANKROLL_ACCOUNTING_SPEC_001.md (canonical accounting formulas)",
+    "dashboard_server.py lines 474-483 (mark-to-market fix)"
+  ]
+}

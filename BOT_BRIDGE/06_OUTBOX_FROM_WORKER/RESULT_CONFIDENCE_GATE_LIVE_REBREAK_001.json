@@ -1,0 +1,38 @@
+{
+  "task_id": "CONFIDENCE_GATE_LIVE_REBREAK_001",
+  "status": "COMPLETE",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_TASK_BOARD.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_STATUS.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_CONFIDENCE_GATE_LIVE_REBREAK_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_CONFIDENCE_GATE_LIVE_REBREAK_001.md",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260410.log"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_CONFIDENCE_GATE_LIVE_REBREAK_001.json"
+  ],
+  "exact_lines_areas_changed": [],
+  "summary": "Read-only audit confirmed a live confidence-gate regression. Runtime log still reports confidence_too_low rejections at threshold 0.600, but three live trades were opened below that floor (ids 241, 243, 244 with confidences 0.3863, 0.3279, 0.3769). This means the sub-0.60 entries are not explained by configured threshold drift and instead indicate a live path inconsistency between gate decisions and executed opens.",
+  "verification_evidence": [
+    ".env and runtime banner in bot log still show min_conf=0.25 at startup, while active gate reject lines explicitly use confidence threshold 0.600.",
+    "bot log contains BRIDGE GATE REJECT lines using confidence_too_low:*:0.600 for other markets in the same runtime window.",
+    "bot log contains BRIDGE GATE PASS / open events for id=241 confidence=0.3863, id=243 confidence=0.3279, id=244 confidence=0.3769.",
+    "Trade DB rows for ids 241, 243, 244 confirm those opens exist with low confidence values.",
+    "For id=244 specifically, the same slug shows BRIDGE GATE PASS in core.model_bridge followed immediately by bot_core BRIDGE GATE REJECT confidence_too_low:0.3769:0.600 and then a trade open, proving contradictory live behavior in the same event flow."
+  ],
+  "acceptance_criteria_met": {
+    "confirm_active_task_present": true,
+    "confirm_live_rebreak_exists": true,
+    "identify_if_floor_broken_again": true,
+    "pin_to_runtime_path_inconsistency": true
+  },
+  "residual_risks": [
+    "This audit did not widen into a fix, so the root implementation bug remains active until a remediation task lands.",
+    "The evidence strongly suggests a double-path or ordering inconsistency between model_bridge pass logging, bot_core gate rejection, and actual open execution."
+  ],
+  "restart_required": false,
+  "result_file_path": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_CONFIDENCE_GATE_LIVE_REBREAK_001.json"
+}

@@ -1,0 +1,86 @@
+{
+  "task_id": "MIN_ENTRY_CONFIDENCE_001",
+  "title": "Add minimum entry confidence gate — block signals below confidence floor",
+  "priority": "MEDIUM",
+  "subsystem": "risk-entry-gates",
+  "status": "QUEUED — blocked until SESSION_EXPOSURE_CAP_001 closes (core/risk.py conflict)",
+  "prerequisite_task": "SESSION_EXPOSURE_CAP_001 must be APPROVED before pickup (core/risk.py conflict). .env must also be free (BANKROLL_AWARE_SIZING_001 must be APPROVED).",
+
+  "objective": "Add a configurable minimum confidence threshold gate. Any signal with confidence below MIN_ENTRY_CONFIDENCE is rejected before the full entry gate waterfall runs. This filters marginal low-edge signals that are effectively coin flips. Default value is 0.60 — below this the model has no meaningful edge on binary outcomes.",
+
+  "context": "check_entry_gates() in core/risk.py enforces all entry conditions. Confidence is already used for sizing tiers but is not currently used as a hard block gate. This task adds it as the first gate check — cheapest to evaluate, no DB required. If the signal confidence is below floor, reject immediately with a clear reason string. Confidence lives on the Signal object passed into check_entry_gates().",
+
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env"
+  ],
+
+  "do_not_touch": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\db.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db",
+    "Any file not listed in allowed_files above"
+  ],
+
+  "changes_required": {
+
+    "change_1_env": {
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
+      "instructions": [
+        "Add MIN_ENTRY_CONFIDENCE=0.60",
+        "This is the minimum confidence required for any signal to be allowed through the entry gate.",
+        "Setting to 0.0 effectively disables the gate. This preserves the env-gated disable pattern.",
+        "If prior tasks have already edited .env, add this alongside existing entries — do not overwrite them."
+      ]
+    },
+
+    "change_2_risk": {
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+      "instructions": [
+        "Read the full file before editing. Understand the check_entry_gates() function signature and what the signal object looks like.",
+        "Add a new env read near the top of the file alongside existing env reads: MIN_ENTRY_CONFIDENCE = float(os.getenv('MIN_ENTRY_CONFIDENCE', '0.60'))",
+        "Inside check_entry_gates(), add the confidence floor as the FIRST gate check — before spread, depth, count, and any DB queries. It is the cheapest check and should short-circuit everything else.",
+        "Gate logic: signal_confidence = getattr(signal, 'confidence', None). If signal_confidence is None or signal_confidence < MIN_ENTRY_CONFIDENCE: return False, [f'confidence_too_low:{signal_confidence:.3f}<{MIN_ENTRY_CONFIDENCE:.3f}']",
+        "If MIN_ENTRY_CONFIDENCE == 0.0, skip the check entirely (gate disabled).",
+        "Read the existing gate rejection reason format carefully and match it exactly.",
+        "Do not change any other gate logic or thresholds.",
+        "Do not change the function signature of check_entry_gates()."
+      ]
+    }
+  },
+
+  "acceptance_criteria": [
+    "MIN_ENTRY_CONFIDENCE=0.60 present in .env",
+    "core/risk.py reads MIN_ENTRY_CONFIDENCE from env with default 0.60",
+    "check_entry_gates() rejects signals with confidence < MIN_ENTRY_CONFIDENCE as its FIRST check",
+    "Rejection reason string matches existing gate format",
+    "MIN_ENTRY_CONFIDENCE=0.0 disables the gate",
+    "Signal with confidence=None is also rejected (treated as below floor)",
+    "All other existing gates are untouched",
+    "python -m py_compile passes for risk.py",
+    "No other files modified"
+  ],
+
+  "verification": [
+    "Read the updated check_entry_gates() and confirm confidence gate is first in the waterfall",
+    "Confirm confidence=None path is handled",
+    "Confirm MIN_ENTRY_CONFIDENCE=0.0 skips the check",
+    "Grep risk.py for MIN_ENTRY_CONFIDENCE — expect one env read and one usage",
+    "Run: python -m py_compile core/risk.py"
+  ],
+
+  "rollback": "Remove MIN_ENTRY_CONFIDENCE gate block from check_entry_gates() in risk.py. Remove MIN_ENTRY_CONFIDENCE from .env. Restart bot.",
+
+  "restart_required": true,
+  "restart_note": "Restart required after approval for gate to take effect.",
+
+  "deliverables": [
+    "RESULT_MIN_ENTRY_CONFIDENCE_001.json in 06_OUTBOX_FROM_WORKER",
+    "Exact lines added to risk.py showing gate position relative to existing gates",
+    "Confirmation of .env value set",
+    "py_compile confirmation"
+  ]
+}

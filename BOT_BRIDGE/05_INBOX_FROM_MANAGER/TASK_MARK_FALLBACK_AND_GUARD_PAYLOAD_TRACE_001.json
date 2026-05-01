@@ -1,0 +1,50 @@
+{
+  "task_id": "MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001",
+  "type": "read_only_trace",
+  "priority": "MEDIUM",
+  "status": "ACTIVE",
+  "issued": "2026-04-10",
+  "subsystem": "dashboard / stream / runtime state",
+  "title": "Trace mark-source fallback frequency and guard-message payload origin",
+  "one_sentence": "Determine exactly where mark_source is set, what condition triggers rest_fallback, how often fallback is occurring, and where the guard/warning text originates in the payload chain before it reaches the dashboard UI.",
+  "prior_task": "DASHBOARD_MARK_SOURCE_AND_GUARD_MESSAGE_AUDIT_001 (PARTIAL PASS) — dashboard layer cleared; upstream origin not traced",
+  "allowed_files": [
+    "runtime/state.json",
+    "dashboard_server.py",
+    "logs/dashboard.log",
+    "logs/dashboard_err.log",
+    "core/polymarket_stream.py (Step 5 only — justify if used)",
+    "bot_core.py (Step 5 only, guard payload write path only — justify if used)"
+  ],
+  "forbidden_files": [
+    "core/risk.py",
+    "launch_all.py",
+    ".env",
+    "trades_sports.db",
+    "dashboard.html (already audited — do not re-read unless a specific new question requires it)"
+  ],
+  "read_only": true,
+  "no_code_edits": true,
+  "no_restarts": true,
+  "no_db_writes": true,
+  "brief_path": "05_INBOX_FROM_MANAGER/HANDOFF_MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001.md",
+  "result_path": "06_OUTBOX_FROM_WORKER/RESULT_MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001.json",
+  "key_questions": [
+    "Q1: What exact function/condition in dashboard_server.py sets mark_source per position?",
+    "Q2: What staleness threshold or stream-health check triggers rest_fallback?",
+    "Q3: Current fallback severity — rarely/intermittent/too often/main source? (a/b/c/d/e)",
+    "Q4: What writes last_guard_result / guard_reasons to the payload — bot_core or dashboard_server?",
+    "Q5: Is any 'max down' wording present in state.json, /api payload, or logs right now?",
+    "Q6: Root-cause classification for both symptoms"
+  ],
+  "acceptance_criteria": [
+    "read_only_confirmed: true",
+    "Exact function + condition in dashboard_server.py that sets mark_source",
+    "Explicit staleness/stream-health trigger condition for rest_fallback",
+    "Severity label (a/b/c/d/e) for current fallback frequency with evidence",
+    "Guard/warning payload write chain traced to source",
+    "Explicit answer on whether 'max down' text is present anywhere in current runtime state",
+    "Root-cause classification for both symptoms",
+    "Result written to correct path"
+  ]
+}

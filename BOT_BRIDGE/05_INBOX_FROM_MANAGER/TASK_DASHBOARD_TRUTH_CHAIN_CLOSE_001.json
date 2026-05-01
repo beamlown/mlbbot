@@ -1,0 +1,18 @@
+{
+  "task_id": "DASHBOARD_TRUTH_CHAIN_CLOSE_001",
+  "title": "Close dashboard truth chain with final ownership proof",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "dashboard_truth_layer",
+  "allowed_files": ["dashboard.html"],
+  "do_not_touch": ["dashboard_server.py", "launch_all.py", "bot_core.py", "core/", "mlb_model/"],
+  "objective": "Prove the current dashboard truth model is complete and close the remaining task chain cleanly. Apply only the smallest safe fix if a final ownership mismatch still exists.",
+  "acceptance_criteria": [
+    "current dashboard truth model is clearly proven and documented",
+    "any final tiny mismatch is fixed",
+    "older dashboard truth tasks are mapped as completed or superseded",
+    "result clearly states whether the chain is now CLOSED",
+    "no truth regression"
+  ],
+  "rollback": "Revert dashboard.html only if the tiny ownership fix must be undone."
+}

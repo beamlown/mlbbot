@@ -1,0 +1,68 @@
+{
+  "task_id": "POST_GAP_STOP_SAME_SIDE_SESSION_BAN_001",
+  "title": "Block same-side re-entry on a slug after gap_stop exit for the rest of the session",
+  "priority": "HIGH",
+  "type": "surgical code fix",
+  "issued": "2026-04-10",
+  "subsystem": "entry gates / exit / bot_core",
+  "status": "QUEUED — run after SESSION_MARKET_TRADE_CAP_001 is APPROVED (same file)",
+  "depends_on": "SESSION_MARKET_TRADE_CAP_001 (APPROVED) — both tasks touch bot_core.py, must not run concurrently",
+  "context": {
+    "problem": "After a gap_stop exit on mlb-foo BUY_YES, the bot re-enters on the same slug/side within the current 60-min cooldown window or immediately after it expires. Tonight: mlb-col-sd had a gap_stop then was re-entered. mlb-cws-kc had multiple gap_stops across the session on BUY_YES. mlb-hou-sea had gap_stops and was re-entered. A gap_stop means the market moved 30-90% against the position in a single interval — this is not a normal SL event, it is a market telling you the outcome is nearly decided.",
+    "evidence": [
+      "mlb-cws-kc: gap_stops at trades 238, 246, 247, 251, 252 — all BUY_YES — bot kept re-entering BUY_YES between stops",
+      "mlb-hou-sea: gap_stops at 263, 265, 285 — re-entered BUY_YES between each",
+      "mlb-bos-stl: gap_stops at 278, 279 — entries at 0.12 then 0.03 (catastrophic falloff)",
+      "Total gap_stop damage tonight: -$499.99 across 21 trades"
+    ],
+    "design": "In bot_core.py, maintain a session-level set `_session_gap_stop_bans: set[tuple[str, str]]` tracking (slug, side) pairs that have had a gap_stop exit. At entry gate check, if (slug, side) is in this set, reject with 'post_gap_stop_session_ban'. This is separate from and stricter than the existing 60-min market cooldown."
+  },
+  "objective": "After any gap_stop exit on (slug, side), block new entries on that exact (slug, side) combination for the rest of the session. Does not block the opposite side.",
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "read_only_context_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json"
+  ],
+  "forbidden_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py",
+    "Any mlb_model file",
+    "Any file not listed above"
+  ],
+  "forbidden_actions": [
+    "Modify risk.py",
+    "Modify the existing 60-min market cooldown logic",
+    "Change TP/SL/gap-stop threshold values",
+    "Broad refactor of bot_core.py",
+    "Restart processes",
+    "DB writes"
+  ],
+  "required_work": [
+    "1. Add a module-level set in bot_core.py: `_session_gap_stop_bans: set = set()` (tuples of (slug, side)).",
+    "2. In the exit/close handling path where gap_stop is detected, add: `_session_gap_stop_bans.add((slug, side))`.",
+    "3. In the entry gate check (before or as part of check_entry_gates()), check if (slug, side) in _session_gap_stop_bans. If yes, reject with reason 'post_gap_stop_session_ban:{slug}:{side}'.",
+    "4. Log the rejection: 'BRIDGE GATE REJECT [check_entry_gates] slug=... reasons=[post_gap_stop_session_ban:...]'.",
+    "5. The ban is in-memory only (session-scoped). It resets on restart — this is intentional."
+  ],
+  "acceptance_criteria": [
+    "A gap_stop on (slug, BUY_YES) blocks future BUY_YES entries on that slug for the session",
+    "A gap_stop on (slug, BUY_YES) does NOT block BUY_NO entries on that slug",
+    "The ban is logged as a check_entry_gates rejection with the correct reason string",
+    "The ban is in-memory (resets on restart) — no DB or state.json changes required",
+    "Only bot_core.py is modified",
+    "python -m py_compile bot_core.py passes"
+  ],
+  "verification_required": [
+    "Show the exact location in bot_core.py where the ban set is populated (exit/close path)",
+    "Show the exact location where the ban is checked (entry gate path)",
+    "Confirm only bot_core.py was modified",
+    "Run py_compile on bot_core.py",
+    "State whether restart is required"
+  ],
+  "result_file": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_POST_GAP_STOP_SAME_SIDE_SESSION_BAN_001.json"
+}

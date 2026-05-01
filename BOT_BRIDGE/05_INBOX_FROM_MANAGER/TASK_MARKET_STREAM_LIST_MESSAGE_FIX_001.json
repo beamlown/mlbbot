@@ -1,0 +1,17 @@
+{
+  "task_id": "MARKET_STREAM_LIST_MESSAGE_FIX_001",
+  "title": "Handle list-shaped Polymarket market stream messages in Stage 1 parser",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "market_stream_parser_fix",
+  "allowed_files": ["core/market_stream.py", "core/state_hub.py"],
+  "objective": "Fix the Stage 1 market-stream parser so list-shaped incoming Polymarket market messages no longer crash before state_hub updates.",
+  "acceptance_criteria": [
+    "parser no longer crashes on list-shaped messages",
+    "websocket messages can reach state_hub update path",
+    "debug endpoint shows parser/state counters moving",
+    "no strategy/execution behavior changes",
+    "final result is VERIFIED, PARTIAL, or BLOCKED"
+  ],
+  "rollback": "Revert the narrow list/dict normalization in core/market_stream.py."
+}

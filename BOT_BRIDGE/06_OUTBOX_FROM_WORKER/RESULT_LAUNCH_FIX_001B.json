@@ -1,0 +1,23 @@
+{
+  "task_id": "LAUNCH_FIX_001B",
+  "status": "done",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py"
+  ],
+  "summary": [
+    "Replaced the PID guard with the exact 001B fixes: absolute runtime/launcher.pid path anchored to SPORTS_BOT_DIR plus Windows ctypes OpenProcess liveness check.",
+    "Guard now correctly detects an already-running launcher and exits before spawning duplicate children."
+  ],
+  "commands_run": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2",
+    "python launch_all.py"
+  ],
+  "result": [
+    "Verification returned: 'ERROR: launcher already running at PID 23760. Stop it first.'",
+    "This confirms the duplicate-instance guard is now firing against a live launcher instead of silently allowing a second instance."
+  ],
+  "risks": [
+    "A full fresh-start/cleanup cycle was not completed in this pass because an existing launcher was already running during verification."
+  ],
+  "next_recommended_task": "none"
+}

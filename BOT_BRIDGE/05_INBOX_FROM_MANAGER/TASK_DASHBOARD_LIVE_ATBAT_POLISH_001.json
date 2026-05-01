@@ -1,0 +1,104 @@
+{
+  "task_id": "DASHBOARD_LIVE_ATBAT_POLISH_001",
+  "title": "Upgrade live game cards with clearer at-bat state, next-three-up, and baseball-first visual hierarchy",
+  "priority": "MEDIUM",
+  "subsystem": "dashboard",
+  "status": "QUEUED — do not start until DASHBOARD_TRUTH_REVERIFY_001 result is reviewed and closed",
+  "sequencing_note": "DASHBOARD_TRUTH_REVERIFY_001 is currently running against dashboard.html and dashboard_server.py. This task touches the same files. Do not pick this up until the reverify is approved — we must confirm the current truth baseline before layering new UI on top of it.",
+
+  "objective": "Improve the live game cards so an operator can instantly understand what is happening in the game: score, inning, outs, count, runners, current batter/pitcher, and next three batters due up. Prefer a dashboard-only UI polish. Only add a minimal dashboard payload/server change if the next-three-up data is not already exposed to the client.",
+  "type": "ui-first polish with minimal data-enrichment fallback",
+
+  "context": [
+    "The operator wants the live game cards to feel more like a live baseball game tracker and less like a plain status block.",
+    "Requested presentation targets: next three up to bat, current hitter, balls, strikes, outs, clearer visual game-state, color-coded count/status, and an overall prettier live card.",
+    "Keep repo inspection narrow. Do not do a broad repo sweep.",
+    "The board already has dashboard-related verification/fix work in the queue, including DASHBOARD_TRUTH_REVERIFY_001 and DASHBOARD_ESPN_RELIABILITY_001, so this task must stay tightly scoped to live-card presentation and only the smallest required data exposure.",
+    "Current runtime notes indicate the stack needed restart to pick up prior risk-pack changes, so do not mix this task with risk or process-management work."
+  ],
+
+  "manager_intent": [
+    "Start UI-first.",
+    "Assume dashboard.html is the primary file.",
+    "Touch dashboard_server.py only if the worker proves the client does not already receive the needed live-game fields.",
+    "Do not widen into bot logic, model logic, risk logic, or process-management work."
+  ],
+
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py — only if strictly required to expose next_three_up or other already-known live-game fields to the client",
+    "One tiny helper/style block directly used by dashboard.html if such a file already exists and is directly imported by dashboard.html"
+  ],
+
+  "do_not_touch": [
+    "bot_core.py",
+    "core/risk.py",
+    "core/paper_exec.py",
+    "launch_all.py",
+    ".env",
+    "recommendation_api",
+    "resolution_watcher",
+    "database schema",
+    "worker / supervisor / runtime process controls",
+    "unrelated dashboard sections outside the live game cards unless required for card rendering consistency"
+  ],
+
+  "required_read_scope": [
+    "dashboard.html",
+    "dashboard_server.py only if needed to confirm available fields",
+    "One live payload sample or current rendered live-card function path if needed to confirm available fields"
+  ],
+
+  "design_targets": [
+    "Current at-bat section with batter, pitcher, inning half, outs, and count",
+    "Color-coded count display for balls, strikes, and outs",
+    "Clear base-runner diamond or equivalent occupied-base indicator",
+    "Next Up section showing the next 3 batters due",
+    "Bigger score / inning hierarchy so game state is readable at a glance",
+    "Preserve existing trading/position context, but visually secondary to live baseball state",
+    "Use compact, readable chips/badges/cards instead of dense plain text"
+  ],
+
+  "fallback_rule": [
+    "If next-three-up is already present in the live payload, implement UI only.",
+    "If next-three-up is not present but the source data is already available server-side, add the smallest server exposure needed.",
+    "If the worker cannot confirm that next-three-up is already available anywhere in the current dashboard path, stop and report that a separate payload-enrichment task is required instead of inventing a large backend change."
+  ],
+
+  "deliverables": [
+    "Short summary of what changed",
+    "Exact files touched",
+    "Before/after description of the live card layout",
+    "List of which live-game fields were already available vs newly exposed",
+    "If next-three-up was unavailable, explicit note describing the smallest follow-on task needed"
+  ],
+
+  "acceptance_criteria": [
+    "Live game card clearly shows score, inning/half, outs, and ball-strike count",
+    "Current batter is visually obvious",
+    "Next three up are displayed if already available or minimally exposable",
+    "Runner/base state is easier to read than before",
+    "UI is meaningfully prettier and more readable without breaking existing card content",
+    "No unrelated repo files are touched",
+    "No bot logic, risk logic, or process-management behavior is changed"
+  ],
+
+  "verification": [
+    "Open live dashboard card and confirm count, outs, and inning are readable at a glance",
+    "Confirm current batter/pitcher display renders without breaking existing live card",
+    "Confirm next-three-up appears correctly when data exists",
+    "Confirm existing score/game state still updates",
+    "Confirm position/trade context still appears and is not removed",
+    "Confirm no unrelated components visibly regress"
+  ],
+
+  "rollback": "Revert only the touched dashboard UI/payload changes. No schema or runtime rollback should be necessary if scope is respected.",
+
+  "worker_notes": [
+    "Prefer smallest patch.",
+    "Do not redesign the whole dashboard.",
+    "Do not read unrelated files.",
+    "If you need data-contract confirmation, inspect only the render path and the exact server endpoint feeding the live game cards.",
+    "If you discover this is really two tasks (UI polish + payload enrichment), finish only the clearly scoped portion and report the second task cleanly."
+  ]
+}

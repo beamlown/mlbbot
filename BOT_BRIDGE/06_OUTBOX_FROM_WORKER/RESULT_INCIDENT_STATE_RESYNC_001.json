@@ -1,0 +1,36 @@
+{
+  "task_id": "INCIDENT_STATE_RESYNC_001",
+  "status": "blocked",
+  "production_code_changed": false,
+  "summary": {
+    "topology_clean": false,
+    "api_state_matches_db_truth": true,
+    "api_trades_matches_db_truth": true,
+    "new_duplicate_opens_appeared": false,
+    "stable_enough_for_dashboard_truth_work": false
+  },
+  "what_succeeded": [
+    "DB truth and /api/state converged: DB open rows = 0, /api/state open positions = 0.",
+    "No duplicate open rows remain in DB.",
+    "No new duplicate open pair was observed in the short observation window.",
+    "Only one bot_core writer is active in the observed topology."
+  ],
+  "what_failed": [
+    "Topology is not cleanly canonical yet.",
+    "There are duplicated non-writer services after resync: recommendation_api, dashboard_server, and resolution_watcher are running both under the older parent tree and under the newly started launcher tree.",
+    "Because there are now two competing service trees, the system is not yet stable enough to declare incident fully resolved."
+  ],
+  "evidence": {
+    "db_open_row_count": 0,
+    "api_state_open_positions_count": 0,
+    "api_state_status_line": "loop=3 sport=baseball mode=neutral open=0 guard_block=139",
+    "api_trades_open_count_in_recent_window": 0,
+    "process_topology": [
+      "older tree under parent 29228: recommendation_api 26064, dashboard_server 42808, resolution_watcher 10516",
+      "new launcher tree: launch_all 32732 -> launch_all 27796 -> recommendation_api 42944, bot_core 36668, dashboard_server 504, resolution_watcher 40816"
+    ],
+    "duplicate_open_observation_window": "No new duplicate pair observed after resync in the short verification window"
+  },
+  "blocked_reason": "To fully restore one clean canonical launcher/process topology, one whole service tree must be selected as authoritative and the other stopped. That is an operationally meaningful action beyond the current safe partial resync already performed, and risks disrupting currently serving dashboard/API services without a clearly designated authoritative tree.",
+  "next_action_needed": "Manager/ops should authorize which full stack is canonical (older parent-29228 service tree vs newly started launcher tree), then a narrow ops containment step can stop the non-canonical tree and re-verify single-instance stability."
+}

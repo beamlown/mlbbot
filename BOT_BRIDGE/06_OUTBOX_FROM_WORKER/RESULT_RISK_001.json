@@ -1,0 +1,21 @@
+{
+  "task_id": "RISK_001",
+  "status": "completed",
+  "blocked": false,
+  "edits": [
+    {
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
+      "changes": [
+        "Inserted confidence sizing env vars immediately after PAPER_POSITION_SIZE_USD"
+      ]
+    },
+    {
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+      "changes": [
+        "Added module-level env reads for confidence sizing settings",
+        "Added _confidence_size(base_usd, confidence)",
+        "Updated open_position() to compute size_usd via confidence sizing before qty"
+      ]
+    }
+  ]
+}

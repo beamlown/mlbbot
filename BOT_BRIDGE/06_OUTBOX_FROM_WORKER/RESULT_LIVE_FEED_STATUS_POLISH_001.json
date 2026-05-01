@@ -1,0 +1,35 @@
+{
+  "task_id": "LIVE_FEED_STATUS_POLISH_001",
+  "status": "completed",
+  "frontend_only": true,
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "labels_changed": {
+    "top_feed_status": [
+      "stream stale … -> Market feed stale · <human age>",
+      "stream live … -> Market feed live",
+      "missing/disconnected -> Market feed reconnecting"
+    ],
+    "card_freshness": [
+      "Game freshness unknown -> Status available, freshness unknown / Freshness unknown",
+      "Market freshness unknown -> Feed age unavailable"
+    ],
+    "blank_market_fields": [
+      "Best bid missing -> No bid",
+      "Best ask missing -> No ask",
+      "Spread missing -> Unavailable"
+    ],
+    "stale_copy": [
+      "Market price unavailable, live P&L and live equity may be incomplete -> Market pricing is currently unavailable, so live value may be incomplete",
+      "Market price is stale, live P&L and live equity may lag -> Market pricing is stale, so live value may lag"
+    ]
+  },
+  "acceptance": {
+    "top_feed_status_reads_cleanly": true,
+    "card_freshness_clearer": true,
+    "blank_market_fields_less_confusing": true,
+    "truth_regression": false,
+    "broad_redesign_drift": false
+  }
+}

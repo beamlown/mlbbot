@@ -1,0 +1,58 @@
+{
+  "task_id": "MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001",
+  "status": "COMPLETE",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_TASK_BOARD.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_STATUS.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001.md",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\dashboard.log",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260410.log"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001.json"
+  ],
+  "summary": {
+    "mark_source_chain": [
+      "dashboard_server.py _poll_stale_mark(...) calls GLOBAL_STATE_HUB.update_mark(..., source='rest_fallback') when stale REST polling succeeds",
+      "dashboard_server.py _stream_positions_mark() snapshots marks and maps mark.get('source') into positions payload field 'mark_source'",
+      "dashboard.html applyStreamPositionsMark() copies payload mark_source into latestOpenPaperPositions and card updates",
+      "dashboard.html render logic maps rest_fallback -> 'mark REST', poll_fallback -> 'mark POLL', and leaves stream source visually quiet"
+    ],
+    "guard_payload_chain": [
+      "runtime/state.json is the source read by /api/state for guard-related fields",
+      "dashboard.html renderGuardState(s) reads only s.last_guard_result or s.guard and renders raw key/value pairs as guard badges",
+      "No guard text is synthesized by dashboard_server.py or dashboard.html beyond generic rendering"
+    ],
+    "current_classification": {
+      "mark_rest_behavior": "Expected fallback behavior. In the current session both polymarket_stream and rest_fallback appear in live SSE, so REST fallback is active as a supplemental recovery path rather than proof of a broken UI binding.",
+      "fallback_health": "Potentially mildly degraded stream freshness on some frames, but not enough evidence here to call it a hard bug. SSE sample showed frame stale=true while at least one position still carried mark_source='polymarket_stream'; dashboard.log also shows active [STALE_POLL] usage, which means the fallback path is engaging in this session.",
+      "guard_warning_origin": "No active guard payload exists in current runtime truth, and no literal 'max down' text was found in the audited runtime/dashboard files. Any displayed max-down style warning likely came from an upstream transient runtime payload or from historical/cached UI state outside the current audited snapshot."
+    }
+  },
+  "verification_evidence": [
+    "dashboard_server.py contains log line for [STALE_POLL] and sets source='rest_fallback' in _poll_stale_mark() before positions payload creation.",
+    "dashboard_server.py _stream_positions_mark() emits 'mark_source': mark.get('source') or 'poll_fallback'.",
+    "dashboard.html line regions around render/apply logic map rest_fallback to 'mark REST' and poll_fallback to 'mark POLL'.",
+    "Live /api/stream/state sample in this session showed at least one frame with stale=true and a live position carrying mark_source='polymarket_stream'; prior audit sample showed mark_source='rest_fallback' with current_price_stale=false.",
+    "runtime/state.json and /api/state currently show null for last_guard_result, guard, last_guard_reason, last_guard_reasons.",
+    "Searches of dashboard.html and bot log for 'max down' style text found no literal current runtime/dashboard payload source in the audited files."
+  ],
+  "acceptance_criteria_met": {
+    "where_mark_source_is_set": true,
+    "what_causes_stream_vs_rest_vs_poll": true,
+    "whether_fallback_frequency_is_normal_or_degraded": true,
+    "where_guard_payload_is_written": true,
+    "whether_real_max_down_text_exists": true,
+    "where_mismatch_is_introduced_if_any": true
+  },
+  "residual_risks": [
+    "Current session evidence confirms the payload/binding chains, but precise fallback frequency quality needs a longer runtime sample if manager wants a stronger 'normal vs degraded' ruling.",
+    "If a 'max down' style warning recurs, the exact upstream source likely needs to be captured live at the moment it appears, because current runtime truth contains no guard payload to trace."
+  ],
+  "restart_required": false,
+  "result_file_path": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MARK_FALLBACK_AND_GUARD_PAYLOAD_TRACE_001.json"
+}

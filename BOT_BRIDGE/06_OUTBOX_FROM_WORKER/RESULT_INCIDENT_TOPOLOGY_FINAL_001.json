@@ -1,0 +1,51 @@
+{
+  "task_id": "INCIDENT_TOPOLOGY_FINAL_001",
+  "status": "done",
+  "production_code_changed": false,
+  "summary": {
+    "topology_clean": true,
+    "truth_alignment_holds": false,
+    "new_duplicate_opens_appeared": false,
+    "stable_enough_for_dashboard_truth_work": "conditionally_yes"
+  },
+  "actions_taken": [
+    "Captured final pre-cleanup evidence snapshot.",
+    "Stopped only the designated non-canonical orphan trio: 26064, 42808, 10516.",
+    "Left the canonical launcher-managed tree intact."
+  ],
+  "final_topology": {
+    "launcher_tree": [
+      "launch_all.py pid 32732",
+      "child launch_all.py pid 27796"
+    ],
+    "services": [
+      "recommendation_api pid 42944",
+      "bot_core.py pid 36668",
+      "dashboard_server pid 504",
+      "resolution_watcher pid 40816"
+    ],
+    "single_instance_check": {
+      "launcher_tree_count": 1,
+      "recommendation_api_count": 1,
+      "bot_core_count": 1,
+      "dashboard_server_count": 1,
+      "resolution_watcher_count": 1
+    }
+  },
+  "verification": {
+    "db_open_row_count": 1,
+    "db_open_rows": [
+      {"id": 114, "market_slug": "mlb-stl-det-2026-04-05", "status": "open", "source": "bot"}
+    ],
+    "api_state_open_positions_count": 0,
+    "api_state_status_line": "loop=2 sport=baseball mode=neutral open=0 guard_block=136",
+    "api_trades_recent_open_count": 1,
+    "duplicate_open_group_count": 0,
+    "unique_index_exists": true,
+    "capacity_breach_observed_in_window": false,
+    "duplicate_respawn_observed": false,
+    "note": "Topology is clean, but state/API alignment was caught mid-refresh: DB and /api/trades show the new open row 114 while /api/state still reflected 0 at the sampled moment."
+  },
+  "conclusion": "Final topology cleanup succeeded. No new duplicate pair was observed, and the system is running as a single canonical launcher-managed stack. A brief residual /api/state lag against DB truth was still present at the sampled moment after trade 114 opened.",
+  "followup": "Short additional state refresh check may be warranted if strict instantaneous DB=/api/state equality is required before resuming dashboard truth work."
+}

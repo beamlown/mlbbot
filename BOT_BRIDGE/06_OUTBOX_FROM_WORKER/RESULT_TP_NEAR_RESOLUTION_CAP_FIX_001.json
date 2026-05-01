@@ -1,0 +1,28 @@
+{
+  "task_id": "TP_NEAR_RESOLUTION_CAP_FIX_001",
+  "status": "DONE",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_TASK_BOARD.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_STATUS.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_TP_NEAR_RESOLUTION_CAP_FIX_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_TP_NEAR_RESOLUTION_CAP_FIX_001.md",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260410.log"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_TP_NEAR_RESOLUTION_CAP_FIX_001.json"
+  ],
+  "exact_lines_areas_changed": [
+    "core/risk.py -> get_tp_price(trade): TP computation now caps raw TP at NEAR_RESOLUTION_PRICE"
+  ],
+  "summary": "Applied a minimal cap to TP computation so near-1.0 entries cannot produce unreachable TP values above the meaningful near-resolution ceiling.",
+  "verification_evidence": [
+    "Old behavior: get_tp_price(trade) returned entry_px * (1 + AUTO_TAKE_PROFIT_PCT), which could exceed 1.0 for high entry prices (example from log: trade id=259 BUY_NO @ 0.9447).",
+    "New behavior: get_tp_price(trade) computes raw_tp and returns min(raw_tp, NEAR_RESOLUTION_PRICE).",
+    "Cap rule used: min(tp_price, NEAR_RESOLUTION_PRICE).",
+    "python -m py_compile C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py passed."
+  ],
+  "restart_required": true,
+  "result_file_path": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_TP_NEAR_RESOLUTION_CAP_FIX_001.json"
+}

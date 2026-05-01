@@ -1,0 +1,12 @@
+{
+  "task_id": "DASHBOARD_RESTORE_BASEBALL_MONITOR_001",
+  "title": "Restore baseball-monitor-first active cards while preserving truth/accounting fixes",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "dashboard_baseball_monitor",
+  "allowed_files": [
+    "dashboard.html",
+    "dashboard_server.py"
+  ],
+  "objective": "Restore the older baseball-monitor feel using hybrid baseball monitor + active position cards as the primary above-the-fold object, while preserving the corrected truth model, accounting, and shadow separation."
+}

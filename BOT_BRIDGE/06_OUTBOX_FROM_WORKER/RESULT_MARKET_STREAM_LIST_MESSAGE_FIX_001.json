@@ -1,0 +1,31 @@
+{
+  "task_id": "MARKET_STREAM_LIST_MESSAGE_FIX_001",
+  "status": "done",
+  "final_result": "VERIFIED",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\market_stream.py"
+  ],
+  "before_parser_logic": "_on_message() assumed a dict payload and called data.get(...), crashing on list-shaped messages with 'list' object has no attribute get'",
+  "after_parser_logic": "_on_message() now normalizes incoming payloads into a list of items, processes dict items only, and safely handles both dict-shaped and list-shaped market stream messages.",
+  "sample_incoming_message_shape": "list-shaped payload (confirmed indirectly by the prior runtime error and resolved by list normalization)",
+  "updated_debug_status_after_fix": {
+    "thread_alive": true,
+    "connected": true,
+    "tracked_asset_count": 3,
+    "last_error": null,
+    "last_message_type": "book",
+    "parser_hit_count": 1,
+    "parser_miss_count": 0,
+    "mark_count_received": 1,
+    "last_state_hub_update_slug": "mlb-phi-sf-2026-04-08"
+  },
+  "what_this_proves": {
+    "parser_no_longer_crashes_on_list_messages": true,
+    "messages_reach_state_hub_update_path": true,
+    "runtime_chain_now_reaches_mark_ingress": true
+  },
+  "notes": [
+    "No strategy or execution logic was changed.",
+    "This fix only normalized message shape handling in the realtime market parser."
+  ]
+}

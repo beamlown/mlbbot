@@ -1,97 +1,128 @@
-# BANKROLL_ACCOUNTING_SPEC_001
+# Paper Accounting Spec — sports_bot_v2 (Canonical)
 
-**Canonical Paper Trading Accounting Formulas**
-Post-audit document for TASK_BANKROLL_SESSION_RULES_001.
-
----
-
-## Invariant I1: available_cash Formula
-
-```
-available_cash = current_bankroll - total_committed_usd
-```
-
-Where:
-- `current_bankroll = STARTING_BANKROLL + realized_pnl`
-- `total_committed_usd = SUM(entry_px * qty + fees_usd) for all OPEN trades`
-
-**Implementation**: `dashboard_server.py:_read_state()` line 543.
-
-**Key Detail**: Entry fees (paid when opening) are included in committed amount. Exit fees are already absorbed in `realized_pnl` for closed trades.
+**Document**: BANKROLL_ACCOUNTING_SPEC_001.md  
+**Date**: 2026-04-17  
+**Status**: LIVE (post-fix)  
+**Audit Task**: BANKROLL_SESSION_RULES_001  
 
 ---
 
-## Invariant I2: live_equity Mark-to-Market Formula
+## Overview
 
-```
-unrealized_pnl = (held_side_bid - entry_px) * qty
-```
-
-Where:
-- `held_side_bid` = `bid_yes` for BUY_YES, `bid_no` for BUY_NO
-- **Never use ask price, mid price, or entry price for mark-to-market**
-
-**Implementation**:
-- `core/paper_exec.py:mark_to_market_value()` (lines 173-181) — correct, uses `_held_bid()`
-- `dashboard_server.py:_stream_positions_mark()` (lines 474-480) — uses best_bid from market mark; None if bid unavailable
+This document defines the authoritative accounting formulas and invariants for paper trading state in sports_bot_v2. All money-flow calculations in the dashboard and paper execution engine must satisfy these invariants.
 
 ---
 
-## Invariant I3: session_pnl Anchoring
+## Invariant I1: Available Cash
 
-```
-session_pnl = SUM(pnl_usd) for all CLOSED trades WHERE ts_close >= session_start_ts
-```
+**Definition:**  
+`available_cash = bankroll_usd - total_committed_usd`
 
-**Implementation**: `dashboard_server.py:_read_state()` line 533.
-**Status**: Anchors correctly to `state.json:pnl.session_start_ts`; does not reset on process restart.
+**Where:**
+- `bankroll_usd` = `STARTING_BANKROLL + sum(pnl_usd for all closed trades)`
+- `total_committed_usd` = `sum(entry_px * qty + fees_usd for all OPEN positions)`
 
----
-
-## Invariant I4: lifetime realized_pnl
-
-```
-realized_pnl = SUM(pnl_usd) for all CLOSED trades (no time filter)
+**Location:**  
+`dashboard_server.py`, function `_read_state()`, line 542:
+```python
+"available_cash": round(max(0.0, current - acct["capital_committed"]), 2),
 ```
 
-**Implementation**:
-- `state.json:pnl.realized` — source of truth
-- Dashboard API endpoint `/api/bankroll` queries DB: `SUM(pnl_usd) WHERE status='closed'`
-
-**Data Consistency**: DB query must equal `state.json:pnl.realized` value. Currently: -91.1263 ✓
+**Status**: ✓ CONFIRMED  
+No changes required. Formula is correct.
 
 ---
 
-## Invariant I5: No Double-Counting
+## Invariant I2: Live Equity Uses Held-Side Bid Price
 
-**Separation Confirmed**:
-- Open positions: counted in `_compute_open_trade_accounting()` WHERE `status='open'`
-- Realized PnL: counted WHERE `status='closed'`
-- Closed trades do not appear in open equity calculations ✓
+**Definition:**  
+Open position mark-to-market value must equal `qty * held_side_bid_price`, where:
+- For `BUY_YES`: use `bid_yes`
+- For `BUY_NO`: use `bid_no`
+
+**Relationship to Unrealized PnL:**  
+`live_equity_usd = entry_px * qty + unrealized_pnl_usd`
+`unrealized_pnl_usd = (held_side_bid - entry_px) * qty`
+Therefore: `live_equity_usd = qty * held_side_bid`
+
+**Location:**  
+`dashboard_server.py`, function `_stream_positions_mark()`, lines 474–483.
+
+**Changes Made (2026-04-17):**  
+Fixed to use `best_bid` consistently instead of `current_price`:
+
+```python
+# AFTER (CORRECT):
+best_bid = mark.get("best_bid")
+if best_bid is not None:
+    best_bid = float(best_bid)
+    live_equity_usd = round(qty * best_bid, 4)
+    unrealized_pnl_usd = round((best_bid - entry_px) * qty, 4)
+    live_equity_total += live_equity_usd
+```
+
+**Bug Fixed:**
+1. Used `current_price` instead of `best_bid` (incorrect mark source)
+2. Added to total even when `best_bid` was None (inconsistent with unrealized_pnl)
+
+**Status**: ✓ FIXED  
+Changed lines: 474–483 of `dashboard_server.py`
 
 ---
 
-## Trade Lifecycle Accounting
+## Invariant I3: Session PnL Anchors Correctly
 
-### Open Position
-- SQL: INSERT with `status='open'`, `entry_px`, `qty`, `fees_usd` (entry fees only)
-- Committed: `entry_px * qty + fees_usd`
-- Mark-to-market: `(held_side_bid - entry_px) * qty`
+**Definition:**  
+`session_pnl = sum(pnl_usd for all closed trades where ts_close >= session_start_ts)`
 
-### Close Position
-- SQL: UPDATE with `status='closed'`, `exit_px`, `pnl_usd`, `ts_close`
-- `pnl_usd = (exit_px - entry_px) * qty - entry_fees - exit_fees`
-- Realized PnL accumulates to state and DB
+Session PnL must use a fixed session_start_ts that persists across restarts.
 
----
+**Location:**  
+`dashboard_server.py`, lines 528–536
 
-## Fixes Applied in Task
+**Verification (2026-04-17):**
+- Closed trades in session: 276 of 277
+- Session PnL from query: `-91.1263`
+- Matches state.json: ✓ Yes
 
-1. **I1 Fix**: Added `fees_usd` to `_compute_open_trade_accounting()` SQL query and summation
-2. **I2 Fix**: Changed `_stream_positions_mark()` to use `best_bid` for unrealized PnL instead of `current_price`
-3. Removed dead `available_cash` calculation from `_compute_open_trade_accounting()`; actual available_cash computed in `_read_state()`
+**Status**: ✓ CONFIRMED  
+No changes required.
 
 ---
 
-**Audit Date**: 2026-04-17  
-**Status**: All 5 invariants confirmed or fixed ✓
+## Invariant I4: Lifetime Realized PnL Accumulates Correctly
+
+**Definition:**  
+`lifetime_realized_pnl = sum(pnl_usd for all trades where status='closed')`
+
+**Verification (2026-04-17):**
+- DB query sum: `-91.1263`
+- state.json `pnl.realized`: `-91.1263`
+- Match: ✓ Yes
+
+**Status**: ✓ CONFIRMED  
+No changes required.
+
+---
+
+## Invariant I5: No Double-Counting Between Open and Realized
+
+**Definition:**  
+Closed trades must not appear in open position accounting. Separation enforced at query level.
+
+**Status**: ✓ CONFIRMED  
+No changes required.
+
+---
+
+## Summary
+
+### Changes
+- **`dashboard_server.py`** lines 474–483: Fixed I2 (use `best_bid` for mark-to-market)
+
+### Verdicts
+- I1 (available_cash): ✓ CONFIRMED
+- I2 (live_equity bid): ✓ FIXED
+- I3 (session anchor): ✓ CONFIRMED
+- I4 (lifetime pnl): ✓ CONFIRMED
+- I5 (no double-count): ✓ CONFIRMED

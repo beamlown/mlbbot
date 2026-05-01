@@ -1,0 +1,54 @@
+{
+  "mode_used": "WORKER MODE",
+  "task_selected": "POST_GAP_STOP_SAME_SIDE_SESSION_BAN_001",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_POST_GAP_STOP_SAME_SIDE_SESSION_BAN_001.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "ban_set_location": "Module-level global: _session_gap_stop_bans: set = set() — added alongside _market_cooldown in global state section",
+  "ban_registration_location": {
+    "function": "main() exit loop, inside gap_stop branch",
+    "context": "elif reason == 'gap_stop' block — right after _market_cooldown update and 60m cooldown log",
+    "code": "_session_gap_stop_bans.add((trade.market_slug, trade.side))",
+    "log_emitted": "SESSION BAN [gap_stop] slug={slug} side={side} — same-side re-entry blocked for session"
+  },
+  "ban_check_location": {
+    "function": "main() bridge loop",
+    "context": "Pre-gate check — before slug cap check (MAX_SLUG_ENTRIES_SESSION) and before check_entry_gates() call",
+    "code": "if _intent_side and (market.slug, _intent_side) in _session_gap_stop_bans: → reject",
+    "side_source": "_intent_side = intent.get('side', '') — from the model bridge intent dict"
+  },
+  "rejection_log_format": "BRIDGE GATE REJECT [check_entry_gates] slug=mlb-cws-kc-2026-04-11 reasons=['post_gap_stop_session_ban:mlb-cws-kc-2026-04-11:BUY_YES']",
+  "opposite_side_behavior": "Ban is keyed on (slug, side) tuple. A gap_stop on BUY_YES adds (slug, BUY_YES) to the set. BUY_NO entries on the same slug are NOT blocked — different tuple.",
+  "ban_scope": "In-memory only — resets on restart. No DB or state.json changes. Intentional.",
+  "verification_performed": [
+    "Located gap_stop branch at line 750 in bot_core.py exit loop",
+    "Confirmed trade.market_slug and trade.side available at that location",
+    "Added _session_gap_stop_bans global declaration to main() global statement",
+    "Confirmed pre-gate check uses intent['side'] not signal.side — correct source for bridge intents",
+    "Ran python -m py_compile bot_core.py — PASS"
+  ],
+  "py_compile_results": {
+    "bot_core.py": "PASS"
+  },
+  "restart_needed": "Yes — ban set starts empty on restart (by design). All prior patches also require cold restart with pyc clear.",
+  "proven": [
+    "gap_stop exit registers (trade.market_slug, trade.side) in _session_gap_stop_bans.",
+    "Pre-gate check in bridge loop rejects entry when (market.slug, intent_side) is in ban set.",
+    "Opposite side not blocked.",
+    "Ban is session-scoped (in-memory, resets on restart).",
+    "Log format matches BRIDGE GATE REJECT [check_entry_gates] pattern.",
+    "Only bot_core.py modified.",
+    "py_compile PASS."
+  ],
+  "ruled_out": [
+    "Ruled out: modifications to core/risk.py.",
+    "Ruled out: changes to .env.",
+    "Ruled out: DB writes or state.json changes.",
+    "Ruled out: modification of existing 60-min cooldown logic."
+  ],
+  "recommended_next_step": "Manager review. If approved: cold restart activates this ban along with all prior session patches."
+}

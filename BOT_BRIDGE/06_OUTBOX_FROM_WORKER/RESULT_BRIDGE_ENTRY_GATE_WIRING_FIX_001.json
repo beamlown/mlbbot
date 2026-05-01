@@ -1,0 +1,75 @@
+{
+  "task_id": "BRIDGE_ENTRY_GATE_WIRING_FIX_001",
+  "status": "DONE",
+  "executor": "Claude (worker fallback mode)",
+
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py (from prior session — check_entry_gates() signature confirmed)",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env (from prior session — MIN_ENTRY_CONFIDENCE=0.60 confirmed)"
+  ],
+
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+
+  "exact_lines_changed": {
+    "file": "bot_core.py",
+    "insertion_after_line": 503,
+    "inserted_lines": "504–525",
+    "description": "Inserted check_entry_gates() call between Signal() construction (line 503) and open_position() call (now line 526). Added open_per_market build loop, gate call, rejection branch with logging and guard tracking, and pass-through to open_position()."
+  },
+
+  "summary_of_fix": "The bridge entry path in bot_core.py previously went: get_approved_intents() -> Signal() -> open_position() with no risk gate call. The patch inserts check_entry_gates() between Signal construction and open_position(). On rejection: logs 'BRIDGE GATE REJECT [check_entry_gates]' with slug and reasons, increments _guard_block_count, appends to loop_guard_reasons, and skips the entry. On pass: proceeds to open_position() as before. All MIN_ENTRY_CONFIDENCE, MAX_TOTAL_COMMITTED_USD, spread, depth, imbalance, concurrent, and per-market gates now apply to bridge entries.",
+
+  "patched_call_order": [
+    "1. get_approved_intents(open_slugs) — model_bridge internal pre-flight (rec_age, slug dedup)",
+    "2. market lookup (market_not_found guard)",
+    "3. get_orderbook_snapshot(market)",
+    "4. Signal() construction with confidence from intent",
+    "5. [NEW] build _bridge_open_per_market from current_open",
+    "6. [NEW] check_entry_gates(ob, signal, mode_ctx, len(current_open), _bridge_open_per_market, market.market_id, _time_to_end(market), market=market, market_cooldown=_market_cooldown)",
+    "7. [NEW] if not _gate_ok: log BRIDGE GATE REJECT [check_entry_gates], increment guard count, continue",
+    "8. open_position() — only reached if gate passes",
+    "9. insert_open_trade()"
+  ],
+
+  "variables_in_scope_at_insertion_point": {
+    "ob": "get_orderbook_snapshot(market) called 3 lines above insertion",
+    "signal": "Signal() built immediately before insertion",
+    "mode_ctx": "set at top of main loop iteration (update_mode)",
+    "current_open": "fetch_open_trades() called at start of each bridge intent iteration",
+    "market": "resolved from _markets by slug lookup",
+    "_market_cooldown": "module-level dict, in scope throughout main()",
+    "loop_guard_reasons": "list[str] declared at start of each main loop iteration",
+    "_guard_block_count": "module-level int, in scope throughout main()"
+  },
+
+  "verification_performed": {
+    "call_sequence_correct": true,
+    "gate_rejection_skips_open_position": true,
+    "gate_pass_proceeds_to_open_position": true,
+    "rejection_reasons_logged": true,
+    "guard_block_count_incremented_on_reject": true,
+    "loop_guard_reasons_updated_on_reject": true,
+    "no_files_outside_scope_modified": true,
+    "check_entry_gates_signature_unchanged": true,
+    "env_values_unchanged": true,
+    "model_bridge_logic_unchanged": true,
+    "py_compile_result": "PASS — python -m py_compile bot_core.py returned exit 0"
+  },
+
+  "acceptance_criteria": {
+    "bridge_path_calls_check_entry_gates_before_open_position": "PASS — lines 507-517",
+    "rejected_entries_do_not_reach_open_position": "PASS — continue on line 525",
+    "rejection_reasons_logged_clearly": "PASS — BRIDGE GATE REJECT [check_entry_gates] slug=... reasons=...",
+    "passing_entries_still_open_normally": "PASS — open_position() at line 526 unchanged",
+    "no_files_outside_allowed_scope_modified": "PASS — only bot_core.py changed",
+    "py_compile_passes": "PASS"
+  },
+
+  "restart_required": true,
+  "restart_reason": "bot_core.py is a running process (PID from prior session). The patch is a source file change only. The live process must be restarted to pick up the new check_entry_gates() call. Until restart, bridge entries continue to bypass the gate.",
+
+  "result_path": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_BRIDGE_ENTRY_GATE_WIRING_FIX_001.json"
+}

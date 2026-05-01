@@ -1,0 +1,34 @@
+{
+  "task_id": "REALTIME_MARKET_STREAM_TRACKING_FIX_001",
+  "status": "done",
+  "final_outcome": "recovery_path_added",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\market_stream.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py"
+  ],
+  "before_behavior": {
+    "tracked_assets": "could remain {} indefinitely even when open positions existed",
+    "stream_subscription": "subscribed to nothing and did not automatically recover when discovery/token mapping later became available"
+  },
+  "after_behavior": {
+    "tracked_assets": "recomputed when open positions exist and current tracked asset mapping is empty",
+    "discovery_refresh": "dashboard_server now triggers a safe discovery refresh in that specific recovery case",
+    "resubscribe": "market_stream now forces websocket reconnect when tracked asset set changes, causing a fresh subscribe payload to be sent"
+  },
+  "exact_trigger_recompute_resubscribe_path": {
+    "trigger": "open positions exist AND _tracked_open_assets() returns empty",
+    "recompute": "_refresh_discovery_cache_if_needed() then _tracked_open_assets()",
+    "resubscribe": "GLOBAL_MARKET_STREAM.update_tracked_assets(tracked) returns changed state and closes current websocket so run loop reconnects with new assets_ids payload"
+  },
+  "proof": {
+    "before": "diagnostic step previously observed _tracked_open_assets() == {} in live runtime",
+    "after": "after restart with fix, _tracked_open_assets() returned non-empty tracked asset mappings for live open positions",
+    "example": "live runtime now resolves tracked slugs like mlb-phi-sf-2026-04-08 to asset IDs instead of staying empty forever"
+  },
+  "sse_status": {
+    "route": "/api/stream/state",
+    "status_code": 200,
+    "notes": "fallback remains intact; this fix removes the zero-asset deadlock but does not by itself prove live mark ingress has fully started"
+  },
+  "truthfulness_note": "This task fixes the subscription-tracking deadlock. It does not by itself claim full Stage 1 completion until true live stream marks are observed."
+}

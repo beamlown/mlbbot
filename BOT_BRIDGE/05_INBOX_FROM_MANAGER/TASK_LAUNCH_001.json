@@ -1,0 +1,91 @@
+{
+  "task_id": "LAUNCH_001",
+  "title": "Concurrent launcher with watchdog and stale-detection relaunch",
+  "objective": "Create a unified launch script that starts both the mlb_model shadow engine and sports_bot_v2 bot concurrently, monitors both with a watchdog loop, and restarts either process if it exits. Enhance model_bridge.py to detect when all recommendations are stale and log a clear ALL_STALE warning so the condition is visible in logs. Paper mode only. No architecture changes.",
+
+  "paper_only_notice": "THIS IS PAPER MODE ONLY. No real money. No live execution. This task manages local Python subprocesses only.",
+
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py"
+  ],
+  "new_files_permitted": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py"
+  ],
+
+  "do_not_touch": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\db.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\types.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\mlb_model"
+  ],
+
+  "architecture": [
+    "launch_all.py is a standalone supervisor script. It starts two subprocesses: the shadow engine and the bot. It monitors both in a watchdog loop.",
+    "If either subprocess exits for any reason, the launcher logs the exit, waits RESTART_DELAY_SECONDS, then restarts it.",
+    "The launcher does not modify either process — it only starts and monitors them.",
+    "model_bridge.py gets a single new log line: when all candidates after dedup are stale (or the working set is empty), log BRIDGE ALL STALE so the condition is clearly visible.",
+    "The launcher handles keeping both alive. model_bridge does not need to trigger restarts — that is the launcher's job."
+  ],
+
+  "launch_all_spec": {
+    "processes_to_start": [
+      {
+        "name": "shadow_engine",
+        "command": ["python", "-m", "integration.recommendation_api"],
+        "cwd": "C:\\Users\\johnny\\Desktop\\mlb_model",
+        "log_file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\shadow_engine.log"
+      },
+      {
+        "name": "bot_core",
+        "command": ["python", "bot_core.py"],
+        "cwd": "C:\\Users\\johnny\\Desktop\\sports_bot_v2",
+        "log_file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_core_launcher.log"
+      }
+    ],
+    "constants": {
+      "RESTART_DELAY_SECONDS": 5,
+      "POLL_INTERVAL_SECONDS": 10
+    },
+    "behavior": [
+      "Start both processes immediately on launch.",
+      "Poll both processes every POLL_INTERVAL_SECONDS.",
+      "If a process exits with any return code, log: LAUNCHER: [name] exited (code=N) — restarting in Xs",
+      "Wait RESTART_DELAY_SECONDS then restart that process only.",
+      "Log each restart: LAUNCHER: [name] restarted (attempt N)",
+      "On KeyboardInterrupt/SIGTERM: terminate both subprocesses cleanly and exit.",
+      "Do not use threading or asyncio — a simple polling loop with subprocess.poll() is sufficient and safe."
+    ],
+    "stdout_stderr_handling": "Redirect both stdout and stderr of each subprocess to their respective log files. Do not suppress output."
+  },
+
+  "model_bridge_addition": {
+    "where": "In get_approved_intents(), after dedup and NO_TRADE filtering, before the gate loop.",
+    "what": "If the working set is empty (no actionable candidates after dedup), log: BRIDGE ALL STALE — no actionable recommendations found; shadow engine may not be running or all recs are stale. Return [] immediately.",
+    "existing_log_behavior": "The current path returns [] silently when no candidates pass. Replace that silent return with the explicit log line above."
+  },
+
+  "acceptance_criteria": [
+    "launch_all.py exists and starts both shadow engine and bot_core as concurrent subprocesses",
+    "Both processes log to their respective log files",
+    "If either process exits, the launcher restarts it after RESTART_DELAY_SECONDS",
+    "LAUNCHER: [name] exited and LAUNCHER: [name] restarted log lines appear on restart",
+    "KeyboardInterrupt cleanly terminates both subprocesses",
+    "model_bridge.py logs BRIDGE ALL STALE when working set is empty after dedup",
+    "No changes to bot_core.py, db.py, paper_exec.py, dashboard files, or mlb_model"
+  ],
+
+  "verification": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2",
+    "python launch_all.py",
+    "Confirm both shadow engine and bot_core start and log output appears",
+    "Confirm BRIDGE ALL STALE appears in logs if no fresh recs exist at startup",
+    "Confirm BRIDGE GATE REJECT lines appear once shadow engine produces fresh recs",
+    "Optionally: kill one subprocess manually and confirm launcher restarts it"
+  ],
+
+  "rollback": "Delete launch_all.py and revert core/model_bridge.py. Both processes can still be run manually as before."
+}

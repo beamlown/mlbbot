@@ -1,0 +1,37 @@
+{
+  "task_id": "DUPLICATE_ENTRY_LIVE_REAUDIT_001",
+  "status": "done",
+  "final_outcome": "VERIFIED",
+  "evidence": {
+    "live_db_path": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db",
+    "index_exists": true,
+    "index_name": "idx_trades_one_open_per_slug",
+    "duplicate_open_row_count": 0,
+    "open_row_count": 3,
+    "open_rows": [
+      [123, "mlb-chc-tb-2026-04-07", "BUY_NO", "open", "2026-04-06T20:40:06.239641+00:00", "bot"],
+      [144, "mlb-hou-col-2026-04-07", "BUY_YES", "open", "2026-04-07T02:43:45.040083+00:00", "bot"],
+      [145, "mlb-bal-cws-2026-04-08", "BUY_YES", "open", "2026-04-07T20:51:12.759446+00:00", "bot"]
+    ],
+    "runtime_path_proof": {
+      "env_db_path": "DB_PATH=trades_sports.db",
+      "resolved_db_path": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db",
+      "state_path": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json",
+      "max_concurrent_trades": 3
+    },
+    "protected_insert_path": {
+      "core_db": "insert_open_trade() uses BEGIN IMMEDIATE, pre-check SELECT on market_slug/status='open', and catches sqlite3.IntegrityError on the live unique index.",
+      "bot_core": "main bot open flow and model bridge flow both call insert_open_trade(trade, sport=SPORT) and log OPEN SKIPPED / BRIDGE OPEN SKIPPED when duplicate protection fires."
+    },
+    "log_summary": [
+      "Recent bot log shows repeated 'BRIDGE SKIP - at capacity (3/3)' entries, indicating the running stack is respecting configured capacity and not opening additional positions while full.",
+      "Observed close/open sequence around 2026-04-07 15:50-15:51: trade 142 closed, then trade 145 opened for a different slug. No duplicate-open pair for the same market_slug was observed.",
+      "No fresh log evidence in the inspected window showed two OPEN events for the same market_slug while both remained open."
+    ],
+    "capacity_status": "Within limit. runtime/state.json reports slots.open=3 and slots.max=3, matching .env MAX_CONCURRENT_TRADES=3 and DB open_row_count=3."
+  },
+  "notes": [
+    "Verification used live DB schema inspection, current open-row queries, current runtime state, and recent launcher/bot logs.",
+    "A small read-only helper script was used only to query SQLite in read-only mode and print evidence. No production data was modified."
+  ]
+}

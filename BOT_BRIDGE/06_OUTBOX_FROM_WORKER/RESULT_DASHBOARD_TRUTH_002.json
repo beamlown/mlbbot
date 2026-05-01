@@ -1,0 +1,32 @@
+{
+  "task_id": "DASHBOARD_TRUTH_002",
+  "status": "done",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "summary": [
+    "Added a normalized openPaperPositions pipeline built only from open paper trades returned by /api/trades.",
+    "Main positions cards and main open-count displays now derive from that same normalized openPaperPositions array.",
+    "Real live PnL remains computed from actual trade basis (qty * executed entry/current difference), never from shadow fixed-size estimates.",
+    "If current market price is unavailable for a real position, the card now labels it explicitly as 'Current (stale)'.",
+    "Shadow-only entries remain excluded from main cards and stay in diagnostics/background sections only."
+  ],
+  "report": {
+    "normalized_source_used_for_main_cards": "openPaperPositions = buildOpenPaperPositions(latestTrades, latestShadowData.recs), where latestTrades is sourced from /api/trades and filtered to real open paper trades only",
+    "source_used_for_kpis": "Main open-position counts (pos-count, kpi-open, cmd-open) now derive from the same normalized openPaperPositions array",
+    "real_live_pnl_computation": "For paper positions with qty, entry_px, and current_price: BUY_YES => (current_price - entry_px) * qty; BUY_NO => (entry_px - current_price) * qty",
+    "shadow_diagnostics_only": [
+      "Shadow tab feed",
+      "shadow/advisory stats",
+      "candidate/signal/debug context",
+      "optional enrichment of real executed positions only"
+    ]
+  },
+  "notes": [
+    "No backend file change was required for this implementation step.",
+    "Scope remained limited to dashboard.html only."
+  ]
+}

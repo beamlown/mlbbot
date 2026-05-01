@@ -1,0 +1,106 @@
+{
+  "task_id": "EXECUTION_CONTRACT_BIND_001",
+  "status": "done",
+  "final_outcome": "safe_subset_bound",
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py"
+  ],
+  "before_consumed_fields": [
+    "slug",
+    "side",
+    "confidence",
+    "edge",
+    "entry_px"
+  ],
+  "after_consumed_fields": [
+    "slug",
+    "side",
+    "confidence",
+    "edge",
+    "entry_px",
+    "held_outcome_label",
+    "home_team",
+    "away_team",
+    "tracked_team",
+    "tp_price",
+    "sl_price",
+    "recommended_size_dollars",
+    "recommended_size_units",
+    "reasons",
+    "feature_timestamp",
+    "game_state_timestamp",
+    "book_timestamp",
+    "game_state_age_sec",
+    "book_age_sec",
+    "game_status",
+    "inning",
+    "outs",
+    "market_slug",
+    "market_id"
+  ],
+  "exact_file_changes": [
+    {
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+      "change": "Bridge execution Signal.components now carries held outcome, matchup/team fields, TP/SL, recommended size, reasons, freshness/game-state fields, and market identity."
+    },
+    {
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+      "change": "open_position() now safely uses recommended_size_dollars when present (still capped by MAX_POSITION_SIZE_USD) and embeds TP/SL, held outcome, matchup, reasons, and freshness into execution/open metadata via reason_open."
+    }
+  ],
+  "bound_where": {
+    "open_trade_metadata": [
+      "held_outcome_label",
+      "home_team",
+      "away_team",
+      "tracked_team",
+      "reasons",
+      "feature_timestamp",
+      "game_state_timestamp",
+      "book_timestamp",
+      "game_state_age_sec",
+      "book_age_sec",
+      "game_status",
+      "inning",
+      "outs"
+    ],
+    "tp_sl_handling": [
+      "tp_price preserved into Signal.components",
+      "sl_price preserved into Signal.components",
+      "both embedded into reason_open execution metadata for downstream truth/debug"
+    ],
+    "size_handling": [
+      "recommended_size_dollars now used when present",
+      "still capped by existing MAX_POSITION_SIZE_USD",
+      "fallback remains existing confidence-based sizing when absent/invalid"
+    ],
+    "monitoring_debug_truth": [
+      "held outcome label",
+      "matchup/team context",
+      "reasons",
+      "freshness timestamps/ages",
+      "game-status context"
+    ]
+  },
+  "still_transport_only_after_this_task": [
+    "p_home",
+    "pregame_win_prob",
+    "market_yes_cost",
+    "market_no_cost",
+    "ask_yes",
+    "ask_no",
+    "spread",
+    "thin_side_depth_usd",
+    "edge_yes",
+    "edge_no",
+    "size_tier",
+    "size_mult",
+    "recommended_size_units as a sizing driver",
+    "broader model-driven exit semantics"
+  ],
+  "strategy_change_check": {
+    "new_strategy_logic_added": false,
+    "notes": "This task only binds already-transported model fields into execution metadata and safe recommended_size_dollars handling."
+  }
+}

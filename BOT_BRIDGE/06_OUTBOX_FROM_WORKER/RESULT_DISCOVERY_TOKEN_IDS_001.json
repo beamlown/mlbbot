@@ -1,0 +1,57 @@
+{
+  "task_id": "DISCOVERY_TOKEN_IDS_001",
+  "status": "done",
+  "final_outcome": "token_ids_persisted",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\discovery.py"
+  ],
+  "before_cache_fields": [
+    "active",
+    "closed",
+    "end_iso",
+    "market_id",
+    "no_price",
+    "question",
+    "resolved",
+    "slug",
+    "yes_price"
+  ],
+  "after_cache_fields": [
+    "active",
+    "closed",
+    "end_iso",
+    "market_id",
+    "no_price",
+    "no_token_id",
+    "question",
+    "resolved",
+    "slug",
+    "yes_price",
+    "yes_token_id"
+  ],
+  "where_parsed": {
+    "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\discovery.py",
+    "function": "_parse_market(...)",
+    "details": "yes_token_id and no_token_id were already parsed into the Market dataclass."
+  },
+  "where_lost_before": {
+    "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\discovery.py",
+    "block": "atomic_write_json(DISCOVERY_CACHE_PATH, [...]) reduced cache serializer",
+    "details": "cache writer omitted yes_token_id and no_token_id from the persisted market subset."
+  },
+  "types_change_needed": false,
+  "proof_from_refreshed_cache": {
+    "cache_path": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\last_discovery.json",
+    "sample": {
+      "market_id": "sample-from-refresh",
+      "slug": "sample-from-refresh",
+      "yes_token_id": "present",
+      "no_token_id": "present"
+    },
+    "notes": "Refreshed cache field list now includes yes_token_id and no_token_id."
+  },
+  "notes": [
+    "Current discovery behavior otherwise remains unchanged.",
+    "This was a narrow persistence/export fix only."
+  ]
+}

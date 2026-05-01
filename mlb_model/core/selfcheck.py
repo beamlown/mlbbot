@@ -46,6 +46,19 @@ BotMode = Literal["OPERATIONAL", "NO_NEW_ENTRIES", "EXITS_ONLY", "HALT"]
 GAME_STATE_MAX_AGE_SEC = float(os.getenv("GAME_STATE_MAX_AGE_SEC", "15"))
 BOOK_MAX_AGE_SEC = float(os.getenv("BOOK_MAX_AGE_SEC", "5"))
 REGISTRY_MAX_AGE_SEC = 30.0
+EXPECTED_FEATURE_COUNT = 36
+ELO_FRESHNESS_MAX_HOURS = 36.0
+SHARP_FRESHNESS_MAX_HOURS = 24.0
+
+
+def _file_age_hours(path: str) -> float:
+    """Return age of file in hours, or +inf if missing."""
+    import time
+    from pathlib import Path
+    p = Path(path)
+    if not p.exists():
+        return float("inf")
+    return (time.time() - p.stat().st_mtime) / 3600.0
 
 
 @dataclass
@@ -134,7 +147,7 @@ def startup_check(require_live_trading_auth: bool = False) -> SelfCheckResult:
         return len(elo) > 0, f"{len(elo)} Elo rows"
     checks.append(_check("elo_table", is_hard=False, fn=_check_elo_table))
 
-    # S2: Feature schema exists
+    # S2 → H6: Feature schema exists AND matches expected count (HARD now)
     def _check_feature_schema():
         import json
         schema_path = os.path.join(os.getenv("ARTIFACT_DIR", "artifacts"), "feature_schema.json")
@@ -142,8 +155,11 @@ def startup_check(require_live_trading_auth: bool = False) -> SelfCheckResult:
             return False, "feature_schema.json not found"
         with open(schema_path) as f:
             schema = json.load(f)
-        return True, f"{schema['n_features']} features"
-    checks.append(_check("feature_schema", is_hard=False, fn=_check_feature_schema))
+        n = schema.get("n_features", 0)
+        if n != EXPECTED_FEATURE_COUNT:
+            return False, f"n_features={n}, expected {EXPECTED_FEATURE_COUNT}"
+        return True, f"{n} features (matches expected)"
+    checks.append(_check("feature_schema", is_hard=True, fn=_check_feature_schema))
 
     # S3: Sharp odds (Pinnacle API key) — optional enhancement only.
     # Absence of ODDS_API_KEY is NOT a degraded condition: the Elo prior
@@ -163,6 +179,33 @@ def startup_check(require_live_trading_auth: bool = False) -> SelfCheckResult:
         gamma = os.getenv("GAMMA_API_URL", _GAMMA_DEFAULT)
         return True, f"GAMMA_API_URL={gamma}"
     checks.append(_check("gamma_api", is_hard=False, fn=_check_gamma_api))
+
+    # H7: Elo table freshness — stale Elo blocks trading entirely (unless ALLOW_STALE_ELO=1)
+    def _check_elo_freshness():
+        from pathlib import Path
+        elo_path = os.path.join(os.getenv("FEATURE_DIR", "data/features"), "elo_table.parquet")
+        age = _file_age_hours(elo_path)
+        allow_stale = os.getenv("ALLOW_STALE_ELO", "").lower() in ("1", "true", "yes")
+        if allow_stale:
+            return True, f"elo_table.parquet age={age:.1f}h (ALLOW_STALE_ELO=1)"
+        if age > ELO_FRESHNESS_MAX_HOURS:
+            return False, (f"elo_table.parquet stale ({age:.1f}h > {ELO_FRESHNESS_MAX_HOURS}h) "
+                           "— run scripts/update_elo_daily.py, or set ALLOW_STALE_ELO=1 to bypass")
+        return True, f"elo_table.parquet age={age:.1f}h"
+    checks.append(_check("elo_freshness", is_hard=True, fn=_check_elo_freshness))
+
+    # S5: Sharp odds freshness — soft warning unless ALLOW_STALE_SHARP=1
+    def _check_sharp_freshness():
+        sharp_path = os.path.join(os.getenv("FEATURE_DIR", "data/features"), "sharp_odds_history.parquet")
+        age = _file_age_hours(sharp_path)
+        allow_stale = os.getenv("ALLOW_STALE_SHARP", "").lower() in ("1", "true", "yes")
+        if allow_stale:
+            return True, f"sharp_odds age={age:.1f}h (ALLOW_STALE_SHARP=1)"
+        if age > SHARP_FRESHNESS_MAX_HOURS:
+            return False, (f"sharp_odds_history.parquet stale ({age:.1f}h > {SHARP_FRESHNESS_MAX_HOURS}h) "
+                           "— Elo fallback in use; set ALLOW_STALE_SHARP=1 to suppress")
+        return True, f"sharp_odds age={age:.1f}h"
+    checks.append(_check("sharp_freshness", is_hard=False, fn=_check_sharp_freshness))
 
     # ── Determine mode ────────────────────────────────────────────────────────
     hard_failures = [c for c in checks if c.is_hard and not c.passed]

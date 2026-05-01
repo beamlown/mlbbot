@@ -1,0 +1,45 @@
+{
+  "task_id": "DASH_004",
+  "title": "Merge HUD + header into single command bar, add bridge badge",
+  "objective": "The current sticky HUD (4 items: System/Mode/Positions/Live P&L) and header bar are two separate elements with overlapping info. Merge them into one single sticky bar with: logo, mode badge, bot dot + status, bridge badge, and right-aligned quick stats.",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "do_not_touch": [
+    "dashboard_server.py",
+    "bot_core.py",
+    "core/"
+  ],
+  "prerequisite": "DASH_003 must be complete (same file). DASH_005 (bridge_enabled in /api/state) should be complete so the bridge badge can read a real value.",
+  "inputs": [
+    "dashboard.html — .hud element (lines 347-365): 4-item sticky HUD",
+    "dashboard.html — .header element (lines 367-378): logo, sport badge, mode, bot dot, menu button",
+    "dashboard.html — JS that populates hud-system, hud-mode, hud-active, hud-unrlzd, bot-dot, bot-status-text, last-refresh, mode-display",
+    "/api/state now includes bridge_enabled (after DASH_005)"
+  ],
+  "deliverables": [
+    "Replace .hud + .header with a single <div class='cmdbar'> sticky bar",
+    "Left: logo '⚾ Sports Bot' + MLB badge",
+    "Center-left: mode badge (conservative/neutral/aggressive colors — keep existing .mode-badge CSS)",
+    "Center: bot dot + status text + last-refresh timestamp",
+    "Center-right: bridge badge — 'BRIDGE ON' (green) if state.bridge_enabled, 'BRIDGE OFF' (red-dim) if false",
+    "Right: compact stats — 'Open: N · P&L: $X · Loop: N'",
+    "Right-end: hamburger menu button for drawer",
+    "Remove old .hud and .header elements and their associated CSS (or keep CSS if still needed by other elements)",
+    "Update all JS ID references: merge the JS that populated hud-* and header-* IDs into the new cmdbar IDs",
+    "cmdbar must be position:sticky; top:0; z-index:200"
+  ],
+  "acceptance_criteria": [
+    "Single sticky bar at top — no separate HUD strip and header row",
+    "Bridge badge shows BRIDGE ON (green) when bridge_enabled=true",
+    "Mode badge shows correct color for conservative/neutral/aggressive",
+    "Bot status dot still animates when live",
+    "All info from old HUD (positions count, live PnL) visible in new bar",
+    "Hamburger menu button still opens the drawer"
+  ],
+  "verification": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2 && python dashboard_server.py",
+    "Open http://localhost:5000 — single command bar at top, no separate HUD strip"
+  ],
+  "rollback": "Revert dashboard.html only."
+}

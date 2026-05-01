@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS trades (
     confidence      REAL,
     mode            TEXT,
     status          TEXT NOT NULL DEFAULT 'open',
-    sport           TEXT DEFAULT 'unknown'
+    sport           TEXT DEFAULT 'unknown',
+    order_id        TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_trades_status ON trades(status);
 CREATE INDEX IF NOT EXISTS idx_trades_market  ON trades(market_id);
@@ -122,6 +123,28 @@ def _migrate_attribution_schema() -> None:
             logger.warning("DB migration: index creation error: %s", e)
 
 
+def _migrate_add_order_id_column() -> None:
+    """Idempotent: add `order_id TEXT` column to trades if not already present.
+
+    Needed for Stair C live_exec so sqlite trade rows can be linked to the
+    Polymarket order ID (so user_stream TRADE events can update fill prices).
+    """
+    with _db_conn("migrate_add_order_id_column") as conn:
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(trades)").fetchall()]
+        if "order_id" not in cols:
+            conn.execute("ALTER TABLE trades ADD COLUMN order_id TEXT")
+            conn.commit()
+            logger.info("DB migration: added order_id column")
+
+
+def _migrate_drop_old_open_index() -> None:
+    """Drop the pre-Stair-B idx_trades_one_open_per_slug index if present.
+    Replaced by idx_trades_one_live_per_slug which covers pending+open."""
+    with _db_conn("migrate_drop_old_open_index") as conn:
+        conn.execute("DROP INDEX IF EXISTS idx_trades_one_open_per_slug")
+        conn.commit()
+
+
 def _update_migration_marker() -> None:
     """Mark attribution schema migration as complete."""
     _ensure_meta_table()
@@ -150,16 +173,18 @@ def init_db() -> None:
     try:
         with _db_conn("init_db_open_slug_unique_idx") as conn:
             conn.execute(
-                "CREATE UNIQUE INDEX IF NOT EXISTS idx_trades_one_open_per_slug "
-                "ON trades(market_slug) WHERE status='open'"
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_trades_one_live_per_slug "
+                "ON trades(market_slug) WHERE status IN ('open', 'pending')"
             )
             conn.commit()
-        logger.info("DB migration: ensured unique open-slug index")
+        logger.info("DB migration: ensured unique live-slug index")
     except sqlite3.Error as e:
-        logger.warning("DB migration: failed to ensure unique open-slug index: %s", e)
+        logger.warning("DB migration: failed to ensure unique live-slug index: %s", e)
 
     # Run attribution schema migration
     _migrate_attribution_schema()
+    _migrate_add_order_id_column()
+    _migrate_drop_old_open_index()
     _update_migration_marker()
 
     logger.info("DB initialized at %s", DB_PATH)
@@ -181,8 +206,8 @@ def insert_open_trade(trade: Trade, sport: str = "unknown") -> int | None:
                 """INSERT INTO trades
                    (ts_open, ts_close, market_slug, market_id, side, qty, entry_px,
                     exit_px, pnl_usd, fees_usd, reason_open, reason_close,
-                    confidence, mode, status, sport, source)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    confidence, mode, status, sport, source, order_id)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     trade.ts_open, trade.ts_close,
                     trade.market_slug, trade.market_id,
@@ -190,7 +215,8 @@ def insert_open_trade(trade: Trade, sport: str = "unknown") -> int | None:
                     trade.exit_px, trade.pnl_usd, trade.fees_usd,
                     trade.reason_open, trade.reason_close,
                     trade.confidence, trade.mode,
-                    "open", sport, getattr(trade, "source", "bot"),
+                    (getattr(trade, "status", None) or "open"), sport, getattr(trade, "source", "bot"),
+                    getattr(trade, "order_id", None),
                 ),
             )
             conn.commit()
@@ -223,6 +249,25 @@ def close_trade(trade_id: int, close_data: dict) -> None:
                     trade_id, close_data.get("reason_close"), close_data.get("pnl_usd", 0.0))
 
 
+def update_trade_fill(order_id: str, actual_fill_px: float) -> int | None:
+    """Update a pending trade's actual_fill_px and transition status pending→open.
+
+    Called by Stair B's UserStreamClient when a TRADE event arrives. Looks up
+    the row by order_id (set when the live-path live_exec.place_order returned
+    status='placed'). Returns the row id on success; None if no row matches.
+    """
+    with _db_conn("update_trade_fill") as conn:
+        cur = conn.execute(
+            "UPDATE trades SET actual_fill_px=?, status='open' "
+            "WHERE order_id=? AND status='pending' "
+            "RETURNING id",
+            (float(actual_fill_px), str(order_id)),
+        )
+        row = cur.fetchone()
+        conn.commit()
+        return int(row[0]) if row else None
+
+
 def update_trade_attribution(trade_id: int, attr_data: dict) -> None:
     """Update attribution columns on a trade row. Only updates non-None values."""
     with _db_conn("update_attribution") as conn:
@@ -248,8 +293,9 @@ def fetch_open_trades() -> list[Trade]:
     with _db_conn("fetch_open_trades") as conn:
         rows = conn.execute(
             "SELECT id,ts_open,ts_close,market_slug,market_id,side,qty,entry_px,"
-            "exit_px,pnl_usd,fees_usd,reason_open,reason_close,confidence,mode,status,source "
-            "FROM trades WHERE status='open' ORDER BY id ASC"
+            "exit_px,pnl_usd,fees_usd,reason_open,reason_close,confidence,mode,status,source,order_id,"
+            "actual_fill_px "
+            "FROM trades WHERE status IN ('open', 'pending') ORDER BY id ASC"
         ).fetchall()
     return [_row_to_trade(r) for r in rows]
 
@@ -258,7 +304,8 @@ def fetch_recent_closed(n: int = 20) -> list[Trade]:
     with _db_conn("fetch_recent_closed") as conn:
         rows = conn.execute(
             "SELECT id,ts_open,ts_close,market_slug,market_id,side,qty,entry_px,"
-            "exit_px,pnl_usd,fees_usd,reason_open,reason_close,confidence,mode,status,source "
+            "exit_px,pnl_usd,fees_usd,reason_open,reason_close,confidence,mode,status,source,order_id,"
+            "actual_fill_px "
             "FROM trades WHERE status='closed' ORDER BY id DESC LIMIT ?",
             (n,),
         ).fetchall()
@@ -329,4 +376,6 @@ def _row_to_trade(r: tuple) -> Trade:
         mode=r[14] or "neutral",
         status=r[15] or "open",
         source=(r[16] or "bot") if len(r) > 16 else "bot",
+        order_id=r[17] if len(r) > 17 else None,
+        actual_fill_px=(float(r[18]) if (len(r) > 18 and r[18] is not None) else None),
     )

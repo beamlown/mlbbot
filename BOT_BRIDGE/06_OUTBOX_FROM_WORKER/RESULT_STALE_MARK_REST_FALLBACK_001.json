@@ -1,0 +1,27 @@
+{
+  "task_id": "STALE_MARK_REST_FALLBACK_001",
+  "decision": "IMPLEMENTED_PENDING_OPERATOR_RESTART",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py"
+  ],
+  "lines_added": {
+    "module_level": [57, 58, 59, 60, 61],
+    "helper_function_start": 394,
+    "stream_fallback_block": [433, 447]
+  },
+  "stale_before": {
+    "status": "CONFIRMED_FROM_TASK_CONTEXT",
+    "summary": "Pre-game / low-activity tracked marks could stay stale indefinitely after reconnect because WebSocket only delivers delta price_change events and no REST fallback existed."
+  },
+  "stale_after": {
+    "status": "NOT_RUNTIME_VERIFIED",
+    "summary": "Code path now polls Polymarket CLOB REST inline for marks older than 30s, throttled to once per 20s per slug, then re-snapshots state_hub. Runtime verification is pending operator restart because this task forbids process restart here."
+  },
+  "log_sample": {
+    "expected_after_restart": "[STALE_POLL] <slug> -> cp=<price> bid=<bid> ask=<ask>",
+    "runtime_sample": null
+  },
+  "rollback": {
+    "method": "Remove the module-level REST fallback constants/lock map, remove _poll_stale_mark(), and remove the _to_poll fallback block from _stream_positions_mark()."
+  }
+}

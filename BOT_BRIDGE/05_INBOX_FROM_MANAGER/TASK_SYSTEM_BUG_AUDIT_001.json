@@ -1,0 +1,24 @@
+{
+  "task_id": "SYSTEM_BUG_AUDIT_001",
+  "type": "full_system_bug_audit",
+  "mode": "read_only",
+  "status": "active",
+  "scope": [
+    "sports_bot_v2",
+    "mlb_model",
+    "dashboard",
+    "bridge",
+    "runtime state",
+    "process topology",
+    "API truth",
+    "accounting truth",
+    "live game monitoring",
+    "BOT_BRIDGE workflow state"
+  ],
+  "constraints": [
+    "do not change production code",
+    "do not redesign anything",
+    "do not restart services unless absolutely necessary to verify a hard failure",
+    "audit/evidence/report only"
+  ]
+}

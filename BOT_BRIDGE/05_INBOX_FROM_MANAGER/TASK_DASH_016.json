@@ -1,0 +1,50 @@
+{
+  "task_id": "DASH_016",
+  "title": "Trade log: team name display, USD size, command bar win rate binding",
+  "status": "QUEUED",
+  "priority": 2,
+  "subsystem": "dashboard_html",
+  "allowed_files": ["dashboard.html"],
+  "do_not_touch": ["dashboard_server.py", "launch_all.py", "bot_core.py", "core/", "mlb_model/", ".env"],
+  "depends_on": "DASH_015",
+
+  "objective": "Polish the trade log and confirm command bar win rate binding. Trade log currently shows raw market slugs (e.g. 'mlb-sea-laa-2026-04-05') truncated to 30 chars — should show team abbreviations (SEA @ LAA). Trade log also shows no position size in USD. The slugToGameParts() helper already exists from DASH_009. Command bar win rate binding may already be in DASH_015 — if so, skip that change.",
+
+  "deliverables": [
+    {
+      "label": "Trade log: show team abbreviations instead of raw slug",
+      "file": "dashboard.html",
+      "where": "renderTrades() — the part that formats the market slug for display",
+      "change": "Find the slug display code in renderTrades(). Replace raw slug truncation with:\n  const _sp = slugToGameParts(slug);\n  const teamDisplay = _sp ? `${_sp.away} @ ${_sp.home}` : (slug ? slug.slice(0, 22) + '…' : '?');\nUse teamDisplay in the trade card template instead of the raw slug."
+    },
+    {
+      "label": "Trade log: show USD size",
+      "file": "dashboard.html",
+      "where": "renderTrades() — trade card template",
+      "change": "Compute size:\n  const sizeUsd = (t.qty && t.entry_px) ? fmtUsd(t.qty * t.entry_px) : '—';\nAdd to trade card display (e.g. next to or below the side pill):\n  <span class=\"trade-size\">${sizeUsd}</span>"
+    },
+    {
+      "label": "Command bar win rate binding (only if DASH_015 did NOT already add it)",
+      "file": "dashboard.html",
+      "where": "updateState(s) — where cmd-open and cmd-pnl are bound",
+      "change": "If cmd-winrate element exists but binding is missing, add:\n  const wr = s?.r25?.win_rate;\n  $('cmd-winrate').textContent = wr != null ? (wr * 100).toFixed(0) + '%' : '—';"
+    }
+  ],
+
+  "acceptance_criteria": [
+    "Trade log rows show 'SEA @ LAA' style team abbreviations — NOT raw slugs",
+    "Trade log rows show USD size (e.g. $50.00 or $62.50)",
+    "Command bar win rate binding is present and working (may have been done in DASH_015)",
+    "No JS console errors",
+    "No other files modified"
+  ],
+
+  "verification": [
+    "Open dashboard → Trades tab or trade log section",
+    "Each trade card shows team abbreviations (SEA @ LAA, LAD @ WSN, etc.)",
+    "Each trade card shows a dollar size",
+    "Command bar W%: updates when state refreshes"
+  ],
+
+  "rollback": "Revert dashboard.html only."
+}

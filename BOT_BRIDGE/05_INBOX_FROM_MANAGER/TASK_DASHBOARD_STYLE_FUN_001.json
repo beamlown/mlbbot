@@ -1,0 +1,12 @@
+{
+  "task_id": "DASHBOARD_STYLE_FUN_001",
+  "title": "Style / UX polish for dashboard command-center feel without truth regression",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "dashboard_style_ux",
+  "allowed_files": [
+    "dashboard.html",
+    "dashboard_server.py"
+  ],
+  "objective": "Make the dashboard feel more polished, satisfying, and easier to read while preserving the stabilized truth layer exactly as-is. Main active positions should become the visual focal point, diagnostics should feel quieter, empty state should feel intentional, and mobile readability should improve."
+}

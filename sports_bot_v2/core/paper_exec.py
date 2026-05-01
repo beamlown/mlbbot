@@ -28,6 +28,16 @@ _PAPER_STARTING_BANKROLL = float(os.getenv("STARTING_BANKROLL", "500"))
 PAPER_SLIPPAGE_ENABLED = os.getenv("PAPER_SLIPPAGE_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
 PAPER_SLIPPAGE_CENTS = float(os.getenv("PAPER_SLIPPAGE_CENTS", "2.0"))
 
+PHASE = os.getenv("PHASE", "paper").strip().lower()
+
+
+def _live_place_order(*args, **kwargs):
+    """Indirection layer so tests can patch the live-path call site without
+    importing core.live_exec at module load time (avoids bootstrapping issues
+    if live_exec imports fail and we want paper to still work)."""
+    from core.live_exec import place_order
+    return place_order(*args, **kwargs)
+
 
 def _confidence_size(base_usd: float, confidence: float, drawdown_mult: float = 1.0) -> float:
     if base_usd <= 0:
@@ -202,7 +212,7 @@ def open_position(
     mode: str = "neutral",
     source: str = "bot",
     drawdown_mult: float = 1.0,
-) -> Trade:
+) -> Trade | None:
     recommended_size_usd = signal.components.get("recommended_size_dollars")
     if recommended_size_usd is not None:
         try:
@@ -287,6 +297,29 @@ def open_position(
         "FILL entry | %s | size_usd=%.2f | qty=%.6f | vwap=%.6f | fill_px=%.6f | slippage_bps=%d | partial=%s",
         signal.side, size_usd, qty, vwap, fill_px, slippage_bps, partial
     )
+
+    # PHASE branch — live mode routes through live_exec.place_order
+    if PHASE == "live":
+        try:
+            live_token_id = market.yes_token_id if signal.side == "BUY_YES" else market.no_token_id
+            result = _live_place_order(
+                side=signal.side,
+                token_id=str(live_token_id),
+                price=fill_px,
+                size_usd=size_usd,
+            )
+        except Exception as exc:
+            logger.warning("open_position: live_exec raised err=%s — skipping trade", exc)
+            return None
+
+        if result.status != "placed":
+            logger.info("open_position: live_exec rejected reason=%s — skipping trade", result.reason)
+            return None
+
+        trade.status = "pending"
+        trade.order_id = result.order_id
+        _order_id_tag = result.order_id if result.order_id else "unknown"
+        trade.reason_open += f" live_order_id={_order_id_tag}"
 
     return trade
 

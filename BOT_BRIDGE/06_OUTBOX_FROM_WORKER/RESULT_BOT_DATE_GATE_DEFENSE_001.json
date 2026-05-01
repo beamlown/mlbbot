@@ -1,0 +1,21 @@
+{
+  "task_id": "BOT_DATE_GATE_DEFENSE_001",
+  "decision": "done",
+  "files_changed": [
+    "sports_bot_v2/bot_core.py"
+  ],
+  "commit": "HEAD",
+  "lines_added": 11,
+  "rollback": "git revert <commit_hash>",
+  "verification": {
+    "commands_run": [
+      "python -m py_compile sports_bot_v2\\bot_core.py",
+      "git diff --numstat -- sports_bot_v2/bot_core.py"
+    ],
+    "notes": [
+      "Inserted local origination slug-date gate immediately after ALLOW_LOCAL_MLB_ORIGINATION guard and before generate_signal().",
+      "Import updated to include date alias: from datetime import date as _date, datetime, timezone.",
+      "No files outside bot_core.py were code-modified."
+    ]
+  }
+}

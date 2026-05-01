@@ -1,0 +1,84 @@
+{
+  "task_id": "SESSION_EXPOSURE_CAP_001",
+  "title": "Add MAX_TOTAL_COMMITTED_USD cap — block new entries when total open exposure hits dollar ceiling",
+  "priority": "HIGH",
+  "subsystem": "risk-entry-gates",
+  "status": "QUEUED — blocked until BANKROLL_AWARE_SIZING_001 closes (.env conflict)",
+  "prerequisite_task": "BANKROLL_AWARE_SIZING_001 must be APPROVED before pickup (.env file conflict)",
+
+  "objective": "Add a dollar-denominated cap on total open position exposure. Currently the bot only enforces a count cap (MAX_CONCURRENT_TRADES=3). With MAX_POSITION_SIZE_USD=$50, theoretical max exposure is $150 — but if sizing values are ever raised, there is no dollar ceiling. Add MAX_TOTAL_COMMITTED_USD as an env-gated hard block in check_entry_gates() in core/risk.py.",
+
+  "context": "check_entry_gates() in core/risk.py already enforces MAX_CONCURRENT_TRADES (count cap) and MAX_TRADES_PER_MARKET. This task adds a third gate: if SUM(entry_px * qty WHERE open) + projected_new_size > MAX_TOTAL_COMMITTED_USD, block entry. The committed sum must be read from the live DB, not from in-memory state, so it is always accurate. The new size to add can be estimated as MAX_POSITION_SIZE_USD (worst case) or passed in. Use MAX_POSITION_SIZE_USD as the conservative estimate for gate evaluation.",
+
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env"
+  ],
+
+  "do_not_touch": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\paper_exec.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\db.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db",
+    "Any file not listed in allowed_files above"
+  ],
+
+  "changes_required": {
+
+    "change_1_env": {
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env",
+      "instructions": [
+        "Add MAX_TOTAL_COMMITTED_USD=150 — this is the default dollar ceiling for total open exposure.",
+        "This matches the theoretical maximum (3 trades × $50 cap). It can be lowered later to tighten risk.",
+        "If BANKROLL_AWARE_SIZING_001 has already been applied, add this alongside the existing new entries — do not overwrite them."
+      ]
+    },
+
+    "change_2_risk": {
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+      "instructions": [
+        "Read the full file before editing. Locate check_entry_gates() and understand all existing gates.",
+        "Add a new env read near the top of the file alongside existing env reads: MAX_TOTAL_COMMITTED_USD = float(os.getenv('MAX_TOTAL_COMMITTED_USD', '150'))",
+        "Inside check_entry_gates(), after the existing count and per-market gates, add the new dollar exposure gate.",
+        "The gate logic: query the DB for current committed capital = SELECT COALESCE(SUM(entry_px * qty), 0) FROM trades WHERE status='open'. Then check: if current_committed + MAX_POSITION_SIZE_USD > MAX_TOTAL_COMMITTED_USD: return False, ['exposure_cap_exceeded:committed=X cap=Y']",
+        "Use the same DB connection pattern already present in risk.py or pass the DB path from the caller context. Do not introduce a new DB path pattern.",
+        "If MAX_TOTAL_COMMITTED_USD == 0, treat as disabled (skip gate). This preserves the env-gated disable pattern used elsewhere.",
+        "The rejection reason string must follow the existing format used by other gates in check_entry_gates() so logging and dashboard display are consistent.",
+        "Do not change any existing gate logic, thresholds, or function signatures."
+      ]
+    }
+  },
+
+  "acceptance_criteria": [
+    "MAX_TOTAL_COMMITTED_USD=150 present in .env",
+    "core/risk.py reads MAX_TOTAL_COMMITTED_USD from env with default 150",
+    "check_entry_gates() blocks entry when current_committed + MAX_POSITION_SIZE_USD > MAX_TOTAL_COMMITTED_USD",
+    "Gate returns False with descriptive reason string matching existing format",
+    "MAX_TOTAL_COMMITTED_USD=0 disables the gate (skip check)",
+    "All existing gates in check_entry_gates() are untouched",
+    "python -m py_compile passes for risk.py",
+    "No other files modified"
+  ],
+
+  "verification": [
+    "Read the updated check_entry_gates() and confirm gate is in correct position (after count/market gates)",
+    "Confirm rejection reason string format matches existing gate rejections in the same function",
+    "Grep risk.py for MAX_TOTAL_COMMITTED_USD — expect exactly one env read and one usage",
+    "Confirm MAX_TOTAL_COMMITTED_USD=0 path is handled (gate skipped)",
+    "Run: python -m py_compile core/risk.py"
+  ],
+
+  "rollback": "Remove MAX_TOTAL_COMMITTED_USD gate block from check_entry_gates() in risk.py. Remove MAX_TOTAL_COMMITTED_USD from .env. Restart bot.",
+
+  "restart_required": true,
+  "restart_note": "Restart required after approval for gate to take effect.",
+
+  "deliverables": [
+    "RESULT_SESSION_EXPOSURE_CAP_001.json in 06_OUTBOX_FROM_WORKER",
+    "Exact lines added to risk.py with before/after context",
+    "Confirmation of .env value set",
+    "py_compile confirmation"
+  ]
+}

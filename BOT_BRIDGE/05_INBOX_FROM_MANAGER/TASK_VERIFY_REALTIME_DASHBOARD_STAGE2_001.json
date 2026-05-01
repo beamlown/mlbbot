@@ -1,0 +1,17 @@
+{
+  "task_id": "VERIFY_REALTIME_DASHBOARD_STAGE2_001",
+  "title": "Verify realtime dashboard Stage 2 is truly functioning live",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "realtime_dashboard_verification",
+  "allowed_files": ["dashboard_server.py", "dashboard.html"],
+  "objective": "Prove whether /api/stream/state is live, whether the dashboard is actually consuming pushed updates, and whether polling fallback still works.",
+  "acceptance_criteria": [
+    "SSE route proven live",
+    "at least one visible metric proven push-driven",
+    "stale/fresh signaling proven",
+    "fallback polling proven intact",
+    "final result is VERIFIED, PARTIAL, or BLOCKED"
+  ],
+  "rollback": "Verification only unless a hard failure is proven."
+}

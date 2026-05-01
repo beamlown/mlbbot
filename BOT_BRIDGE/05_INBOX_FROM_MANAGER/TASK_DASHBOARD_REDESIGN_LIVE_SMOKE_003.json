@@ -1,0 +1,50 @@
+{
+  "task_id": "DASHBOARD_REDESIGN_LIVE_SMOKE_003",
+  "priority": "HIGH",
+  "type": "verification",
+  "subsystem": "dashboard",
+  "allowed_files": [],
+  "note": "Read-only. No production code changes. Reduced-scope re-smoke — only the SSE sign criterion needs re-verification. All other criteria passed in SMOKE_002.",
+
+  "context": {
+    "why": "DASHBOARD_REDESIGN_LIVE_SMOKE_002 cleared all criteria except SSE sign verification, which was blocked by a null current_price (ARI/NYM NO token mark was stale — Polymarket WS sent no delta after reconnect). STALE_MARK_REST_FALLBACK_001 adds a REST CLOB poll that fires when mark_age > 30s, injecting a fresh price into state_hub. After deployment + process restart, ARI/NYM should have a non-null current_price.",
+    "shadow_feed_note": "Worker flagged id=shadow-feed as a failure. Manager reviewed and overrode: #shadow-feed is in #drawer > #tab-shadow (line 537), not inside #tab-live (lines 410-457). Criterion was met in SMOKE_002. Do NOT re-check this criterion — it is already PASS.",
+    "prerequisite": "STALE_MARK_REST_FALLBACK_001 must be deployed (dashboard_server.py patched) and process restarted before running this smoke test. Confirm [STALE_POLL] log lines appear before proceeding."
+  },
+
+  "acceptance_criteria": [
+    "Confirm [STALE_POLL] appears in dashboard_server log output (proves REST fallback is running)",
+    "SSE /api/stream/state: ARI/NYM (or whichever BUY_NO position is open) has non-null current_price",
+    "SSE: for the BUY_NO position with non-null current_price, verify unrealized_pnl_usd = round((current_price - entry_px) * qty, 4) — correct sign, no branching",
+    "SSE: live_equity_usd = round(qty * current_price, 4) — internally consistent",
+    "SSE: mark_source = 'rest_fallback' (confirms REST path fired, not stale WS data)",
+    "SSE: stale = false after REST poll lands"
+  ],
+
+  "already_passed_do_not_recheck": [
+    "HTTP 200 from localhost:8900",
+    "/api/state fields (bankroll, r25 win_rate, bridge_enabled)",
+    "/api/trades TP/SL side-correct for BUY_NO",
+    "All 5 tabs present (LIVE, POSITIONS, GAMES, HISTORY, SYSTEM)",
+    "Shadow absent from LIVE tab (#shadow-feed not in #tab-live)",
+    "Advisory label in GAMES tab",
+    "No new sign regression"
+  ],
+
+  "do_not": [
+    "Edit any production file",
+    "Restart any process (process restart is operator responsibility after STALE_MARK_REST_FALLBACK_001 approval)",
+    "Re-run already-passed criteria",
+    "Fail the shadow-feed check — criterion was already cleared in SMOKE_002 manager review"
+  ],
+
+  "result_format": {
+    "file": "06_OUTBOX_FROM_WORKER/RESULT_DASHBOARD_REDESIGN_LIVE_SMOKE_003.json",
+    "required_fields": [
+      "decision",
+      "stale_poll_log_confirmed",
+      "sign_verification",
+      "overall_verdict"
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "task_id": "DASHBOARD_TRUTH_002",
+  "title": "Unify dashboard around paper-execution truth with shadow demoted to diagnostics",
+  "status": "PROVISIONAL_ACTIVE_PENDING_CLAUDE",
+  "priority": 1,
+  "subsystem": "dashboard_truth_layer",
+  "likely_allowed_files": [
+    "dashboard.html",
+    "dashboard_server.py"
+  ],
+  "objective": "Make the dashboard feel like one coherent execution pipeline: model recommendation -> bridge gating -> paper execution -> live position -> resolution. User-facing active positions and top-level counts must come from paper-execution truth only, while shadow/advisory remains visible only as secondary diagnostics.",
+  "constraints": [
+    "do not redesign model logic",
+    "do not redesign execution logic",
+    "do not touch real-money execution",
+    "keep scope focused on dashboard truth, monitoring integrity, and usability",
+    "preserve current working backend behavior unless a tiny backend addition is truly necessary"
+  ]
+}

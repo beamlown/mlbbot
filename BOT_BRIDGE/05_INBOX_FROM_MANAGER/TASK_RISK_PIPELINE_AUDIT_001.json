@@ -1,0 +1,130 @@
+{
+  "task_id": "RISK_PIPELINE_AUDIT_001",
+  "phase": 0,
+  "priority": "HIGH",
+  "type": "audit / spec-only",
+  "subsystem": "risk / execution / accounting",
+  "allowed_files": "READ-ONLY — no writes to any production file",
+  "depends_on": null,
+  "gate_status": "READY",
+
+  "purpose": "Map the full current risk pipeline end-to-end. Produce a written audit document that is the factual foundation all later phases build on. Nothing is changed in this phase. The audit document is the deliverable.",
+
+  "scope": {
+    "in_scope": [
+      "Read core/risk.py — all entry gates, exit triggers, held-side price logic, SL cluster detection, thresholds",
+      "Read core/paper_exec.py — sizing logic, open_position, close_position, held-contract semantics, fee simulation",
+      "Read bot_core.py — exit loop, entry loop, concurrency caps, _market_cooldown, bridge integration, _dummy_market path",
+      "Read dashboard_server.py — bankroll display, session accounting, available cash, capital committed, live equity",
+      "Read core/types.py — canonical Trade, Market, OBSnapshot, Signal dataclasses",
+      "Read .env — all risk threshold env vars currently in use",
+      "Read core/db.py — how trades are persisted, what fields exist, how pnl_usd/exit_px/reason_close are stored"
+    ],
+    "out_of_scope": [
+      "Do not change any file",
+      "Do not redesign any logic",
+      "Do not audit the MLB model strategy or recommendation_api.py unless a field it emits directly affects risk sizing",
+      "Do not audit dashboard UI aesthetics"
+    ]
+  },
+
+  "audit_surfaces_to_map": {
+    "entry_pipeline": [
+      "What gates exist before a trade opens? List all in order.",
+      "Where is position sizing calculated? What inputs does it use?",
+      "What concurrency cap is enforced and where?",
+      "What is the _market_cooldown mechanism and where is it checked vs set?",
+      "What does _dummy_market() produce and what risk does it carry?"
+    ],
+    "held_side_pricing": [
+      "What is _held_bid()? Where is it defined? What does it return for BUY_YES vs BUY_NO?",
+      "Where is current_held_price derived at runtime?",
+      "Is there any path where raw YES/NO bid is used instead of held-side bid? Flag each one.",
+      "What happens if _held_bid() returns None? Trace every callsite."
+    ],
+    "tp_sl_exits": [
+      "List every exit reason in check_exit() with its trigger condition and the exact math.",
+      "What are the current env var thresholds for each? (AUTO_TAKE_PROFIT_PCT, AUTO_STOP_LOSS_PCT, NEAR_RESOLUTION_PRICE, TRAILING_STOP_ACTIVATE_PCT, TRAILING_STOP_DRAWDOWN_PCT, TIME_EXIT_BUFFER_SECONDS)",
+      "What cooldowns are set after each exit type? (near_resolution: 600s, stop_loss: 1800s, gap_stop: 3600s — verify these are live)",
+      "Is there any exit path that does not log a CLOSE entry? Flag it.",
+      "Is there any exit path that does not persist exit_px and reason_close to DB? Flag it."
+    ],
+    "sizing": [
+      "What is the exact sizing formula in paper_exec.py?",
+      "What inputs feed it: confidence, bankroll, max_size_usd, min_size_usd, concurrency?",
+      "Are there confidence tiers? List them.",
+      "Is size capped per-trade and per-session? Where?",
+      "What is committed_usd at any given moment — how is it computed?"
+    ],
+    "bankroll_accounting": [
+      "What is the canonical definition of: lifetime_bankroll, session_baseline, session_pnl, available_cash, capital_committed?",
+      "Where is each computed (dashboard_server.py, DB query, runtime state)?",
+      "Is there any path where closed trade PnL is double-counted?",
+      "Is there any fake reset mechanism that erases lifetime history? Flag it.",
+      "What does the DB return for total realized PnL? Is it cumulative since inception?"
+    ],
+    "concurrency_and_caps": [
+      "What is the MAX_CONCURRENT_TRADES cap and where is it enforced?",
+      "Is there a per-market cap (max 1 open position per market_id)?",
+      "Is there a per-session max loss cap? If not, note the gap.",
+      "Is there a daily max loss cap? If not, note the gap."
+    ]
+  },
+
+  "required_deliverables": {
+    "file": "BOT_BRIDGE/06_OUTBOX_FROM_WORKER/RESULT_RISK_PIPELINE_AUDIT_001.json",
+    "also_write": "BOT_BRIDGE/08_SHARED_CONTEXT/RISK_PIPELINE_AUDIT_REPORT_001.md",
+    "result_must_include": [
+      "decision: APPROVED | CHANGES_REQUESTED | BLOCKED",
+      "audit_complete: true/false",
+      "report_path: path to the .md report",
+      "gaps_found: list of gaps or 'none'",
+      "broken_invariants: list of places held-side truth is violated or 'none'",
+      "immediate_risks: list of high-severity findings requiring immediate attention"
+    ],
+    "report_must_include": [
+      "Entry pipeline map — ordered list of gates",
+      "Sizing formula — verbatim from code",
+      "TP/SL exit map — every trigger with threshold values",
+      "Held-side pricing map — every callsite of _held_bid()",
+      "Bankroll/session accounting map — every variable and where computed",
+      "Concurrency and cap map",
+      "Gaps table: surface | gap description | severity (HIGH/MED/LOW)",
+      "Broken invariants table: location | what invariant | what actually happens",
+      "Recommended phase priorities based on findings"
+    ]
+  },
+
+  "preflight_questions": [
+    "Is core/risk.py readable and importable without side effects?",
+    "Is core/paper_exec.py readable?",
+    "Does bot_core.py compile cleanly (python -m py_compile bot_core.py)?",
+    "Is .env present and readable?",
+    "Are all imports in core/types.py resolvable?"
+  ],
+
+  "acceptance_criteria": [
+    "RISK_PIPELINE_AUDIT_REPORT_001.md exists in 08_SHARED_CONTEXT/",
+    "Report covers all 6 audit surfaces listed above",
+    "Every gap and broken invariant is listed with file:line_number reference",
+    "No production file was modified (git diff --name-only shows nothing)",
+    "Immediate risks are explicitly flagged and ranked"
+  ],
+
+  "proof_of_work": [
+    "Include file:line_number citations for every claim in the report",
+    "For every threshold, show the exact env var name and current value from .env",
+    "For every sizing formula, show the exact code lines",
+    "Do not paraphrase code — quote relevant lines directly"
+  ],
+
+  "guardrails": [
+    "Do not redesign strategy or model logic",
+    "Do not widen scope",
+    "Do not reintroduce ambiguous YES/NO economics",
+    "Held-side contract truth must remain the basis for pricing and exit logic",
+    "Do not fake bankroll resets",
+    "Preserve audit trail",
+    "Distinguish clearly: VERIFIED | PARTIAL | BLOCKED | SUPERSEDED"
+  ]
+}

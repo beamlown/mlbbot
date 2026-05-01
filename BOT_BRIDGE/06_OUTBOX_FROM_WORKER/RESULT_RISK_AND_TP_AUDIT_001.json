@@ -1,0 +1,24 @@
+{
+  "task_id": "RISK_AND_TP_AUDIT_001",
+  "decision": "approved",
+  "status": "done",
+  "files_changed": [],
+  "audit_doc_path": "BOT_BRIDGE/08_SHARED_CONTEXT/RISK_MANAGEMENT_FINAL_AUDIT_001.md",
+  "sections_written": 10,
+  "gaps_remaining_count": 6,
+  "high_severity_gaps": [
+    "GAP-SIZE-SESSION: No per-session total USD commitment cap (max exposure = 3 x $100 = $300)",
+    "GAP-SIZE-BANKROLL: Position sizing ignores bankroll balance — no drawdown-aware scaling"
+  ],
+  "low_severity_gaps": [
+    "GAP-DEFAULTS: risk.py code defaults differ from live .env values",
+    "GAP-SESSION-DASHBOARD: Session PnL not displayed on dashboard",
+    "GAP-EQUITY-ASK-FALLBACK: REST fallback uses ask when no bids available",
+    "GAP-STALE-OB-FORCED-EXIT: Stale OB warning without forced exit"
+  ],
+  "overall_verdict": "VERIFIED",
+  "verification": {
+    "commands": ["No production files modified — read-only task"],
+    "results": ["RISK_MANAGEMENT_FINAL_AUDIT_001.md written with all 10 sections"]
+  }
+}

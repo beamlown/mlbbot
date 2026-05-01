@@ -1,0 +1,80 @@
+{
+  "mode_used": "WORKER MODE",
+  "task_selected": "GAME_STATE_FRESHNESS_AUDIT_001",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\01_RULES\\WORKER_RULES.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_TASK_BOARD.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_STATUS.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_GAME_STATE_FRESHNESS_AUDIT_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_GAME_STATE_FRESHNESS_AUDIT_001.md",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260411.log",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\runtime\\state.json"
+  ],
+  "files_changed": [],
+  "verification_performed": [
+    "Read recommendation_api.py and traced where recommendation-time game-state fields are fetched, attached, timestamped, and emitted",
+    "Read model_bridge.py and traced which freshness thresholds are enforced before a recommendation becomes an approved intent",
+    "Read bot log and compared repeated rec_age rejection patterns and acceptance windows against the bridge freshness thresholds",
+    "Read runtime/state.json for recent live-trade context showing extreme-price entries still occurred in runtime history"
+  ],
+  "restart_needed": "No",
+  "result_file_written": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_GAME_STATE_FRESHNESS_AUDIT_001.json",
+  "observed": [
+    "At recommendation time, the recommendation object explicitly carries: `inning`, `inning_half`, `outs`, `score_diff`, `game_progress`, `game_status`, `game_state_timestamp`, `book_timestamp`, `game_state_age_sec`, and `book_age_sec`.",
+    "Those game-state fields come from `snap = get_game_snapshot(home_team, away_team)` inside `generate_recommendation_for_game()` in recommendation_api.py. Market freshness fields come from `market = get_market_state(...)`.",
+    "The recommendation layer rejects only three coarse game-state conditions before inference: `snap is None`, `not snap.is_live`, and `registry_not_live`. It does not itself reject on `snap.age_seconds`.",
+    "Freshness gating is enforced downstream in model_bridge.py, where recommendations are rejected if `game_state_age_sec >= 60` or `book_age_sec >= 30`.",
+    "The recommendation loop explicitly refreshes the live registry every loop and suppresses actionable recommendations if the registry itself is stale, via `refresh_registry()` and `if is_registry_stale(): ... suppressing actionable recommendations`.",
+    "The bridge log contains many `BRIDGE GATE REJECT [rec_age]` entries with ages well above 120s, showing recommendation-age freshness is actively enforced and that stale recommendations do get filtered out before approval.",
+    "Within the allowed files, no recommendation-time base-state fields are present. There is no explicit occupancy/on-base snapshot, runner count, or base configuration attached to the recommendation output.",
+    "Within the allowed files, no recommendation-time raw score fields are present beyond `score_diff`. The output does not carry full home_score and away_score separately.",
+    "The recommendation reasons list uses score_diff, inning, outs, bullpen flags, and pregame prior, which indicates those fields are present and at least partially surfaced, but the reasons are lightweight and not exhaustive game context.",
+    "Runtime/state.json still shows recent low-price and near-dead trade history, but this artifact does not expose recommendation-time game-state payloads directly, so it cannot prove mismatch on its own."
+  ],
+  "proven": [
+    {
+      "point": "Score/inning/outs context is available at recommendation time.",
+      "evidence": "recommendation_api.py returns `inning=snap.inning`, `inning_half=snap.inning_half`, `outs=snap.outs`, `score_diff=snap.score_diff`, `game_progress=snap.game_progress`, `game_status=snap.status`."
+    },
+    {
+      "point": "Recommendation-time game-state freshness is tracked explicitly.",
+      "evidence": "recommendation_api.py emits `game_state_timestamp=_age_to_ts(snap.age_seconds)` and `game_state_age_sec=round(snap.age_seconds, 2)`."
+    },
+    {
+      "point": "Bridge-side freshness thresholds exist and are active in source for both game-state and book-state.",
+      "evidence": "model_bridge.py enforces `MAX_GAME_STATE_AGE = 60` and `MAX_BOOK_AGE = 30`, then rejects if `game_state_age >= MAX_GAME_STATE_AGE` or `book_age >= MAX_BOOK_AGE`."
+    },
+    {
+      "point": "Recommendation-age freshness is also active in source and observed in logs.",
+      "evidence": "model_bridge.py enforces `MAX_REC_AGE_SECONDS = 120`, and the log repeatedly shows `BRIDGE GATE REJECT [rec_age] ... age=...s`."
+    },
+    {
+      "point": "Base-state is not visible in the audited recommendation output fields.",
+      "evidence": "No base-state fields are attached in the Recommendation returned by generate_recommendation_for_game(); only inning, inning_half, outs, score_diff, game_progress, and game_status are present from the game-state family."
+    },
+    {
+      "point": "Full score context is compressed before output.",
+      "evidence": "Recommendation output includes `score_diff`, but not separate home_score and away_score fields within the audited file."
+    }
+  ],
+  "likely": [
+    "The bigger problem is more likely insufficient use and incomplete representation of available context than outright stale data. The code shows freshness timestamps and multiple freshness gates, so totally stale state is guarded against to some degree.",
+    "A secondary likely problem is missing context richness. The recommendation path appears to rely on compact state like score_diff, inning, outs, and game_progress, but not visible base-state or full score detail in the audited output. For late-game baseball, that can be strategically insufficient even if timestamps are fresh.",
+    "Stale or lagging game state remains plausible in edge cases, but the allowed files do not prove it was the primary driver tonight. The strongest evidence available here points instead to fresh-enough but semantically insufficient state and/or weak late-game modeling over that state.",
+    "The near-resolution failure mode likely arises because the pipeline can carry fresh timestamps while still not collapsing win probability appropriately for already-near-dead game situations. That is a modeling or feature-use problem more than a pure freshness problem.",
+    "Because base-state is absent from the visible recommendation payload, late-inning leverage may be under-modeled even when score/inning/outs are fresh."
+  ],
+  "ruled_out": [
+    "Ruled out: recommendation-time game state being entirely absent. It is clearly present via inning, inning_half, outs, score_diff, game_progress, and status.",
+    "Ruled out: no freshness checks existing at all. They exist in source at both recommendation age and bridge-side game_state/book freshness levels.",
+    "Not supported by the audited files: a claim that stale data was definitely the root cause tonight. The evidence here is insufficient to prove that."
+  ],
+  "recommended_next_step": "Smallest follow-up should be a narrow wiring/usage verification, not a broad patch: verify whether late-game protection that already exists in config, especially LATE_INNING_BLOCK, is actually wired into the active recommendation-to-entry path. This audit shows the recommendation path has some game-state freshness machinery, but the bigger risk appears to be insufficient use of available late-game context plus missing richer state such as base-state. So the next smallest follow-up after this audit is to confirm whether the existing late-inning protection is live before assuming deeper freshness failure.",
+  "queued_next_list": [
+    "CONFIG_HASH_INPUTS_FIX_001",
+    "STARTUP_PROOF_BLOCK_001",
+    "LATE_INNING_BLOCK_WIRING_VERIFY_001"
+  ]
+}

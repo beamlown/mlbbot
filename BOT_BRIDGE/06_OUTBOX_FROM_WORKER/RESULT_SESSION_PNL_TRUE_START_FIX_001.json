@@ -1,0 +1,43 @@
+{
+  "task_id": "SESSION_PNL_TRUE_START_FIX_001",
+  "status": "DONE",
+  "mode_used": "WORKER MODE",
+  "active_tasks_found": [
+    "SESSION_PNL_TRUE_START_FIX_001 (ACTIVE — task JSON confirmed, prerequisite MARKET_COOLDOWN_PERSIST_001 APPROVED)"
+  ],
+  "task_selected": "SESSION_PNL_TRUE_START_FIX_001",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_SESSION_PNL_TRUE_START_FIX_001.json",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard_server.py (grep only — session_start_ts / session_pnl usage)"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py"
+  ],
+  "exact_section_changed": {
+    "location": "main() startup block — existing cooldown restore block extended (lines 343-364)",
+    "old_header": "# ── Restore market cooldown from prior state ───────────────────────────\nglobal _market_cooldown",
+    "new_header": "# ── Restore cooldown and session start from prior state ───────────────\nglobal _market_cooldown, _session_start_ts",
+    "added_lines": [
+      "# Restore session start so PnL accumulates from true session start, not restart",
+      "_prior_ts = int(((_prior.get('pnl') or {}).get('session_start_ts') or 0))",
+      "if 0 < _prior_ts and (_now - _prior_ts) < 86400:",
+      "    _session_start_ts = _prior_ts",
+      "    logger.info('Restored session_start_ts=%d from prior state', _session_start_ts)"
+    ]
+  },
+  "old_behavior": "_session_start_ts was set to int(time.time()) at module load (line 108), so every restart reset it to the current time. session_pnl in both bot_core.py (session loss cap check) and dashboard_server.py (bankroll block) only counted trades closed since the last restart — not the full trading session.",
+  "new_behavior": "On startup, main() reads pnl.session_start_ts from the prior state.json. If that value is within the last 24 hours (86400s), _session_start_ts is restored to it rather than the current time. session_pnl now accumulates from the original session start across all restarts within the same trading day. After 24 hours the value ages out and a new session starts fresh on the next restart.",
+  "how_session_start_is_determined": "On first launch of the day (no prior state.json, or prior ts older than 24h): _session_start_ts = int(time.time()) — standard fresh session. On restart during the same day: _session_start_ts restored from pnl.session_start_ts in state.json, which was written by _write_state() on the prior run. The 24h window prevents stale carryover to the next trading day.",
+  "dashboard_server_changed": false,
+  "dashboard_server_impact": "No change required. dashboard_server.py already reads session_start_ts from state.json pnl block (line 529) and queries the DB from that timestamp. Once bot_core.py writes the correct (sticky) session_start_ts to state.json, the dashboard picks it up automatically.",
+  "lifetime_pnl_preserved": true,
+  "verification": {
+    "py_compile_bot_core": "python -m py_compile C:\\Users\\johnny\\Desktop\\sports_bot_v2\\bot_core.py — PASS",
+    "py_compile_dashboard_server": "Not run — file was not changed"
+  },
+  "restart_required": true,
+  "restart_notes": "Yes — restart required. The session_start_ts restore only runs in main() on startup. The fix has no effect on the currently running process. Additionally, the stale __pycache__/bot_core.cpython-*.pyc must be deleted before restart per OPERATOR_ACTION_REQUIRED_001.",
+  "result_file_written": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_SESSION_PNL_TRUE_START_FIX_001.json",
+  "summary": "Extended the existing startup load block in main() to also restore _session_start_ts from prior state.json (if within 24h) so session PnL accumulates from the true session start rather than resetting to the last restart timestamp."
+}

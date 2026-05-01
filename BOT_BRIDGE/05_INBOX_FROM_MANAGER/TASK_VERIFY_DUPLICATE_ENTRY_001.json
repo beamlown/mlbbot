@@ -1,0 +1,40 @@
+{
+  "task_id": "VERIFY_DUPLICATE_ENTRY_001",
+  "title": "Verify duplicate-entry fix in live behavior",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "verification_debug",
+  "allowed_files": [],
+  "do_not_touch": [
+    "dashboard.html",
+    "dashboard_server.py",
+    "launch_all.py",
+    "bot_core.py",
+    "core/",
+    ".env",
+    "mlb_model/"
+  ],
+  "objective": "Verification-only task to prove whether DUPLICATE_ENTRY_FIX_001 actually solved duplicate open paper trade creation under live behavior. No production code changes allowed. If a hard remaining bug is found that would require code changes, stop and return BLOCKED instead of editing production files.",
+  "verification_targets": [
+    "No duplicate open paper trades for the same market_slug",
+    "No capacity breach like 4/3",
+    "Duplicate attempts logged as skipped instead of creating positions",
+    "/api/trades open count matches backend open DB rows",
+    "/api/state open positions count matches backend truth",
+    "Dashboard-facing truth no longer reflects duplicate real positions caused by backend duplicate opens"
+  ],
+  "allowed_actions": [
+    "read files",
+    "inspect logs",
+    "inspect DB/state",
+    "inspect current API outputs",
+    "run the current stack if needed",
+    "export evidence",
+    "write only BOT_BRIDGE task/result/review files"
+  ],
+  "deliverables": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_VERIFY_DUPLICATE_ENTRY_001.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_VERIFY_DUPLICATE_ENTRY_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\07_REVIEWS\\PROVISIONAL_REVIEW_VERIFY_DUPLICATE_ENTRY_001.md"
+  ]
+}

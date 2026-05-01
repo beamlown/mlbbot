@@ -26,11 +26,25 @@
     "away_tto",
     "away_is_bullpen",
     "elo_diff_norm",
-    "late_tie_bottom"
+    "late_tie_bottom",
+    "home_sp_quality",
+    "away_sp_quality",
+    "home_sp_recent_form",
+    "away_sp_recent_form",
+    "sp_quality_diff",
+    "park_run_factor",
+    "lineup_avg_xwoba",
+    "home_reliever_quality",
+    "away_reliever_quality",
+    "home_bullpen_avg_quality",
+    "away_bullpen_avg_quality",
+    "leverage_index",
+    "wind_out_mph",
+    "temp_f"
   ],
-  "n_features": 22,
-  "export_ts": "2026-04-11T04:25:15.742659Z",
+  "n_features": 36,
+  "export_ts": "2026-04-20T14:31:03.334529Z",
   "promotion_passed": true,
-  "test_log_loss": 0.46529884814839495,
-  "test_brier": 0.15609870552511204
+  "test_log_loss": 0.4656378286788297,
+  "test_brier": 0.15621205813100958
 }

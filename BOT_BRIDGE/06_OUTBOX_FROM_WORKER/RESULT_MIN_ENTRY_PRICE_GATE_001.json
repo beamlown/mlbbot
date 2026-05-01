@@ -1,0 +1,27 @@
+{
+  "task_id": "MIN_ENTRY_PRICE_GATE_001",
+  "status": "DONE",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_TASK_BOARD.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_STATUS.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_MIN_ENTRY_PRICE_GATE_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_MIN_ENTRY_PRICE_GATE_001.md",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MIN_ENTRY_PRICE_GATE_001.json"
+  ],
+  "exact_lines_areas_changed": [
+    "core/risk.py constants block: added MIN_ENTRY_PRICE env-backed constant beside MAX_ENTRY_PRICE and MIN_ENTRY_CONFIDENCE",
+    "core/risk.py check_entry_gates(): inserted ask-side minimum entry price gate immediately after the existing MAX_ENTRY_PRICE checks and before near-resolution gating"
+  ],
+  "summary": "Added a minimal MIN_ENTRY_PRICE gate to check_entry_gates() using the correct ask side for BUY_YES and BUY_NO. Entries with ask price below 0.15 now reject with entry_price_too_low before they can open.",
+  "verification_evidence": [
+    "Patched check_entry_gates() reads ask_side = ob.ask_yes for BUY_YES else ob.ask_no for BUY_NO.",
+    "Low-price rejection reason is emitted as entry_price_too_low:{ask_side:.4f}<{MIN_ENTRY_PRICE:.4f}.",
+    "python -m py_compile C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py passed."
+  ],
+  "restart_required": true,
+  "result_file_path": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MIN_ENTRY_PRICE_GATE_001.json"
+}

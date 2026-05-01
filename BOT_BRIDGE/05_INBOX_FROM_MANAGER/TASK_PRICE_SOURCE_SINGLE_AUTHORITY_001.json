@@ -1,0 +1,6 @@
+{
+  "task_id": "PRICE_SOURCE_SINGLE_AUTHORITY_001",
+  "mode": "live_runtime_truth_fix",
+  "runtime_target": "http://localhost:8900",
+  "goal": "Make one single authority win for live position card current_price so stream-backed Polymarket marks remain the source of truth when fresh and fallback applies only when stream data is missing or stale."
+}

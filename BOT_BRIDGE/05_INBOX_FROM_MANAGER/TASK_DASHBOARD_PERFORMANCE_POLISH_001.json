@@ -1,0 +1,102 @@
+{
+  "task_id": "DASHBOARD_PERFORMANCE_POLISH_001",
+  "title": "Dashboard redesign — performance, flicker elimination, and visual polish pass",
+  "status": "HOLD_PENDING_EXECUTION_TRUTH",
+  "gate": "Do NOT begin until DASHBOARD_POSITIONS_HISTORY_SYSTEM_001 is APPROVED.",
+  "phase": 4,
+  "depends_on": [
+    "EXECUTION_HELD_SIDE_SEMANTICS_001",
+    "DASHBOARD_REDESIGN_ARCH_001",
+    "DASHBOARD_REDESIGN_SHELL_001",
+    "DASHBOARD_LIVE_COMMAND_CENTER_001",
+    "DASHBOARD_POSITIONS_HISTORY_SYSTEM_001"
+  ],
+  "priority": 5,
+  "subsystem": "dashboard_performance",
+  "type": "implementation",
+  "allowed_files": [
+    "dashboard.html"
+  ],
+  "do_not_touch": [
+    "dashboard_server.py",
+    "bot_core.py",
+    "core/risk.py",
+    "core/paper_exec.py",
+    "core/db.py",
+    "core/model_bridge.py",
+    "core/types.py",
+    "mlb_model/"
+  ],
+
+  "objective": "Eliminate visual flicker, reduce unnecessary DOM churn, and polish the visual feel without any changes to the truth model, data sources, or pricing logic. This phase is purely JS optimization and CSS refinement. No new features. No new data. No truth-model changes.",
+
+  "problem_targets": {
+    "flicker": "Any DOM element that visibly flashes/rebuilds on every poll interval. Fix by updating only the changed value in-place rather than re-rendering the full card/section.",
+    "full_re_render_on_poll": "Functions that destroy and recreate entire card lists on every /api/state or /api/trades poll. Replace with diff-and-patch pattern: compare new vs current DOM values and only write changes.",
+    "animation_on_numbers": "Any CSS transition or animation on price/PnL values that causes them to blur or bounce. Remove all transitions from number elements.",
+    "layout_shift": "Any layout shift caused by card height changing when data updates. Fix with min-height on card containers.",
+    "tab_flash": "Any white flash or layout recalculation when switching tabs. Fix with proper display:none/block and pre-built DOM.",
+    "loading_state": "Empty state between page load and first data arrives. Add skeleton placeholders or 'Connecting...' states rather than blank panels."
+  },
+
+  "explicit_non_changes": [
+    "Do not change any pricing formula",
+    "Do not change any API call",
+    "Do not change any data fetch interval (unless it is provably causing flicker and reducing it fixes it)",
+    "Do not change the SSE update path",
+    "Do not change what data is shown — only HOW it is rendered",
+    "Do not remove any diagnostic information from SYSTEM tab",
+    "Do not touch dashboard_server.py"
+  ],
+
+  "deliverables": [
+    {
+      "file": "dashboard.html",
+      "changes": [
+        "Convert full card re-renders to in-place field updates for position cards (compare current DOM value before writing)",
+        "Convert full table re-renders to in-place row updates for trade history (keyed by trade id)",
+        "Remove any CSS transitions/animations on price, PnL, win rate, or other numeric fields",
+        "Add min-height to card containers to prevent layout shift",
+        "Add loading/skeleton states for game monitor, position cards, and account strip",
+        "Fix any tab-switch flash with pre-rendered panel content",
+        "Audit and remove any console.log statements left from development",
+        "Verify all poll intervals are reasonable (2s for stream, 5-10s for REST is fine — do not over-poll)"
+      ]
+    }
+  ],
+
+  "preflight_questions": [
+    "Read dashboard.html — which render functions do full DOM replacement on every tick?",
+    "Are there CSS transitions on .stat-val or price elements?",
+    "What is the current poll interval for /api/state, /api/trades, /api/games?",
+    "Are there any console.log statements left in production code?"
+  ],
+
+  "acceptance_criteria": [
+    "Position card prices update in-place without the card flickering or rebuilding",
+    "Trade history table does not flash on each poll",
+    "No CSS transitions on numeric values",
+    "No layout shift when prices update",
+    "Tab switching has no white flash",
+    "Loading states appear immediately on page load before first data arrives",
+    "No console.log in production paths",
+    "All pricing formulas and data sources unchanged — verified by diff review"
+  ],
+
+  "proof_of_work": [
+    "Name each function that was converted from full-re-render to in-place update",
+    "Confirm no pricing formula was changed (grep for unrealized, current_held_price, bid_yes, bid_no)",
+    "Confirm dashboard_server.py diff is empty",
+    "Confirm CSS transitions removed from numeric element classes"
+  ],
+
+  "out_of_scope": [
+    "New features",
+    "New data sources",
+    "Changes to truth model",
+    "Changes to API endpoints",
+    "Changes to SSE stream handler logic (only DOM update path can change)"
+  ],
+
+  "rollback": "Revert dashboard.html only."
+}

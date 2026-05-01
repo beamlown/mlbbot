@@ -1,0 +1,86 @@
+{
+  "mode_used": "WORKER MODE",
+  "active_tasks_found": [
+    "MLB_DATA_INVENTORY_AUDIT_001",
+    "MLB_MODEL_INPUT_PATH_AUDIT_001"
+  ],
+  "task_selected": "MLB_NEAR_RESOLUTION_SANITY_AUDIT_001",
+  "files_read": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\01_RULES\\WORKER_RULES.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_TASK_BOARD.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\08_SHARED_CONTEXT\\CLAUDE_STATUS.md",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\TASK_MLB_NEAR_RESOLUTION_SANITY_AUDIT_001.json",
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\05_INBOX_FROM_MANAGER\\HANDOFF_MLB_NEAR_RESOLUTION_SANITY_AUDIT_001.md",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\logs\\shadow_recommendations.jsonl",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_baseball_20260411.log"
+  ],
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_NEAR_RESOLUTION_SANITY_AUDIT_001.json"
+  ],
+  "verification_performed": [
+    "Confirmed the task is enabled on the board",
+    "Confirmed the brief and handoff are present in 05_INBOX_FROM_MANAGER",
+    "Confirmed this remains paper-only / observation-mode work",
+    "Read recommendation_api.py to trace whether market price, ask_yes, ask_no, spread, edge, and confidence are consulted before recommendations become actionable",
+    "Read model_bridge.py to trace freshness gating, confidence gating, and bridge approval behavior",
+    "Read risk.py to inspect explicit near-resolution and near-dead sanity handling in the audited entry path",
+    "Read shadow recommendation log sample for preserved recommendation fields",
+    "Read historical bot log evidence around the HOU-SEA and TEX-LAD near-resolution failures to compare confidence, rec_age filtering, and downstream gate behavior"
+  ],
+  "restart_needed": "No",
+  "result_file_written": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\06_OUTBOX_FROM_WORKER\\RESULT_MLB_NEAR_RESOLUTION_SANITY_AUDIT_001.json",
+  "near_resolution_failure_summary": {
+    "summary": "Near-dead / near-resolved markets can still become actionable because market price and spread are consulted before actionability, but only in a post-model recommendation layer that lacks an explicit dedicated near-resolution suppressor. Freshness controls exist, so stale-state is not the strongest supported explanation. The dominant failure is bad design layering plus missing sanity logic, with model-core optimism likely feeding that layer.",
+    "what_is_consulted_before_actionable": [
+      "recommendation_api.py fetches market state before action selection and confidence formation",
+      "market_yes_cost / market_no_cost, ask_yes / ask_no, spread, and thin_side_depth_usd are attached to the recommendation output",
+      "compute_edge(...) is called before recommendation action is selected",
+      "confidence is formed after edge selection as edge_score * data_quality * spread_quality",
+      "model_bridge.py then applies confidence, edge, game_state_age, book_age, and rec_age filters before the bot sees the candidate"
+    ],
+    "what_is_not_explicitly_recognized": [
+      "no dedicated near-resolution or near-dead suppressor exists in recommendation_api.py confidence formation",
+      "no dedicated near-resolution reject exists in model_bridge.py approval logic",
+      "risk.py only has partial downstream protection, including a high-side near-resolution block and generic entry-price checks, not a symmetric explicit near-dead market sanity gate in the audited path"
+    ]
+  },
+  "root_cause_classification": {
+    "stale_game_state_data": {
+      "status": "ruled down, not primary",
+      "reason": "model_bridge.py enforces rec_age, game_state_age, and book_age freshness gating; the log shows many stale recommendations were rejected before actionability."
+    },
+    "stale_market_price_awareness": {
+      "status": "possible in edge cases, not primary",
+      "reason": "market ask/spread fields clearly exist before actionability and reach the recommendation output. The main issue is not absence of price awareness but inadequate sanity handling of extreme price states."
+    },
+    "missing_near_resolution_sanity_checks": {
+      "status": "primary confirmed contributor",
+      "reason": "the audited path contains no explicit dedicated near-resolution / near-dead suppressor before a recommendation becomes actionable."
+    },
+    "recommendation_layer_design": {
+      "status": "primary confirmed contributor",
+      "reason": "the recommendation layer combines model fair-win views with market prices through edge and spread-quality scoring, but can still emit actionable confidence in extreme market states because price awareness is not acting as a hard sanity gate."
+    },
+    "model_core_design": {
+      "status": "likely contributing factor",
+      "reason": "the model core appears able to maintain moderate or strong directional beliefs late in games, and near-resolution context is not represented as an explicit dedicated model-core feature in the audited path."
+    },
+    "interaction_between_layers": {
+      "status": "confirmed",
+      "reason": "the failure is best explained by interaction: model-core optimism feeds a recommendation layer that uses market prices for edge/confidence shaping, but without an explicit near-resolution kill switch or symmetric extreme-price sanity logic."
+    },
+    "overall_classification": "Mainly missing logic plus bad design layering, with model-core design likely contributing. Stale inputs are possible but not the strongest supported cause from the audited evidence."
+  },
+  "concrete_evidence_chain": [
+    "Evidence 1: recommendation_api.py forms confidence after market state is fetched and edge is computed, so market price / ask_yes / ask_no / spread are consulted before a recommendation becomes actionable.",
+    "Evidence 2: shadow recommendation output preserves market_yes_cost, market_no_cost, ask_yes, ask_no, spread, thin_side_depth_usd, confidence, score_diff, inning, outs, game_state_age_sec, and book_age_sec, so the recommendation layer had enough metadata to support stronger sanity handling.",
+    "Evidence 3: model_bridge.py rejects many stale recommendations via rec_age and also enforces game_state_age and book_age thresholds, so stale recommendation age is demonstrably filtered in practice.",
+    "Evidence 4: historical logs still show bridge-pass late-game recommendations on HOU-SEA, TEX-LAD, and similar slugs at confidence around 0.55 to 0.64, including cases near absurdly low price regions, which means freshness gates alone did not prevent actionability.",
+    "Evidence 5: risk.py contains only partial downstream protection, including high-side near-resolution handling and generic entry-price logic, but no explicit symmetric near-dead sanity suppressor in the audited path before actionability.",
+    "Evidence 6: because recommendation output preserved enough market/context information to support a stronger stop, yet the path still allowed actionable near-dead recommendations, the failure is better explained by missing explicit sanity logic and layer interaction than by missing raw information."
+  ],
+  "recommended_next_enabled_task": "MLB_DATA_GAP_MAP_001 remains the next enabled queued task on the board. Analytically, this audit strengthens the future redesign requirement that explicit near-resolution sanity handling must be defined in the rebuilt model/recommendation spec, but no implementation task should open from this audit alone."
+}

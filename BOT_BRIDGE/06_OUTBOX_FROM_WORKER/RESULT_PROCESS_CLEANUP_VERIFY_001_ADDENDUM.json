@@ -1,0 +1,115 @@
+{
+  "task_id": "PROCESS_CLEANUP_VERIFY_001",
+  "run_type": "addendum_recheck",
+  "status": "COMPLETE",
+  "completed_at": "2026-04-10T15:08:00-05:00",
+  "summary": "Re-verified live process topology. System remains clean: exactly one resolution_watcher and one recommendation_api. No kills required. Protected PIDs remained present and untouched.",
+  "commands_run": [
+    "wmic process where \"name like '%python%'\" get Name,ProcessId,CommandLine,CreationDate",
+    "wmic process where \"name like '%python%'\" get Name,ProcessId,CommandLine,CreationDate"
+  ],
+  "initial_snapshot": [
+    {
+      "pid": 33384,
+      "command_line": "python launch_all.py",
+      "creation_date": "20260410093227.581483-300",
+      "role": "supervisor (launch_all.py — out of scope, untouched)"
+    },
+    {
+      "pid": 44152,
+      "command_line": "python.exe -m integration.recommendation_api",
+      "creation_date": "20260410093227.645903-300",
+      "role": "recommendation_api"
+    },
+    {
+      "pid": 24800,
+      "command_line": "python.exe bot_core.py",
+      "creation_date": "20260410144043.254391-300",
+      "role": "bot_core.py (PROTECTED)"
+    },
+    {
+      "pid": 29620,
+      "command_line": "python.exe dashboard_server.py",
+      "creation_date": "20260410144048.265775-300",
+      "role": "dashboard_server.py (PROTECTED)"
+    },
+    {
+      "pid": 47560,
+      "command_line": "python.exe -m integration.resolution_watcher",
+      "creation_date": "20260410144513.281109-300",
+      "role": "resolution_watcher"
+    }
+  ],
+  "pids_killed": [],
+  "kill_reason": {},
+  "final_snapshot": [
+    {
+      "pid": 33384,
+      "command_line": "python launch_all.py",
+      "creation_date": "20260410093227.581483-300",
+      "role": "supervisor (launch_all.py — out of scope, untouched)"
+    },
+    {
+      "pid": 44152,
+      "command_line": "python.exe -m integration.recommendation_api",
+      "creation_date": "20260410093227.645903-300",
+      "role": "recommendation_api"
+    },
+    {
+      "pid": 24800,
+      "command_line": "python.exe bot_core.py",
+      "creation_date": "20260410144043.254391-300",
+      "role": "bot_core.py (PROTECTED)"
+    },
+    {
+      "pid": 29620,
+      "command_line": "python.exe dashboard_server.py",
+      "creation_date": "20260410144048.265775-300",
+      "role": "dashboard_server.py (PROTECTED)"
+    },
+    {
+      "pid": 47560,
+      "command_line": "python.exe -m integration.resolution_watcher",
+      "creation_date": "20260410144513.281109-300",
+      "role": "resolution_watcher"
+    }
+  ],
+  "surviving_resolution_watcher_pid": 47560,
+  "surviving_recommendation_api_pid": 44152,
+  "bot_core_pid_24800_confirmed": true,
+  "dashboard_server_pid_29620_confirmed": true,
+  "restart_triggered": false,
+  "anomalies": [],
+  "acceptance_criteria_met": [
+    {
+      "criterion": "Exactly 1 resolution_watcher process running at task end",
+      "result": "PASS",
+      "detail": "PID 47560 — only instance"
+    },
+    {
+      "criterion": "Exactly 1 recommendation_api process running at task end",
+      "result": "PASS",
+      "detail": "PID 44152 — only instance"
+    },
+    {
+      "criterion": "bot_core.py PID 24800 confirmed present",
+      "result": "PASS",
+      "detail": "PID 24800 present in both snapshots and untouched"
+    },
+    {
+      "criterion": "dashboard_server.py PID 29620 confirmed present",
+      "result": "PASS",
+      "detail": "PID 29620 present in both snapshots and untouched"
+    },
+    {
+      "criterion": "No files edited",
+      "result": "PASS",
+      "detail": "No production/repo files edited; only addendum artifact written"
+    },
+    {
+      "criterion": "No services restarted",
+      "result": "PASS",
+      "detail": "No kills issued; no restart actions triggered"
+    }
+  ]
+}

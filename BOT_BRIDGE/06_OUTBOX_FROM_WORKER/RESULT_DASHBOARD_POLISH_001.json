@@ -1,0 +1,32 @@
+{
+  "task_id": "DASHBOARD_POLISH_001",
+  "status": "done",
+  "allowed_files": [
+    "dashboard.html",
+    "dashboard_server.py"
+  ],
+  "modified_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "summary": [
+    "Removed timing-sensitive split ownership for main open-position counts by stopping renderState() from writing kpi-open/cmd-open.",
+    "Main open-position counts now derive only from the canonical openPaperPositions array in renderUnifiedPositions().",
+    "Improved active-card scanability with clearer matchup/source/stale-price presentation while preserving truthfulness.",
+    "Made the 0-open state intentional and explicit that shadow/advisory remains diagnostics only."
+  ],
+  "report": {
+    "exact_source_used_for_all_main_open_position_counts": "openPaperPositions built from /api/trades open paper trades only, via buildOpenPaperPositions(trades, shadowRecs)",
+    "card_usability_improvements": [
+      "matchup shown as a dedicated top line",
+      "source made clearer with source chip",
+      "stale current-price condition surfaced as 'market price unavailable' plus 'Current (stale)' label",
+      "empty state rewritten to clearly indicate no live paper positions while shadow remains diagnostics"
+    ],
+    "backend_addition_needed": false,
+    "ready_for_broader_style_fun_polish": true
+  },
+  "notes": [
+    "Scope remained limited to dashboard.html only.",
+    "No truth regression introduced; shadow remains secondary and main cards remain paper-trade-only."
+  ]
+}

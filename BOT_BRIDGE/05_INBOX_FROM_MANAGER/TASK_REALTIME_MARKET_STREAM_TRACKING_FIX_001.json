@@ -1,0 +1,17 @@
+{
+  "task_id": "REALTIME_MARKET_STREAM_TRACKING_FIX_001",
+  "title": "Make tracked-asset market-stream subscription recover when discovery/token mapping becomes available",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "realtime_market_stream_tracking_fix",
+  "allowed_files": ["core/market_stream.py", "core/state_hub.py", "dashboard_server.py", "core/discovery.py"],
+  "objective": "Prevent the market stream from staying subscribed to zero assets indefinitely when open positions exist but token mapping was initially unavailable, while keeping fallback behavior intact.",
+  "acceptance_criteria": [
+    "open positions no longer leave stream subscribed to zero assets indefinitely",
+    "tracked asset mapping can recover after discovery refresh",
+    "market stream resubscribes when token IDs become available",
+    "fallback remains intact",
+    "no truth regression"
+  ],
+  "rollback": "Revert the narrow recompute/resubscribe changes in dashboard_server.py and core/market_stream.py."
+}

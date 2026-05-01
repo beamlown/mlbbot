@@ -1,0 +1,104 @@
+{
+  "task_id": "TP_SL_SCHEMA_NORMALIZATION_001",
+  "phase": 1,
+  "priority": "HIGH",
+  "type": "implementation",
+  "subsystem": "risk / schema",
+  "allowed_files": [
+    "core/risk.py",
+    "core/paper_exec.py",
+    "core/types.py"
+  ],
+  "depends_on": "RISK_PIPELINE_AUDIT_001 must be APPROVED",
+  "gate_status": "HOLD_PENDING_RISK_PIPELINE_AUDIT_001",
+
+  "purpose": "Normalize the per-trade risk schema so every open position carries a complete, machine-readable risk packet. The goal is that any component (exit loop, dashboard, audit log) can determine TP price, SL price, entry, current held price, max loss, and sizing rationale from first principles — without re-deriving it from scattered env vars at runtime. This is a schema/normalization task, not a strategy redesign.",
+
+  "scope": {
+    "in_scope": [
+      "core/risk.py — normalize how TP/SL prices are computed and surfaced per-trade",
+      "core/paper_exec.py — ensure open_position() attaches or logs canonical risk fields",
+      "core/types.py — add fields to Trade dataclass only if the audit (phase 0) confirms they are missing and needed"
+    ],
+    "out_of_scope": [
+      "bot_core.py — do not touch in this phase",
+      "dashboard_server.py — do not touch in this phase",
+      "Do not change TP/SL threshold values — only normalize how they are computed and surfaced",
+      "Do not redesign check_exit() logic — only ensure its inputs and outputs are canonical",
+      "Do not add fields to Trade unless phase 0 audit confirms they are genuinely absent",
+      "Do not touch mlb_model/ or recommendation_api.py"
+    ]
+  },
+
+  "canonical_fields_to_enforce": {
+    "description": "Every open trade must be able to produce these values on demand. If they are computed at runtime from env vars, that is acceptable — but the computation must be a single canonical function, not scattered across files.",
+    "fields": {
+      "entry_px": "float — price paid for held contract. Already in Trade.",
+      "qty": "float — contracts held. Already in Trade.",
+      "committed_usd": "float — entry_px * qty. Must be computable from Trade alone.",
+      "tp_price": "float — held-side price at which take-profit triggers. = entry_px * (1 + AUTO_TAKE_PROFIT_PCT)",
+      "sl_price": "float — held-side price at which stop-loss triggers. = entry_px * (1 - AUTO_STOP_LOSS_PCT)",
+      "max_loss_usd": "float — worst-case loss if SL fires. = (sl_price - entry_px) * qty (negative number)",
+      "held_token_id": "str — token id of the contract held. Must be unambiguous.",
+      "backed_team": "str — the team the position is backing (for display and audit). From market slug.",
+      "faded_team": "str — the team being faded. From market slug.",
+      "current_held_price": "float | None — live bid for held contract. From _held_bid(). Never substitute raw YES/NO price."
+    }
+  },
+
+  "normalization_tasks": [
+    "Verify that tp_price and sl_price are computed from a single canonical function in risk.py — not inline in bot_core.py or dashboard_server.py.",
+    "If tp_price/sl_price are currently computed inline or scattered, extract them to a get_tp_price(trade) and get_sl_price(trade) helper in core/risk.py.",
+    "Verify committed_usd = entry_px * qty is a canonical helper or is already consistent everywhere it appears.",
+    "Verify max_loss_usd is computable from Trade fields alone.",
+    "Verify held_token_id is stored on open trades or derivable from market data without ambiguity.",
+    "Verify backed_team and faded_team are derivable from market_slug parsing (e.g. mlb-COL-sd-2026-04-10 → backed=COL, faded=SD for BUY_YES).",
+    "Do not add fields to the Trade DB table unless strictly required — prefer computed properties over schema bloat."
+  ],
+
+  "required_deliverables": {
+    "file": "BOT_BRIDGE/06_OUTBOX_FROM_WORKER/RESULT_TP_SL_SCHEMA_NORMALIZATION_001.json",
+    "result_must_include": [
+      "decision: APPROVED | CHANGES_REQUESTED | BLOCKED",
+      "files_changed: list",
+      "fields_normalized: list of field names that were addressed",
+      "new_helpers_added: list of any new functions added to risk.py",
+      "verification: py_compile pass, git diff --name-only matches allowed_files only"
+    ]
+  },
+
+  "preflight_questions": [
+    "Has RISK_PIPELINE_AUDIT_001 been approved and is RISK_PIPELINE_AUDIT_REPORT_001.md available?",
+    "Read the audit report's 'gaps_found' and 'broken_invariants' sections before writing any code.",
+    "Do tp_price and sl_price currently have a single canonical computation point? (Answer from audit report.)",
+    "Is held_token_id stored per trade or derivable without ambiguity? (Answer from audit report.)"
+  ],
+
+  "acceptance_criteria": [
+    "tp_price = entry_px * (1 + AUTO_TAKE_PROFIT_PCT) is computable from a single function in core/risk.py",
+    "sl_price = entry_px * (1 - AUTO_STOP_LOSS_PCT) is computable from a single function in core/risk.py",
+    "committed_usd = entry_px * qty is consistent across all callsites",
+    "max_loss_usd is computable from Trade fields alone",
+    "No raw YES/NO price is used as a proxy for current_held_price anywhere in core/risk.py or core/paper_exec.py",
+    "python -m py_compile core/risk.py passes",
+    "python -m py_compile core/paper_exec.py passes",
+    "Only files in allowed_files were changed"
+  ],
+
+  "proof_of_work": [
+    "Show git diff of each changed file",
+    "For each new helper function, show its full implementation",
+    "For each field normalization, show before (old scattered logic) and after (canonical function call)",
+    "Confirm no threshold values were changed — only how they are surfaced"
+  ],
+
+  "guardrails": [
+    "Do not redesign strategy or model logic",
+    "Do not change TP/SL threshold values — phase 0 audit defines what values are live, they stay",
+    "Do not reintroduce ambiguous YES/NO economics",
+    "Held-side contract truth must remain the basis for pricing and exit logic",
+    "Do not widen scope to bot_core.py or dashboard_server.py",
+    "Do not fake bankroll resets",
+    "Preserve audit trail"
+  ]
+}

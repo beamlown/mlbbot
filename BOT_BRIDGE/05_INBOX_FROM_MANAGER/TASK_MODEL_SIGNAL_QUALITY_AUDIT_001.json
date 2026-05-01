@@ -1,0 +1,107 @@
+{
+  "task_id": "MODEL_SIGNAL_QUALITY_AUDIT_001",
+  "title": "Audit model confidence calibration, BUY_NO/BUY_YES asymmetry root cause, and shadow recommendation distribution",
+  "priority": "HIGH",
+  "type": "read-only audit",
+  "track": "Track B — Alpha / Strategy",
+  "issued": "2026-04-11",
+  "subsystem": "edge proof / model signal quality / confidence calibration",
+  "status": "ACTIVE",
+  "depends_on": "EDGE_BASELINE_AND_EXPECTANCY_AUDIT_001 (DONE)",
+
+  "context": {
+    "problem": "EDGE_BASELINE_AND_EXPECTANCY_AUDIT_001 found that confidence is INVERTED in the historical trade sample: the 0.30-0.40 bucket (+$830, 34.7% WR) dramatically outperforms the 0.60-0.65 bucket (-$826, 16.9% WR). This is either explained by the lad-tor duplicate-open cluster inflating the 0.30-0.40 bucket, or it reflects a genuine calibration failure in the confidence formula. Until we know which, no threshold adjustment is defensible.",
+    "key_findings_from_prior_audit": [
+      "0.30-0.40 bucket: n=95, 34.7% WR, +$830 total PnL — likely inflated by lad-tor (conf=0.315, +$708) and trade 316 (conf=0.39, +$187)",
+      "0.60-0.65 bucket: n=83, 16.9% WR, -$826 total PnL — current gate selects from this bucket",
+      "BUY_NO: n=82, 32.5% WR, +$463 total PnL. BUY_YES: n=195, 23.6% WR, -$555 total PnL",
+      "Shadow log has 18,760 BUY_YES/BUY_NO recs and 44,285 NO_TRADE recs — no outcome events logged",
+      "Confidence formula: edge_score = min(1.0, (edge_candidate - 0.05) / 0.10 + 0.5), then confidence = edge_score * data_quality * spread_quality",
+      "Known outliers that inflate 0.30-0.40 bucket: trades 183/184/185 (lad-tor, conf=0.315, +$236 each), trade 316 (conf=0.39, entry=0.011, +$187)"
+    ],
+    "why_this_matters": "The current confidence gate (>=0.65) was set to select higher-quality signals. If confidence is actually anti-predictive, the gate is selecting the worst signals. But before concluding this, we must verify whether the inversion survives outlier removal — if lad-tor and the ungated near-resolution entries explain the 0.30-0.40 bucket's outperformance, confidence inversion disappears and the gate is simply operating with insufficient post-gate data."
+  },
+
+  "objective": "Determine whether the confidence inversion finding survives outlier removal, characterize the signal distribution in the shadow log, and identify what drives the BUY_NO/BUY_YES PnL asymmetry.",
+
+  "allowed_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\logs\\shadow_recommendations.jsonl",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+    "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\shadow_mode_logger.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\logs\\bot_core.log"
+  ],
+  "not_allowed": [
+    "Edit any file",
+    "Open any code change task",
+    "Conclude edge exists or does not exist — only answer the signal quality questions"
+  ],
+
+  "work_items": [
+    {
+      "id": "S1",
+      "question": "Does confidence inversion survive outlier removal?",
+      "method": "Recompute the confidence bucket table from trades_sports.db, excluding: trades 183, 184, 185 (lad-tor cluster) and trades 310, 316 (ungated near-resolution). Report win rate and avg PnL per bucket on the cleaned sample. State whether the 0.30-0.40 bucket still outperforms 0.60-0.65 after removal."
+    },
+    {
+      "id": "S2",
+      "question": "Is BUY_NO's historical advantage concentrated in outliers?",
+      "method": "Recompute BUY_NO vs BUY_YES expectancy excluding the same 5 outlier trades. Report: cleaned BUY_NO n/WR/avg_pnl vs cleaned BUY_YES n/WR/avg_pnl. Determine whether BUY_NO's advantage is structural or explained by the outlier cluster."
+    },
+    {
+      "id": "S3",
+      "question": "What does the confidence distribution look like in the shadow log?",
+      "method": "Read shadow_recommendations.jsonl. For all BUY_YES/BUY_NO records (action != 'NO_TRADE'), compute: histogram of confidence values in bins [<0.30, 0.30-0.40, 0.40-0.50, 0.50-0.55, 0.55-0.60, 0.60-0.65, 0.65-0.70, >=0.70]. Report count per bucket. Compare to the confidence distribution of actual trades in the DB to identify whether the gate is functioning as expected (mostly blocking <0.65)."
+    },
+    {
+      "id": "S4",
+      "question": "What fraction of shadow BUY_YES/BUY_NO recs have confidence >= 0.65?",
+      "method": "From S3 data, report: N recs with confidence >= 0.65 / total BUY/BUY_NO recs. This answers whether the gate is primarily blocking low-confidence recs or high-confidence recs. Also report the median and mean confidence across all actionable shadow recs."
+    },
+    {
+      "id": "S5",
+      "question": "Does the shadow log show BUY_NO vs BUY_YES distribution imbalance?",
+      "method": "From shadow_recommendations.jsonl, count BUY_YES vs BUY_NO recs total and at confidence >= 0.65. Compare ratio to actual trades DB ratio (BUY_YES: 195, BUY_NO: 82). If the shadow ratio matches but the outcome ratio diverges, that's a selection artifact. If shadow itself is heavily BUY_YES biased, that's a model-level bias."
+    },
+    {
+      "id": "S6",
+      "question": "Is BUY_NO vs BUY_YES asymmetry explained by inning, score state, or entry price?",
+      "method": "From trades_sports.db, break the BUY_NO vs BUY_YES comparison by: (a) entry price bucket (<0.15 vs 0.15-0.22 vs 0.22+), (b) reason_close (take_profit vs stop_loss vs gap_stop vs market_resolved). Report WR and avg_pnl for each cross. The goal is to identify whether BUY_NO wins because of structural market asymmetry (NO prices are cheaper) or because BUY_NO trades happen at different market conditions."
+    },
+    {
+      "id": "S7",
+      "question": "Does the confidence formula saturate in the shadow log?",
+      "method": "From shadow_recommendations.jsonl, for BUY_YES/BUY_NO recs, compute: distribution of raw edge values (edge_yes for BUY_YES, edge_no for BUY_NO). Report mean/median/p90 edge. Separately report mean/median confidence. If mean edge is > 0.15 (which would push edge_score to 1.0 regardless), the confidence formula is saturated and data_quality/spread_quality are the dominant drivers of confidence variation, not actual edge."
+    },
+    {
+      "id": "S8",
+      "question": "Can shadow recs be matched to trade outcomes to build a calibration curve?",
+      "method": "Attempt to join shadow_recommendations.jsonl BUY_YES/BUY_NO recs to trades_sports.db closed trades by market_slug (approximate match, since market_id formats may differ). For matched pairs: plot (confidence_at_recommendation, trade_won) grouping to build: predicted win probability (confidence) vs actual win rate. Report N matched, unmatched. If N >= 30 matched, report the calibration table. If not enough matches, report why and note this as a gap.",
+      "note": "Shadow log has no outcome events. The match must be done via market_slug + approximate timestamp alignment against the DB trade record."
+    },
+    {
+      "id": "S9",
+      "question": "What is the E8 proper random-side baseline?",
+      "method": "For every closed trade in the DB with non-zero pnl_usd, compute the counterfactual: what would pnl_usd have been if the side was flipped? BUY_YES at entry_px → counterfactual is BUY_NO at (1-entry_px). For BUY_YES: actual won if pnl > 0. For flipped BUY_NO: won if (1 - entry_px) resolved to YES (i.e., if the original YES side lost). Compute avg counterfactual pnl and compare to avg actual pnl. Report: E8 PASS if actual avg_pnl > counterfactual avg_pnl."
+    }
+  ],
+
+  "deliverable": {
+    "format": "RESULT_MODEL_SIGNAL_QUALITY_AUDIT_001.json in 06_OUTBOX_FROM_WORKER",
+    "required_sections": [
+      "S1-S9 answers with method, result numbers, and 1-sentence interpretation each",
+      "confidence_inversion_verdict: does inversion survive outlier removal? YES / NO / PARTIALLY",
+      "buy_no_advantage_verdict: is BUY_NO advantage structural or outlier-driven? STRUCTURAL / OUTLIER_DRIVEN / AMBIGUOUS",
+      "e8_verdict: E8 PASS / FAIL / INSUFFICIENT_DATA",
+      "primary_finding: 2-3 sentences — what does the signal quality picture look like after this audit?"
+    ]
+  },
+
+  "constraints": [
+    "Read-only. No file modifications.",
+    "Do not conclude edge exists. This audit answers signal quality questions only.",
+    "Do not open any follow-on tasks. Return findings only.",
+    "If shadow log matching (S8) is infeasible, say so explicitly and explain why.",
+    "All numbers must be computed from data, not inferred from prior audit results."
+  ]
+}

@@ -1,0 +1,140 @@
+{
+  "task_id": "DASHBOARD_POSITIONS_HISTORY_SYSTEM_001",
+  "title": "Dashboard redesign — secondary tabs: POSITIONS, GAMES, HISTORY, SYSTEM",
+  "status": "HOLD_PENDING_EXECUTION_TRUTH",
+  "gate": "Do NOT begin until DASHBOARD_LIVE_COMMAND_CENTER_001 is APPROVED.",
+  "phase": 3,
+  "depends_on": [
+    "EXECUTION_HELD_SIDE_SEMANTICS_001",
+    "DASHBOARD_REDESIGN_ARCH_001",
+    "DASHBOARD_REDESIGN_SHELL_001",
+    "DASHBOARD_LIVE_COMMAND_CENTER_001"
+  ],
+  "priority": 4,
+  "subsystem": "dashboard_secondary_tabs",
+  "type": "implementation",
+  "allowed_files": [
+    "dashboard.html",
+    "dashboard_server.py"
+  ],
+  "dashboard_server_change_policy": "Same as previous phase: only touch dashboard_server.py if a required field is genuinely absent. Document exactly what and why.",
+  "do_not_touch": [
+    "bot_core.py",
+    "core/risk.py",
+    "core/paper_exec.py",
+    "core/db.py",
+    "core/model_bridge.py",
+    "core/types.py",
+    "mlb_model/"
+  ],
+
+  "objective": "Implement the four secondary tabs: POSITIONS (detailed view of all open and recently closed trades), GAMES (full game schedule with model advisory context), HISTORY (trade log with full detail), SYSTEM (diagnostics and stream health). These tabs must not compete with LIVE tab truth — they are secondary context and reference views.",
+
+  "tab_specs": {
+    "POSITIONS": {
+      "purpose": "Detailed view of all positions — open and recently closed. More detail than LIVE tab cards.",
+      "content": [
+        "Open positions: same fields as LIVE tab cards plus additional detail (game start time, slug, signal source, reason_open text)",
+        "Recently closed positions (last 10): team names, side direction, entry/exit prices, PnL, close reason",
+        "Closed position PnL must use correct held-side semantics: exit_px is held-side bid at close, not raw YES price",
+        "Aggregate summary row: total open equity, total realized PnL today"
+      ],
+      "truth_constraint": "current_held_price for open positions must use the same SSE stream path as LIVE tab. Do not create a second price source.",
+      "shadow_policy": "No shadow/advisory data in this tab."
+    },
+    "GAMES": {
+      "purpose": "Full MLB game schedule for today. Model advisory context is allowed here — clearly labeled as advisory.",
+      "content": [
+        "All games today: LIVE, SCHEDULED, FINAL",
+        "Each game card: teams, score, inning/status",
+        "If a model shadow recommendation exists for this game: show it as 'Advisory' with confidence — visually distinct from any open position",
+        "If an open position exists on this game: show position summary (backed_team, unrealized_pct) as a linked reference",
+        "Model advisory must NOT be styled or labeled as a confirmed signal or position"
+      ],
+      "truth_constraint": "Advisory section must be clearly visually distinguished from position section. Use muted/secondary styling for advisory, full styling for positions.",
+      "shadow_policy": "Shadow advisory IS allowed here, but only in a clearly labeled 'Advisory' section. It must not override or compete with position truth."
+    },
+    "HISTORY": {
+      "purpose": "Full trade log. Not visible on main page. Contains full historical record.",
+      "content": [
+        "All closed trades, most recent first",
+        "Per row: date/time opened, game (home vs away team names, not slug), side direction (WIN/LOSE backed_team), entry_px, exit_px, PnL, size_usd, close reason, confidence",
+        "Pagination or virtual scroll if >50 rows",
+        "Filter by: date range, side (WIN/LOSE), outcome (profit/loss)",
+        "Summary header: total trades, win rate, total PnL, avg PnL"
+      ],
+      "truth_constraint": "PnL values must match DB closed pnl_usd — do not recompute from prices unless explicitly reconciling.",
+      "shadow_policy": "No shadow data in HISTORY tab."
+    },
+    "SYSTEM": {
+      "purpose": "Diagnostics and stream health. Operator-facing. Not user-facing.",
+      "content": [
+        "Stream health: polymarket stream connection status, mark_count_received, last_state_hub_update (age in seconds)",
+        "Fallback status: is the system currently using stale/fallback marks for any position?",
+        "Process topology: bot_core loop status, bridge_enabled flag, ALLOW_LOCAL_MLB_ORIGINATION flag",
+        "Recent bridge activity: last N bridge decisions (slug, side, confidence, accepted/rejected)",
+        "Budget/rate status: odds_api call count, remaining budget",
+        "Bot stats: loop_count, last_loop_ts, capital_committed, open_trade_count",
+        "Errors: last N error log lines if available from /api/state or a diagnostics endpoint"
+      ],
+      "truth_constraint": "Stream health fields must come from the same state_hub path as position pricing. Do not add a new health check endpoint unless it already exists.",
+      "shadow_policy": "Shadow engine stats may appear here as diagnostics — clearly labeled 'Shadow Engine (Advisory Only)'."
+    }
+  },
+
+  "deliverables": [
+    {
+      "file": "dashboard.html",
+      "changes": [
+        "Populate #tab-positions with open positions detail + closed positions summary",
+        "Populate #tab-games with full game schedule + advisory section per game",
+        "Populate #tab-history with trade log table, filters, summary header",
+        "Populate #tab-system with stream health, process topology, bridge activity, budget stats",
+        "Render functions: buildPositionsTab(), buildGamesTab(), buildHistoryTab(), buildSystemTab()",
+        "Game and history tabs poll /api/games and /api/trades respectively (use existing poll intervals)",
+        "System tab polls /api/state for diagnostics fields",
+        "Advisory labels: any shadow/model rec shown in GAMES tab must have class 'advisory' and be visually secondary"
+      ]
+    },
+    {
+      "file": "dashboard_server.py",
+      "required_only_if": "A specific diagnostics field for the SYSTEM tab is absent from /api/state (e.g., stream mark_count, last_hub_update_age). Document the field and add it minimally."
+    }
+  ],
+
+  "preflight_questions": [
+    "Read DASHBOARD_REDESIGN_SPEC_001.md — what fields are specified for each secondary tab?",
+    "Does /api/state currently return stream health fields (mark_count, last_hub_update)?",
+    "Does /api/trades return reason_open, reason_close, source fields needed for HISTORY tab?",
+    "Does /api/games return shadow recommendations? If so, how are they labeled?",
+    "What is the current trade log render function called? Reuse it rather than rewriting."
+  ],
+
+  "acceptance_criteria": [
+    "All 4 secondary tabs render without JS errors",
+    "POSITIONS tab shows open positions with same current_held_price as LIVE tab (same SSE source, not a second fetch)",
+    "GAMES tab shows advisory section clearly labeled and visually distinct from position summaries",
+    "HISTORY tab shows team names (not slugs) and correct side direction labels",
+    "SYSTEM tab shows stream connection status and last mark age",
+    "No shadow data appears in POSITIONS or HISTORY tabs",
+    "Tab switching between all 5 tabs works smoothly",
+    "Mobile: each tab content stacks and is usable at 390px"
+  ],
+
+  "proof_of_work": [
+    "Confirm POSITIONS tab uses same SSE price path as LIVE tab (not a second price fetch)",
+    "Show the advisory label/class used in GAMES tab",
+    "Confirm HISTORY tab uses team name resolution (not raw slug display)",
+    "Confirm SYSTEM tab shows stream health from state_hub path",
+    "State whether dashboard_server.py was modified and what was added"
+  ],
+
+  "out_of_scope": [
+    "Performance/flicker cleanup (phase 4)",
+    "Truth model changes",
+    "New data sources or scraping",
+    "Any changes to bot_core, risk, paper_exec, db, model_bridge"
+  ],
+
+  "rollback": "Revert dashboard.html. Revert dashboard_server.py if modified."
+}

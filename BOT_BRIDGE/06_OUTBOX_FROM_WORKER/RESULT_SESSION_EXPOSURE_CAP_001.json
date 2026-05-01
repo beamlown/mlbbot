@@ -1,0 +1,29 @@
+{
+  "task_id": "SESSION_EXPOSURE_CAP_001",
+  "status": "DONE",
+  "executor": "Claude (manager acting as worker — OpenClaw unavailable)",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\risk.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\.env"
+  ],
+  "changes": {
+    "risk.py": [
+      "Added MAX_TOTAL_COMMITTED_USD = float(os.getenv('MAX_TOTAL_COMMITTED_USD', '150')) env read",
+      "Added exposure cap gate in check_entry_gates() after per-market gate",
+      "Gate queries DB for SUM(entry_px * qty WHERE open), adds MAX_POSITION_SIZE_USD as worst-case new trade",
+      "Returns False with reason: exposure_cap_exceeded:committed=X+Y>Z",
+      "MAX_TOTAL_COMMITTED_USD=0 disables gate",
+      "DB query failure logs WARNING and skips gate (does not block entry)"
+    ],
+    ".env": [
+      "Added MAX_TOTAL_COMMITTED_USD=150"
+    ]
+  },
+  "verification": {
+    "py_compile": "PASS — core/risk.py",
+    "gate_disabled_on_zero": true,
+    "db_failure_handled": true,
+    "existing_gates_untouched": true
+  },
+  "restart_required": true
+}

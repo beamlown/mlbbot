@@ -1,0 +1,148 @@
+{
+  "task_id": "LIVE_MODEL_REACTION_AUDIT_001",
+  "result": "PARTIAL",
+  "overall_answer": {
+    "reacts_live_during_games": "PARTIAL",
+    "classification": "partially_live_reactive"
+  },
+  "exact_files_and_functions": {
+    "recommendation_loop": {
+      "file": "C:\\Users\\johnny\\Desktop\\mlb_model\\integration\\recommendation_api.py",
+      "functions": [
+        "generate_recommendation_for_game",
+        "get_recommendations"
+      ],
+      "live_cadence": {
+        "env_var": "RECOMMENDATION_LOOP_SECONDS",
+        "default_seconds": 30
+      }
+    },
+    "live_registry": {
+      "file": "C:\\Users\\johnny\\Desktop\\mlb_model\\sports\\mlb\\live_game_registry.py",
+      "functions": [
+        "get_game_by_teams",
+        "get_live_since"
+      ],
+      "registry_refresh": "scoreboard cache/refresh path is active and consulted during recommendation generation"
+    },
+    "game_state_fetch": {
+      "file": "C:\\Users\\johnny\\Desktop\\mlb_model\\sports\\mlb\\game_state_service.py",
+      "function": "get_game_snapshot",
+      "cache_ttl_seconds": 15
+    },
+    "probability_inference": {
+      "file": "C:\\Users\\johnny\\Desktop\\mlb_model\\sports\\mlb\\winprob_inference.py",
+      "functions": [
+        "infer_for_team",
+        "build_live_feature_row"
+      ]
+    },
+    "market_state": {
+      "file": "C:\\Users\\johnny\\Desktop\\mlb_model\\sports\\mlb\\market_state_stream.py",
+      "functions": [
+        "get_market_state",
+        "compute_edge"
+      ],
+      "book_cache_ttl_seconds": 5
+    },
+    "execution_gating": {
+      "file": "C:\\Users\\johnny\\Desktop\\mlb_model\\core\\execution_guard.py",
+      "functions": [
+        "check_all_gates",
+        "check_size_tier",
+        "compute_confidence"
+      ]
+    },
+    "runtime_consumption": {
+      "file": "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py",
+      "function": "get_approved_intents"
+    }
+  },
+  "verified_live_inputs_that_change_fair_probability": [
+    "home_score",
+    "away_score",
+    "score_diff",
+    "inning",
+    "inning_half",
+    "outs",
+    "base_state",
+    "game_progress",
+    "outs_elapsed",
+    "home_pitcher_id",
+    "away_pitcher_id",
+    "home_pitch_count",
+    "away_pitch_count",
+    "home_is_bullpen",
+    "away_is_bullpen",
+    "home_tto",
+    "away_tto",
+    "pregame_win_prob"
+  ],
+  "verified_live_or_runtime_inputs_that_change_edge_confidence_action_or_size": {
+    "market_fields": [
+      "ask_yes",
+      "ask_no",
+      "spread",
+      "thin_side_depth_usd",
+      "market_yes_cost",
+      "market_no_cost",
+      "edge_yes",
+      "edge_no"
+    ],
+    "freshness_fields": [
+      "game_state_age_sec",
+      "book_age_sec",
+      "feature_timestamp",
+      "game_state_timestamp",
+      "book_timestamp"
+    ],
+    "operational_fields": [
+      "data_quality",
+      "live_since_sec",
+      "near_resolution",
+      "cooldown_active",
+      "market_type",
+      "game_is_live"
+    ],
+    "outputs_affected": [
+      "confidence",
+      "action",
+      "size_tier",
+      "size_mult",
+      "reasons"
+    ]
+  },
+  "verified_reason_or_thesis_fields_that_update_live": [
+    "leader and score margin wording from score_diff",
+    "inning / half / outs wording",
+    "bullpen in game note",
+    "pregame_prior value",
+    "gate failure reasons such as live_warmup, near_resolution, stale_book, stale_game_state, edge_too_small"
+  ],
+  "verified_runtime_cadence": {
+    "recommendation_loop_seconds_default": 30,
+    "game_state_cache_ttl_seconds": 15,
+    "book_cache_ttl_seconds": 5,
+    "conclusion": "The active runtime does recalculate repeatedly during games, but the default 30-second loop is coarse for truly aggressive live trading."
+  },
+  "important_live_factors_still_missing_or_not_proven_in_active_path": [
+    "live lineup/order/batter identity changes are not clearly present in the active recommendation path",
+    "live batter-specific state is not clearly fed into current inference",
+    "live baserunner identity/speed/quality is not present beyond encoded base occupancy",
+    "live defensive substitutions and fielding alignment changes are not present",
+    "weather/park-state live changes are not present in the active path",
+    "roster availability changes beyond current pitcher/bullpen state are not clearly present",
+    "there is no proof here of pitch-by-pitch or sub-10-second recalculation cadence"
+  ],
+  "strict_interpretation": {
+    "genuinely_live_reactive": false,
+    "partially_live_reactive": true,
+    "mostly_static_with_minor_live_fields": false,
+    "why": "Current code clearly rebuilds live game-state features and reruns inference during games, but it still operates on a relatively coarse loop and omits several richer live baseball factors that a stronger real-time model would incorporate."
+  },
+  "trust_assessment": {
+    "fast_enough_for_live_trading": "PARTIAL",
+    "should_be_trusted_as_true_live_model_yet": "PARTIAL",
+    "why": "It is meaningfully more than a static pregame model because live baseball state changes feed probability inference, but the cadence and missing rich live factors argue for caution before calling it a fully mature true live model."
+  }
+}

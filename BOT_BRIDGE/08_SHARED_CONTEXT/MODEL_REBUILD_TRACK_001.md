@@ -74,11 +74,18 @@ Why third:
 Type: narrow code task
 Track: Track B
 Depends on: TASK 3
+Status: COMPLETE (2026-04-17) — coverage achieved through 2026-04-16
 Goal:
 - backfill all current-season MLB game stats so far using MLB Stats API
 - write into the canonical store only
 Why fourth:
 - first actual data write, after audits/spec lock the target layout
+Completion notes:
+- Script written: C:\Users\johnny\Desktop\mlb_model\scripts\backfill_season.py
+- Gap dates filled: 2026-04-12 through 2026-04-16 (65 games, 551 pitcher logs, 1178 state rows)
+- Prior dates 2026-03-25 through 2026-04-11 confirmed skipped (idempotency working)
+- All 6 raw entities + 4 normalized entities written per spec
+- Manifest: manifests/backfill_20260417.json
 
 #### TASK 5 — MLB_DAILY_PREV_DAY_UPDATER_BUILD_001
 Type: narrow code task

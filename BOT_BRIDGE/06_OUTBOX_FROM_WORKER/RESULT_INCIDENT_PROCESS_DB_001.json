@@ -1,0 +1,70 @@
+{
+  "task_id": "INCIDENT_PROCESS_DB_001",
+  "status": "done_partial",
+  "incident_debug_only": true,
+  "production_code_changed": false,
+  "containment_performed": true,
+  "summary": {
+    "duplicate_processes_real": true,
+    "duplicate_processes_safely_contained": true,
+    "all_active_processes_use_same_db_runtime_path": "likely_yes_but_not_fully_proven",
+    "unique_index_exists": "unverified_live_db",
+    "insert_open_trade_is_live_bridge_path": true,
+    "most_likely_root_cause": "duplicate launcher/process topology, with DB unique enforcement absent, failed, or not active in the live DB at the time duplicates were written"
+  },
+  "evidence": {
+    "pre_containment_process_topology": [
+      "launcher pid 10920 -> launcher pid 38984 -> child stack {recommendation_api 37232, bot_core 40320, dashboard_server 17528, resolution_watcher 6852}",
+      "separate stack under parent pid 29228 -> {recommendation_api 26064, bot_core 42956, dashboard_server 42808, resolution_watcher 10516}"
+    ],
+    "duplicate_open_live_evidence": [
+      "2026-04-05 19:02:37 core.db opened trade id=111 BUY_YES @ 0.8341",
+      "2026-04-05 19:02:37 core.db opened trade id=112 BUY_YES @ 0.8341",
+      "paired BRIDGE OPEN log lines for ids 111 and 112 on mlb-hou-oak-2026-04-05"
+    ],
+    "capacity_breach_evidence": [
+      "Repeated 'BRIDGE SKIP - at capacity (4/3)' in bot_baseball_20260405.log"
+    ],
+    "state_api_evidence": {
+      "post_containment_status_line": "loop=588 sport=baseball mode=conservative open=4 guard_block=137",
+      "post_containment_open_positions_count": 4
+    },
+    "code_path_evidence": [
+      "bot_core.py bridge path calls insert_open_trade(trade, sport=SPORT)",
+      "core/db.py live file contains BEGIN IMMEDIATE pre-check and int | None return path"
+    ],
+    "db_path_evidence": [
+      "core/db.py default DB_PATH is trades_sports.db",
+      "workspace DB file exists at C:\\Users\\johnny\\Desktop\\sports_bot_v2\\trades_sports.db",
+      "No visible DB_PATH override was confirmed from inspected .env output slice"
+    ],
+    "index_check": "Could not directly query sqlite indexes because sqlite3 CLI is not installed and inline Python DB inspection is blocked by approval/obfuscation policy in this channel"
+  },
+  "containment_action": {
+    "action": "killed duplicate child launcher tree",
+    "command_effect": [
+      "terminated pid 38984",
+      "terminated child pid 37232",
+      "terminated child pid 40320",
+      "terminated child pid 17528",
+      "terminated child pid 6852"
+    ],
+    "post_containment_live_stack": [
+      "recommendation_api pid 26064",
+      "bot_core.py pid 42956",
+      "dashboard_server.py pid 42808",
+      "resolution_watcher pid 10516"
+    ]
+  },
+  "conclusions": [
+    "Duplicate processes were real and were contributing directly to duplicate opens.",
+    "Safe containment succeeded by removing one duplicate launcher tree.",
+    "Active post-containment stack is now a single valid process topology.",
+    "Open count remains 4 because duplicate open rows already exist in backend state/DB from before containment.",
+    "The bridge path does call insert_open_trade() in live code, so the remaining unanswered question is why the live DB did not prevent the duplicate write pair."
+  ],
+  "blocked_items": [
+    "Live DB unique index presence could not be directly verified with available non-obfuscated tooling in this channel."
+  ],
+  "next_action_needed": "Manager should issue either (a) a narrow DB-inspection task with approved tooling to confirm the live index/schema state, and/or (b) a cleanup/remediation task for existing duplicate open rows now that duplicate process topology has been contained."
+}

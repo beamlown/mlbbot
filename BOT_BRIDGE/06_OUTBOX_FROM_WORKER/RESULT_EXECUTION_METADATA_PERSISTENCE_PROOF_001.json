@@ -1,0 +1,68 @@
+{
+  "task_id": "EXECUTION_METADATA_PERSISTENCE_PROOF_001",
+  "status": "done",
+  "final_result": "VERIFIED",
+  "proof_method": {
+    "type": "isolated_temp_db",
+    "db_path_used": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\temp_execution_metadata_proof.db",
+    "helper_script": "C:\\Users\\johnny\\Desktop\\BOT_BRIDGE\\proof_execution_metadata_persistence_001.py",
+    "production_db_mutated": false,
+    "live_trade_placed": false
+  },
+  "test_payload_used": {
+    "market_slug": "mlb-proof-nyy-bos-2026-04-07",
+    "market_id": "proof-market-001",
+    "side": "BUY_YES",
+    "entry_px": 0.41,
+    "confidence": 0.62,
+    "edge": 0.083,
+    "held_outcome_label": "Yankees",
+    "home_team": "Red Sox",
+    "away_team": "Yankees",
+    "tracked_team": "Yankees",
+    "tp_price": 0.76,
+    "sl_price": 0.33,
+    "recommended_size_dollars": 62.5,
+    "reasons": ["bullpen edge", "starter mismatch", "live number stale"],
+    "feature_timestamp": "2026-04-07T21:00:00+00:00",
+    "game_state_timestamp": "2026-04-07T21:00:03+00:00",
+    "book_timestamp": "2026-04-07T21:00:05+00:00",
+    "game_state_age_sec": 3.0,
+    "book_age_sec": 1.0,
+    "game_status": "STATUS_IN_PROGRESS",
+    "inning": 6,
+    "outs": 1,
+    "source": "model_bridge"
+  },
+  "persisted_artifact_read_back": {
+    "id": 1,
+    "market_slug": "mlb-proof-nyy-bos-2026-04-07",
+    "market_id": "proof-market-001",
+    "side": "BUY_YES",
+    "qty": 151.680621,
+    "entry_px": 0.41205,
+    "reason_open": "sig=BUY_YES conf=0.620 fv=0.410 mode=neutral held=Yankees tp=0.76 sl=0.33 matchup=Yankees@Red Sox tracked=Yankees size_usd=62.5 freshness={'feature_timestamp': '2026-04-07T21:00:00+00:00', 'game_state_timestamp': '2026-04-07T21:00:03+00:00', 'book_timestamp': '2026-04-07T21:00:05+00:00', 'game_state_age_sec': 3.0, 'book_age_sec': 1.0, 'game_status': 'STATUS_IN_PROGRESS', 'inning': 6, 'outs': 1} reasons=['bullpen edge', 'starter mismatch', 'live number stale']",
+    "source": "model_bridge",
+    "status": "open"
+  },
+  "proven_fields": {
+    "held_outcome_label": true,
+    "matchup_team_fields": true,
+    "tracked_team": true,
+    "tp_price": true,
+    "sl_price": true,
+    "recommended_size_dollars_handling": true,
+    "reasons": true,
+    "freshness_fields": true,
+    "game_status_inning_outs": true,
+    "source": true,
+    "market_identifiers": true
+  },
+  "recommended_size_dollars_proof": {
+    "input_size_usd": 62.5,
+    "persisted_reason_open_contains_size_usd": true,
+    "qty_reflects_non_default_sizing": true,
+    "details": "Persisted qty 151.680621 at fill entry 0.41205 implies about $62.5 not the default $50.0, proving the model-issued size recommendation was used in the opened-position path."
+  },
+  "conclusion": "The richer execution-bound metadata is proven to persist into an opened-position artifact through the current open path when exercised against an isolated non-production DB."
+}

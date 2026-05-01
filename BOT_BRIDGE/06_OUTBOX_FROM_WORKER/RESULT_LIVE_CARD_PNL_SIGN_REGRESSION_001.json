@@ -1,0 +1,38 @@
+{
+  "task_id": "LIVE_CARD_PNL_SIGN_REGRESSION_001",
+  "decision": "PASS",
+  "date": "2026-04-09",
+  "production_code_changes": false,
+
+  "fix_applied": {
+    "method": "process restart",
+    "old_pid": 35892,
+    "new_pid": 43288,
+    "code_changed": false,
+    "note": "On-disk dashboard_server.py was already correct. Old process predated BASEBALL_POSITION_SEMANTICS_INCIDENT_001 fix. Killed PID 35892, started fresh process PID 43288 from sports_bot_v2 directory."
+  },
+
+  "before": {
+    "mlb-cin-mia-2026-04-09": { "side": "BUY_NO", "entry": 0.5427, "cp": 0.63, "sse_pnl": -8.0431, "correct_pnl": 8.0431, "sign": "WRONG" },
+    "mlb-ari-nym-2026-04-09": { "side": "BUY_NO", "entry": 0.61305, "cp": 0.60, "sse_pnl": 1.0644, "correct_pnl": -1.0644, "sign": "WRONG" }
+  },
+
+  "after": {
+    "mlb-oak-nyy-2026-04-09": { "side": "BUY_YES", "entry": 0.35175, "cp": 0.63, "qty": 142.146411, "sse_pnl": 39.5522, "expected": 39.5522, "sign": "PASS", "equity_consistent": true },
+    "mlb-cin-mia-2026-04-09": { "side": "BUY_NO",  "entry": 0.5427,  "cp": 0.63, "qty": 92.131933,  "sse_pnl": 8.0431,  "expected": 8.0431,  "sign": "PASS", "equity_consistent": true },
+    "mlb-ari-nym-2026-04-09": { "side": "BUY_NO",  "entry": 0.61305, "cp": 0.40, "qty": 81.559416,  "sse_pnl": -17.3762,"expected": -17.3762,"sign": "PASS", "equity_consistent": true }
+  },
+
+  "key_case": {
+    "note": "ARI/NYM BUY_NO was the operator-reported regression. entry=0.613, current=0.40 now correctly shows -$17.38 (loss). Previously showed +$17.38.",
+    "formula_verified": "(current_price - entry_px) * qty — no side branching"
+  },
+
+  "acceptance_criteria": {
+    "buy_no_non_null_current_price_found": "PASS",
+    "unrealized_sign_correct_loss": "PASS — ARI/NYM current=0.40 < entry=0.613 → -17.38",
+    "unrealized_sign_correct_gain": "PASS — CIN/MIA current=0.63 > entry=0.5427 → +8.04",
+    "live_equity_internally_consistent": "PASS — all three positions equity matches qty * current_price",
+    "no_new_truth_regression": "PASS"
+  }
+}

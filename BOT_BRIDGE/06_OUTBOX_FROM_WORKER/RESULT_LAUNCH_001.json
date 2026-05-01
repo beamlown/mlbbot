@@ -1,0 +1,39 @@
+{
+  "task_id": "LAUNCH_001",
+  "status": "done",
+  "files_changed": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\launch_all.py",
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\core\\model_bridge.py"
+  ],
+  "summary": [
+    "Created launch_all.py as a standalone supervisor that starts the mlb_model shadow engine and sports_bot_v2 bot concurrently, logs both to files, polls each process, and restarts an exited child after a delay.",
+    "Added explicit BRIDGE ALL STALE logging to model_bridge.py when no actionable recommendations remain after NO_TRADE filtering and latest-per-slug dedup.",
+    "Kept scope strictly limited to launcher + one bridge log addition; no bot core, dashboard, DB, or model code changes."
+  ],
+  "commands_run": [
+    "cd C:\\Users\\johnny\\Desktop\\sports_bot_v2",
+    "python launch_all.py"
+  ],
+  "tests_run": [
+    "Confirmed launcher stdout showed both child processes starting: shadow_engine and bot_core.",
+    "Read logs/shadow_engine.log and confirmed shadow engine startup plus live registry/model startup output.",
+    "Read logs/bot_core_launcher.log and confirmed bot startup output under launcher supervision.",
+    "Observed launcher process itself start correctly, but I did not manually kill a child process in this run, so watchdog restart behavior was not directly exercised end-to-end."
+  ],
+  "watchdog_tested": "partial — launcher started both processes successfully, but no manual child kill/restart cycle was induced during this verification window",
+  "bridge_all_stale_observed": "no — shadow engine produced startup/live feed output immediately, so the explicit all-stale log did not appear in the short observed window",
+  "gate_reject_ages": "not observed in launcher-run bot log during this short window; prior direct bridge run showed rec_age rejects, but this launcher verification window primarily captured fresh process startup",
+  "gate_pass_observed": "no",
+  "result": [
+    "Launcher started both child processes successfully.",
+    "shadow_engine.log showed live-game/model startup activity, confirming stdout/stderr redirection to file works.",
+    "bot_core_launcher.log showed bot startup activity, confirming concurrent launch works.",
+    "No crashes were introduced by the launcher or the BRIDGE ALL STALE addition."
+  ],
+  "risks": [
+    "I did not manually kill a subprocess, so restart logging (LAUNCHER: exited/restarted) was not directly observed in this run.",
+    "The host terminated the launcher session after the observation window, so longer-loop bridge behavior under concurrent launch was not fully observed here.",
+    "Existing non-fatal DB duplicate-column startup log remains in bot logs and may be worth cleanup in a later task."
+  ],
+  "next_recommended_task": "LAUNCH_002 — run a longer supervised session, manually kill one child to verify watchdog restart logs, and capture BRIDGE ALL STALE / BRIDGE GATE REJECT/PASS behavior over multiple loops."
+}

@@ -1,0 +1,15 @@
+{
+  "task_id": "DASH_015",
+  "status": "completed",
+  "blocked": false,
+  "edited_files": [
+    "C:\\Users\\johnny\\Desktop\\sports_bot_v2\\dashboard.html"
+  ],
+  "summary": [
+    "Changed unified position action pill labels from YES/NO to WIN/LOSE.",
+    "Added TP, SL, and Size stat boxes after Entry/Current/Confidence in buildUnifiedPositionCards().",
+    "Implemented sizeUsd computation exactly as specified.",
+    "Added command bar W% stat element with id cmd-winrate.",
+    "Bound cmd-winrate in renderState(s) from s?.r25?.win_rate using XX% or — formatting."
+  ]
+}

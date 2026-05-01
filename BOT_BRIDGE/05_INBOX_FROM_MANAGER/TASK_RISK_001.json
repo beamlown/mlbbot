@@ -1,0 +1,45 @@
+{
+  "task_id": "RISK_001",
+  "title": "Confidence-tiered position sizing",
+  "status": "ACTIVE",
+  "priority": 1,
+  "subsystem": "risk",
+  "allowed_files": ["core/paper_exec.py", ".env"],
+  "do_not_touch": ["dashboard.html", "dashboard_server.py", "launch_all.py", "bot_core.py", "core/model_bridge.py", "core/db.py", "mlb_model/"],
+
+  "objective": "paper_exec.py currently opens every position at a fixed $50 regardless of the signal's confidence score. The confidence value is already stored in the DB and available in the Signal object — we just never use it for sizing. This task adds confidence-tiered sizing: low confidence stays at base ($50), medium-high confidence scales up to 1.25x ($62.50), high confidence scales up to 1.50x ($75.00), with a hard cap at $100.",
+
+  "deliverables": [
+    {
+      "label": "Add confidence sizing env vars to .env",
+      "file": ".env",
+      "where": "Bottom of .env file — after existing PAPER_POSITION_SIZE_USD line",
+      "change": "Add:\n# Confidence-based position sizing\nCONF_SIZING_ENABLED=true\nCONF_TIER_HIGH=0.70\nCONF_TIER_VHIGH=0.80\nCONF_SIZE_MID_MULT=1.25\nCONF_SIZE_HIGH_MULT=1.50\nMAX_POSITION_SIZE_USD=100"
+    },
+    {
+      "label": "Add _confidence_size() helper and tiered sizing in open_position()",
+      "file": "core/paper_exec.py",
+      "where": "Module level (after PAPER_POSITION_SIZE_USD line) + open_position() function (~line 38-50)",
+      "change": "At module level, after the PAPER_POSITION_SIZE_USD line, add:\n\nCONF_SIZING_ENABLED  = os.getenv('CONF_SIZING_ENABLED', 'true').lower() == 'true'\nCONF_TIER_HIGH       = float(os.getenv('CONF_TIER_HIGH', '0.70'))\nCONF_TIER_VHIGH      = float(os.getenv('CONF_TIER_VHIGH', '0.80'))\nCONF_SIZE_MID_MULT   = float(os.getenv('CONF_SIZE_MID_MULT', '1.25'))\nCONF_SIZE_HIGH_MULT  = float(os.getenv('CONF_SIZE_HIGH_MULT', '1.50'))\nMAX_POSITION_SIZE_USD = float(os.getenv('MAX_POSITION_SIZE_USD', '100.0'))\n\ndef _confidence_size(base_usd: float, confidence: float) -> float:\n    if not CONF_SIZING_ENABLED:\n        return base_usd\n    if confidence >= CONF_TIER_VHIGH:\n        mult = CONF_SIZE_HIGH_MULT\n    elif confidence >= CONF_TIER_HIGH:\n        mult = CONF_SIZE_MID_MULT\n    else:\n        mult = 1.0\n    return min(base_usd * mult, MAX_POSITION_SIZE_USD)\n\nIn open_position(), replace:\n  qty = PAPER_POSITION_SIZE_USD / fill_px\nWith:\n  size_usd = _confidence_size(PAPER_POSITION_SIZE_USD, signal.confidence)\n  qty = size_usd / fill_px"
+    }
+  ],
+
+  "acceptance_criteria": [
+    "CONF_SIZING_ENABLED=true in .env (can be toggled to false to revert to flat $50)",
+    "Signal with confidence=0.65 (below CONF_TIER_HIGH=0.70) → size_usd = $50.00",
+    "Signal with confidence=0.72 (>= CONF_TIER_HIGH, < CONF_TIER_VHIGH) → size_usd = $62.50",
+    "Signal with confidence=0.82 (>= CONF_TIER_VHIGH) → size_usd = $75.00",
+    "MAX_POSITION_SIZE_USD=100 hard cap respected — no position can exceed $100",
+    "CONF_SIZING_ENABLED=false → all positions use base $50 regardless of confidence",
+    "No other files modified beyond core/paper_exec.py and .env"
+  ],
+
+  "verification": [
+    "Read core/paper_exec.py and confirm _confidence_size() function is present",
+    "Read core/paper_exec.py and confirm open_position() calls _confidence_size()",
+    "Read .env and confirm all 6 CONF_ vars are present",
+    "Trace: confidence=0.72, base=50 → mult=1.25 → size=62.5 → qty=62.5/fill_px ✓"
+  ],
+
+  "rollback": "Set CONF_SIZING_ENABLED=false in .env (no code revert needed). Or revert core/paper_exec.py and .env."
+}
